@@ -6,7 +6,9 @@ Uses fastMCP's in-memory transport (no HTTP, no subprocess).
 from __future__ import annotations
 
 import pytest
-from fastmcp import FastMCP
+
+fastmcp = pytest.importorskip("fastmcp", reason="fastmcp not installed (install with: pip install langchain-adk[mcp])")
+FastMCP = fastmcp.FastMCP
 
 from langchain_adk.integrations.mcp.client import MCPClient
 from langchain_adk.integrations.mcp.adapter import MCPToolAdapter
