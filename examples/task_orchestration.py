@@ -19,7 +19,13 @@ from langchain_adk.prompts.context import PromptContext
 
 
 async def main() -> None:
-    raise NotImplementedError("Set llm= below with a real LangChain model.")
+    # --- Replace with a real LLM ---
+    # from langchain_openai import ChatOpenAI
+    # llm = ChatOpenAI(model="gpt-5.4")
+    raise NotImplementedError(
+        "Replace the llm= line below with a real LangChain chat model "
+        "and comment out this raise."
+    )
 
     manage_tasks = ManageTasksTool()
 

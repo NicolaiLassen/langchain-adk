@@ -35,7 +35,7 @@ def get_weather(city: str) -> str:
 
 async def main() -> None:
     # --- Replace with a real LLM ---
-    # llm = ChatOpenAI(model="gpt-4o-mini")
+    # llm = ChatOpenAI(model="gpt-5.4")
     # llm = ChatAnthropic(model="claude-3-5-haiku-latest")
     raise NotImplementedError(
         "Replace the llm= line below with a real LangChain chat model "

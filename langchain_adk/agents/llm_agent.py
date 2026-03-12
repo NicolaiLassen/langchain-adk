@@ -56,6 +56,30 @@ Only use tools when necessary to complete the task.
 """
 
 
+def _make_output_parser(schema: type) -> Any:
+    """Create a LangChain PydanticOutputParser for the given schema.
+
+    The parser handles:
+    - Markdown code fences (```json ... ```)
+    - Partial/incomplete JSON (auto-closes brackets)
+    - Escaped characters and newlines within strings
+    - Pydantic model validation
+
+    Parameters
+    ----------
+    schema : type
+        A Pydantic BaseModel subclass.
+
+    Returns
+    -------
+    PydanticOutputParser
+        A LangChain output parser for JSON extraction and validation.
+    """
+    from langchain_core.output_parsers import PydanticOutputParser
+
+    return PydanticOutputParser(pydantic_object=schema)
+
+
 class LlmAgent(BaseAgent):
     """LangChain-powered agent with a manual tool-call loop.
 
@@ -119,6 +143,9 @@ class LlmAgent(BaseAgent):
     async def _resolve_instructions(self, ctx: InvocationContext) -> str:
         """Resolve the system prompt from a string or instruction provider.
 
+        When ``output_schema`` is set, appends JSON schema format instructions
+        so the LLM knows the exact structure to return.
+
         Parameters
         ----------
         ctx : InvocationContext
@@ -132,21 +159,62 @@ class LlmAgent(BaseAgent):
         if callable(self._instructions):
             result = self._instructions(ctx)
             if asyncio.iscoroutine(result):
-                return await result
-            return result
-        return self._instructions
+                prompt = await result
+            else:
+                prompt = result
+        else:
+            prompt = self._instructions
+
+        # Append output schema instructions using LangChain's PydanticOutputParser
+        if self._output_schema is not None:
+            parser = _make_output_parser(self._output_schema)
+            prompt = f"{prompt}\n\n{parser.get_format_instructions()}"
+
+        return prompt
 
     def _build_bound_llm(self) -> BaseChatModel:
-        """Return the LLM with tools bound if any are registered.
+        """Return the LLM with tools and/or structured output bound.
+
+        When ``output_schema`` is set and the model supports
+        ``with_structured_output`` (OpenAI, Anthropic, etc.), binds it
+        for API-level schema enforcement. Otherwise falls back to
+        prompt-based JSON instructions + ``parse_json_markdown`` parsing.
 
         Returns
         -------
         BaseChatModel
-            The LLM, optionally with tools bound via bind_tools.
+            The LLM, optionally with tools and/or structured output bound.
         """
+        llm = self._llm
         if self._tools:
-            return self._llm.bind_tools(list(self._tools.values()))
-        return self._llm
+            llm = llm.bind_tools(list(self._tools.values()))
+        return llm
+
+    def _build_structured_llm(self) -> Any:
+        """Return the LLM bound with structured output for the final answer.
+
+        Uses ``with_structured_output(method="json_schema")`` when supported,
+        which gives API-level schema enforcement (guaranteed valid JSON).
+        Falls back to ``method="json_mode"`` then ``None`` for models that
+        don't support it.
+
+        Returns
+        -------
+        Any
+            A Runnable that returns a Pydantic model instance, or None
+            if the model does not support structured output.
+        """
+        if self._output_schema is None:
+            return None
+        # Try json_schema first (OpenAI strict mode), then json_mode, then None
+        for method in ("json_schema", "json_mode"):
+            try:
+                return self._llm.with_structured_output(
+                    self._output_schema, method=method
+                )
+            except (NotImplementedError, TypeError, ValueError):
+                continue
+        return None
 
     def _build_request(
         self,
@@ -360,11 +428,36 @@ class LlmAgent(BaseAgent):
             if not llm_response.has_tool_calls:
                 for partial_event in partial_events:
                     yield partial_event
+
+                answer_text = llm_response.text
+                structured_output = None
+
+                # Parse structured output if schema is set
+                if self._output_schema is not None:
+                    parser = _make_output_parser(self._output_schema)
+                    # 1) Try parsing the LLM text directly (fast, streaming-safe)
+                    if answer_text:
+                        try:
+                            structured_output = parser.parse(answer_text)
+                        except Exception:
+                            pass
+                    # 2) Fall back to with_structured_output (API-level enforcement)
+                    if structured_output is None:
+                        structured_llm = self._build_structured_llm()
+                        if structured_llm is not None:
+                            try:
+                                structured_output = await structured_llm.ainvoke(messages)
+                            except Exception:
+                                pass
+                    if structured_output is not None:
+                        answer_text = structured_output.model_dump_json(indent=2)
+
                 yield FinalAnswerEvent(
                     session_id=ctx.session_id,
                     agent_name=self.name,
-                    answer=llm_response.text,
+                    answer=answer_text,
                     llm_response=llm_response,
+                    structured_output=structured_output,
                     partial=False,
                 )
                 return

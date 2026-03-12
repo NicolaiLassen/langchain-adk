@@ -247,6 +247,7 @@ class FinalAnswerEvent(Event):
     answer: str
     scratchpad: str = ""
     llm_response: Optional[LlmResponse] = None
+    structured_output: Any = None
 
 
 class ToolCallEvent(Event):

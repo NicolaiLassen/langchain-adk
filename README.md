@@ -1,5 +1,7 @@
 # langchain-adk
 
+> **Beta** — This project is under heavy development and may be subject to breaking changes between minor versions. Pin your dependency version if you need stability.
+
 A LangChain-powered Agent Development Toolkit — async event-streaming agents, composable hierarchies, session management, planners, skills, MCP and A2A integration.
 
 ---
@@ -20,12 +22,15 @@ A LangChain-powered Agent Development Toolkit — async event-streaming agents, 
   - [Prompts](#prompts)
   - [Streaming](#streaming)
   - [Callbacks](#callbacks)
+  - [Structured Output](#structured-output)
+  - [Human-in-the-Loop](#human-in-the-loop)
 - [Composite Agents](#composite-agents)
   - [SequentialAgent](#sequentialagent)
   - [ParallelAgent](#parallelagent)
   - [LoopAgent](#loopagent)
 - [Agent-to-Agent (A2A) Server](#agent-to-agent-a2a-server)
 - [MCP Integration](#mcp-integration)
+- [Examples](#examples)
 - [Architecture](#architecture)
 - [Development](#development)
 
@@ -651,6 +656,77 @@ agent.before_agent_callback = on_start
 
 ---
 
+### Structured Output
+
+Force an agent to return a typed Pydantic object instead of free-form text. Pass `output_schema` to `LlmAgent` — the SDK automatically injects JSON format instructions into the prompt and parses the LLM response using LangChain's `PydanticOutputParser`.
+
+```python
+from pydantic import BaseModel, Field
+from langchain_adk import LlmAgent
+from langchain_adk.events.event import FinalAnswerEvent
+
+class CompanyAnalysis(BaseModel):
+    name: str = Field(description="Company name")
+    industry: str = Field(description="Primary industry")
+    strengths: list[str] = Field(description="Key strengths")
+    risks: list[str] = Field(description="Key risks")
+    recommendation: str = Field(description="Buy, Hold, or Sell")
+    confidence: float = Field(description="Confidence score 0-1")
+
+agent = LlmAgent(
+    name="AnalystAgent",
+    llm=llm,
+    tools=[get_financials, get_news_sentiment],
+    output_schema=CompanyAnalysis,
+    instructions="You are a financial analyst. Research the company using the available tools.",
+)
+```
+
+The parsed object is available on `FinalAnswerEvent.structured_output`:
+
+```python
+async for event in agent.run("Analyze Apple", ctx=ctx):
+    if isinstance(event, FinalAnswerEvent):
+        analysis = event.structured_output  # CompanyAnalysis instance
+        print(f"{analysis.name}: {analysis.recommendation} ({analysis.confidence:.0%})")
+```
+
+**How it works:**
+1. `PydanticOutputParser.get_format_instructions()` is appended to the system prompt — the LLM sees the JSON schema.
+2. When the LLM responds, `PydanticOutputParser.parse()` extracts and validates JSON (handles markdown fences, partial JSON, etc.).
+3. If direct parsing fails, `with_structured_output()` is used as a fallback for API-level schema enforcement.
+4. Works with streaming (`StreamingMode.SSE`) and multi-agent compositions (`SequentialAgent`, `ParallelAgent`).
+
+---
+
+### Human-in-the-Loop
+
+Create an `ask_human` tool that lets the agent ask the user questions interactively:
+
+```python
+from langchain_core.tools import tool
+
+@tool
+def ask_human(question: str) -> str:
+    """Ask the human user a question and return their response."""
+    print(f"\n  Agent asks: {question}")
+    return input("  Your answer: ").strip()
+
+agent = LlmAgent(
+    name="Assistant",
+    llm=llm,
+    tools=[ask_human, book_meeting, send_email],
+    instructions=(
+        "When you don't have enough information to complete a task, "
+        "use the ask_human tool to ask the user for the missing details."
+    ),
+)
+```
+
+The agent will call `ask_human` whenever it needs clarification, then use the response to proceed. See `examples/human_in_the_loop.py` for a full example.
+
+---
+
 ## Composite Agents
 
 ### SequentialAgent
@@ -942,6 +1018,33 @@ tools = await adapter.load_tools()
 ```
 
 `MCPToolAdapter.load_tools()` fetches the tool list from the MCP server and wraps each as a LangChain `BaseTool`.
+
+---
+
+## Examples
+
+The `examples/` directory contains runnable demos for every major feature. Each example includes a `NotImplementedError` placeholder — replace it with your LLM of choice (e.g. `ChatOpenAI`, `ChatAnthropic`).
+
+| Example | What it demonstrates |
+|---|---|
+| `basic_agent.py` | Minimal agent with a single tool |
+| `streaming_agent.py` | SSE streaming with partial events |
+| `multi_agent.py` | SequentialAgent pipeline (researcher → writer) |
+| `parallel_agent.py` | ParallelAgent running 3 research agents concurrently |
+| `loop_agent.py` | LoopAgent with writer/reviewer iterative refinement |
+| `transfer_agent.py` | Agent handoff via `make_transfer_tool` (triage → specialists) |
+| `planner_agent.py` | PlanReActPlanner with structured chain-of-thought |
+| `memory_agent.py` | Persistent memory with `InMemoryMemoryStore` |
+| `structured_output.py` | Typed Pydantic output via `output_schema` |
+| `human_in_the_loop.py` | Interactive `ask_human` tool for user input |
+| `task_orchestration.py` | TaskPlanner with managed task board |
+| `mcp_agent.py` | MCP tool server integration |
+| `a2a_server.py` | A2A protocol server endpoint |
+
+```bash
+# Run any example (after replacing the NotImplementedError with your LLM)
+uv run python examples/basic_agent.py
+```
 
 ---
 

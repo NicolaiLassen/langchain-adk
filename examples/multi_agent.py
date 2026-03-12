@@ -29,7 +29,12 @@ from langchain_adk.tools.agent_tool import AgentTool
 
 async def main() -> None:
     # --- Replace with a real LLM ---
-    raise NotImplementedError("Set llm= below with a real LangChain model.")
+    # from langchain_openai import ChatOpenAI
+    # llm = ChatOpenAI(model="gpt-5.4")
+    raise NotImplementedError(
+        "Replace the llm= line below with a real LangChain chat model "
+        "and comment out this raise."
+    )
 
     # --- Skill store ---
     skill_store = InMemorySkillStore([
