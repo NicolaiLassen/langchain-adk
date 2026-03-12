@@ -573,12 +573,12 @@ prompt = build_system_prompt(PromptContext(
     agents=[
         {"name": "ResearchAgent", "description": "Retrieves research on any topic."}
     ],
-    workflow_lines=[
-        "1. Call ResearchAgent to gather background information.",
-        "2. Outline the article structure.",
-        "3. Write the full article.",
-        "4. Review and refine.",
-    ],
+    workflow_instructions=(
+        "1. Call ResearchAgent to gather background information.\n"
+        "2. Outline the article structure.\n"
+        "3. Write the full article.\n"
+        "4. Review and refine."
+    ),
 ))
 
 agent = LlmAgent(name="WriterAgent", llm=llm, instructions=prompt)

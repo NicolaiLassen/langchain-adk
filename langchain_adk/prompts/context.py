@@ -34,8 +34,8 @@ class PromptContext(BaseModel):
     tasks : list[dict[str, Any]]
         Current tasks the agent must address.
         Each entry: {"tag": str, "title": str, "description": str}
-    workflow_lines : list[str]
-        Step-by-step workflow guidance lines.
+    workflow_instructions : str
+        Step-by-step workflow guidance text.
     extra_sections : list[str]
         Additional freeform text blocks appended at the end.
     """
@@ -47,5 +47,5 @@ class PromptContext(BaseModel):
     skills: list[dict[str, Any]] = Field(default_factory=list)
     agents: list[dict[str, Any]] = Field(default_factory=list)
     tasks: list[dict[str, Any]] = Field(default_factory=list)
-    workflow_lines: list[str] = Field(default_factory=list)
+    workflow_instructions: str = ""
     extra_sections: list[str] = Field(default_factory=list)

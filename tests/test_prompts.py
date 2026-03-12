@@ -68,7 +68,7 @@ def test_prompt_tasks_block():
 def test_prompt_workflow_block():
     ctx = PromptContext(
         agent_name="Agent",
-        workflow_lines=["Step 1: Gather data", "Step 2: Analyze"],
+        workflow_instructions="Step 1: Gather data\nStep 2: Analyze",
     )
     prompt = build_system_prompt(ctx)
     assert "Step 1" in prompt

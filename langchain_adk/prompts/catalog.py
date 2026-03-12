@@ -84,6 +84,6 @@ def build_system_prompt(ctx: PromptContext) -> str:
         _skills_block(ctx.skills) if ctx.skills else "",
         _agents_block(ctx.agents) if ctx.agents else "",
         _tasks_block(ctx.tasks) if ctx.tasks else "",
-        "Workflow:\n" + "\n".join(ctx.workflow_lines) if ctx.workflow_lines else "",
+        "Workflow:\n" + ctx.workflow_instructions if ctx.workflow_instructions else "",
         *ctx.extra_sections,
     ]))

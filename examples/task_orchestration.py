@@ -32,13 +32,13 @@ async def main() -> None:
             "Mark each task complete when done. "
             "Only produce a final answer once all required tasks are complete."
         ),
-        workflow_lines=[
-            "1. Call manage_tasks(action='initialize', tasks=[...]) to set up tasks.",
-            "2. Work through each task in order.",
-            "3. Call manage_tasks(action='complete', task_id='t1') when done.",
-            "4. Call manage_tasks(action='list') to check progress.",
-            "5. Produce a final answer summarising what was accomplished.",
-        ],
+        workflow_instructions=(
+            "1. Call manage_tasks(action='initialize', tasks=[...]) to set up tasks.\n"
+            "2. Work through each task in order.\n"
+            "3. Call manage_tasks(action='complete', task_id='t1') when done.\n"
+            "4. Call manage_tasks(action='list') to check progress.\n"
+            "5. Produce a final answer summarising what was accomplished."
+        ),
     ))
 
     agent = LlmAgent(
