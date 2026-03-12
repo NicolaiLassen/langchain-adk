@@ -1,37 +1,73 @@
-"""Converters between SDK Events and A2A wire format."""
+"""Converters between SDK Events and A2A streaming events."""
 
 from __future__ import annotations
 
-from langchain_adk.events.event import Event, FinalAnswerEvent
-from langchain_adk.a2a.types import A2AEvent
+from typing import AsyncIterator, Union
+
+from langchain_adk.a2a.types import (
+    Artifact,
+    TaskArtifactUpdateEvent,
+    TaskState,
+    TaskStatus,
+    TaskStatusUpdateEvent,
+    TextPart,
+)
+from langchain_adk.events.event import (
+    Event,
+    FinalAnswerEvent,
+    ToolCallEvent,
+    ToolResultEvent,
+)
 
 
-def event_to_a2a(event: Event) -> A2AEvent:
-    """Convert an SDK Event to an A2AEvent.
+async def events_to_a2a_stream(
+    events: AsyncIterator[Event],
+    *,
+    task_id: str,
+    context_id: str,
+) -> AsyncIterator[Union[TaskStatusUpdateEvent, TaskArtifactUpdateEvent]]:
+    """Convert SDK event stream into A2A-compliant streaming events.
 
-    FinalAnswerEvent sets is_final=True so the client knows the stream is done.
-
-    Parameters
-    ----------
-    event : Event
-        The SDK event to convert.
-
-    Returns
-    -------
-    A2AEvent
-        The wire-format event ready for streaming.
+    Yields TaskStatusUpdateEvent for status changes and
+    TaskArtifactUpdateEvent for content (final answer, tool results).
     """
-    is_final = isinstance(event, FinalAnswerEvent)
+    async for event in events:
+        if isinstance(event, FinalAnswerEvent):
+            if event.partial:
+                continue
+            # Emit artifact with the final answer
+            artifact = Artifact(
+                parts=[TextPart(text=event.answer)],
+                name="answer",
+            )
+            yield TaskArtifactUpdateEvent(
+                task_id=task_id,
+                context_id=context_id,
+                artifact=artifact,
+                last_chunk=True,
+            )
 
-    content: object = event.content
-    if isinstance(event, FinalAnswerEvent):
-        content = event.answer
+        elif isinstance(event, ToolCallEvent):
+            yield TaskStatusUpdateEvent(
+                task_id=task_id,
+                context_id=context_id,
+                status=TaskStatus(
+                    state=TaskState.working,
+                    message=None,
+                ),
+                final=False,
+                metadata={"tool_name": event.tool_name, "tool_input": event.tool_input},
+            )
 
-    return A2AEvent(
-        id=event.id,
-        type=event.type.value,
-        agent_name=event.agent_name,
-        content=content,
-        is_final=is_final,
-        metadata=event.metadata,
-    )
+        elif isinstance(event, ToolResultEvent):
+            result_text = str(event.result) if event.result else (event.error or "")
+            artifact = Artifact(
+                parts=[TextPart(text=result_text)],
+                name=f"tool_result:{event.tool_name}",
+            )
+            yield TaskArtifactUpdateEvent(
+                task_id=task_id,
+                context_id=context_id,
+                artifact=artifact,
+                last_chunk=True,
+            )
