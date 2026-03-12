@@ -1,0 +1,65 @@
+"""Basic agent example - LlmAgent with a single tool.
+
+Shows the simplest possible SDK usage:
+  1. Define a tool
+  2. Create an LlmAgent
+  3. Run it and print events
+"""
+
+from __future__ import annotations
+
+import asyncio
+
+# Swap in any LangChain-supported LLM:
+# from langchain_openai import ChatOpenAI
+# from langchain_anthropic import ChatAnthropic
+# from langchain_google_genai import ChatGoogleGenerativeAI
+
+from langchain_core.tools import tool
+
+from langchain_adk.agents.llm_agent import LlmAgent
+from langchain_adk.context.invocation_context import InvocationContext
+from langchain_adk.events.event import FinalAnswerEvent, ToolCallEvent, ToolResultEvent
+
+
+@tool
+def get_weather(city: str) -> str:
+    """Get the current weather for a city."""
+    # Stub - replace with a real API call
+    return f"The weather in {city} is sunny and 22°C."
+
+
+async def main() -> None:
+    # --- Replace with a real LLM ---
+    # llm = ChatOpenAI(model="gpt-4o-mini")
+    # llm = ChatAnthropic(model="claude-3-5-haiku-latest")
+    raise NotImplementedError(
+        "Replace the llm= line below with a real LangChain chat model "
+        "and comment out this raise."
+    )
+
+    agent = LlmAgent(
+        name="WeatherAgent",
+        llm=llm,  # noqa: F821
+        tools=[get_weather],
+        instructions="You are a helpful weather assistant. Use the get_weather tool.",
+    )
+
+    ctx = InvocationContext(
+        session_id="demo-session",
+        agent_name=agent.name,
+    )
+
+    print(f"Running agent: {agent.name}\n{'='*40}")
+
+    async for event in agent.run("What's the weather in Copenhagen?", ctx=ctx):
+        if isinstance(event, ToolCallEvent):
+            print(f"[TOOL CALL] {event.tool_name}({event.tool_input})")
+        elif isinstance(event, ToolResultEvent):
+            print(f"[TOOL RESULT] {event.result or event.error}")
+        elif isinstance(event, FinalAnswerEvent):
+            print(f"\n[ANSWER] {event.answer}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

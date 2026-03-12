@@ -1,0 +1,36 @@
+[project]
+name = "langchain-adk"
+version = "0.1.0"
+description = "A LangChain-powered Agent Development Toolkit"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "langchain>=1.2.11",
+    "pydantic>=2.12.5",
+    "fastapi>=0.115.0",
+    "fastmcp>=2.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["langchain_adk*"]
+
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
