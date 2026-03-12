@@ -94,7 +94,8 @@ import asyncio
 from langchain_anthropic import ChatAnthropic
 from langchain_core.tools import tool
 
-from langchain_adk import LlmAgent, Runner, InMemorySessionService, RunConfig
+from langchain_adk import LlmAgent, Runner, InMemorySessionService
+from langchain_adk.events.event import FinalAnswerEvent
 
 @tool
 def get_weather(city: str) -> str:
@@ -120,7 +121,7 @@ async def main():
         session_id="session-1",
         new_message="What's the weather in Copenhagen and Berlin?",
     ):
-        if event.is_final_response():
+        if isinstance(event, FinalAnswerEvent):
             print(event.answer)
 
 asyncio.run(main())
@@ -378,7 +379,7 @@ flowchart LR
     A --> EL[exit_loop_tool]:::tool
     A --> MCP[MCPToolAdapter]:::tool
 
-    FT -->|wraps| Fn("async def fn()"]:::external
+    FT -->|wraps| Fn["async def fn()"]:::external
     AT -->|invokes| SA([sub-agent]):::agent
     SA -->|derive context\nbranch isolation| IC["InvocationContext\n.derive()"]:::effect
     TT -->|sets| EA1["EventActions\n.transfer_to_agent"]:::effect
@@ -766,7 +767,6 @@ async for event in loop.run(draft_text, ctx=ctx):
 Expose any agent as an HTTP endpoint with Server-Sent Events:
 
 ```python
-import uvicorn
 from langchain_adk import LlmAgent, InMemorySessionService
 from langchain_adk.a2a import A2AServer
 
@@ -864,8 +864,9 @@ sequenceDiagram
     S-->>R: Session
     R->>R: build InvocationContext from session.state
 
-    loop for each event
-        R->>A: run_with_callbacks(message, ctx)
+    R->>A: run_with_callbacks(message, ctx)
+
+    loop for each yielded event
         A-->>R: Event
         R->>S: append_event(session, event)
         note over S: applies state_delta,\nappends to history
