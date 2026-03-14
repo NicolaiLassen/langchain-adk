@@ -379,7 +379,7 @@ class LlmAgent(BaseAgent):
                 yield FinalAnswerEvent(
                     session_id=ctx.session_id,
                     agent_name=self.name,
-                    content=Content.from_text(accumulated_text),
+                    content=Content.from_text(chunk_text),
                     partial=True,
                 )
 
