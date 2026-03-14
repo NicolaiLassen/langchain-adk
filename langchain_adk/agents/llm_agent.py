@@ -106,6 +106,10 @@ class LlmAgent(BaseAgent):
         Called with ``(ctx, request: LlmRequest)`` before each LLM call.
     after_model_callback : callable, optional
         Called with ``(ctx, response: LlmResponse)`` after each LLM call.
+    on_model_error_callback : callable, optional
+        Called with ``(ctx, request: LlmRequest, exception)`` when an LLM
+        call raises. Return a ``LlmResponse`` to recover, or ``None`` to
+        yield an ErrorEvent.
     before_tool_callback : callable, optional
         Called with ``(ctx, tool_name, tool_args)`` before each tool execution.
     after_tool_callback : callable, optional
@@ -125,6 +129,7 @@ class LlmAgent(BaseAgent):
         max_iterations: int = 10,
         before_model_callback: Optional[Callable[[InvocationContext, LlmRequest], Awaitable[None]]] = None,
         after_model_callback: Optional[Callable[[InvocationContext, LlmResponse], Awaitable[None]]] = None,
+        on_model_error_callback: Optional[Callable[[InvocationContext, LlmRequest, Exception], Awaitable[Optional[LlmResponse]]]] = None,
         before_tool_callback: Optional[Callable[[InvocationContext, str, dict], Awaitable[None]]] = None,
         after_tool_callback: Optional[Callable[[InvocationContext, str, Any], Awaitable[None]]] = None,
     ) -> None:
@@ -137,6 +142,7 @@ class LlmAgent(BaseAgent):
         self.max_iterations = max_iterations
         self.before_model_callback = before_model_callback
         self.after_model_callback = after_model_callback
+        self.on_model_error_callback = on_model_error_callback
         self.before_tool_callback = before_tool_callback
         self.after_tool_callback = after_tool_callback
 
@@ -409,13 +415,28 @@ class LlmAgent(BaseAgent):
                     llm, messages, run_config, ctx.session_id, lc_config,
                 )
             except Exception as exc:
-                yield ErrorEvent(
-                    session_id=ctx.session_id,
-                    agent_name=self.name,
-                    message=str(exc),
-                    exception_type=type(exc).__name__,
-                )
-                return
+                if self.on_model_error_callback:
+                    recovery = await self.on_model_error_callback(ctx, request, exc)
+                    if recovery is not None:
+                        # Callback provided a recovery response — use it
+                        raw_response = AIMessage(content=recovery.text or "")
+                        partial_events = []
+                    else:
+                        yield ErrorEvent(
+                            session_id=ctx.session_id,
+                            agent_name=self.name,
+                            message=str(exc),
+                            exception_type=type(exc).__name__,
+                        )
+                        return
+                else:
+                    yield ErrorEvent(
+                        session_id=ctx.session_id,
+                        agent_name=self.name,
+                        message=str(exc),
+                        exception_type=type(exc).__name__,
+                    )
+                    return
 
             llm_response = LlmResponse.from_ai_message(raw_response)
 

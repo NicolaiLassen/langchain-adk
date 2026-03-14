@@ -91,6 +91,8 @@ class BaseSessionService(ABC):
         Event
             The same event that was appended.
         """
+        if event.partial:
+            return event
         if event.actions.state_delta:
             session.state.update(event.actions.state_delta)
         session.events.append(event)

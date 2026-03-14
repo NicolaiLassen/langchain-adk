@@ -16,21 +16,26 @@ A LangChain-powered Agent Development Toolkit — async event-streaming agents, 
   - [Events](#events)
   - [Runner & Sessions](#runner--sessions)
   - [InvocationContext](#invocationcontext)
-  - [Tools](#tools)
+- [Tools](#tools)
+  - [Long-Running Tools](#long-running-tools)
+  - [Tool Confirmation](#tool-confirmation)
+- [Agents](#composite-agents)
+  - [SequentialAgent](#sequentialagent)
+  - [ParallelAgent](#parallelagent)
+  - [LoopAgent](#loopagent)
+- [Orchestration](#orchestration)
   - [Planners](#planners)
   - [Skills](#skills)
   - [Prompts](#prompts)
+- [Runtime](#runtime)
   - [Streaming](#streaming)
   - [Callbacks](#callbacks)
   - [Tracing](#tracing-langfuse-langsmith-etc)
   - [Structured Output](#structured-output)
   - [Human-in-the-Loop](#human-in-the-loop)
-- [Composite Agents](#composite-agents)
-  - [SequentialAgent](#sequentialagent)
-  - [ParallelAgent](#parallelagent)
-  - [LoopAgent](#loopagent)
-- [Agent-to-Agent (A2A) Server](#agent-to-agent-a2a-server)
-- [MCP Integration](#mcp-integration)
+- [Integrations](#integrations)
+  - [Agent-to-Agent (A2A)](#agent-to-agent-a2a-server)
+  - [MCP](#mcp-integration)
 - [Examples](#examples)
 - [Architecture](#architecture)
 - [Development](#development)
@@ -369,7 +374,7 @@ async def after_model(ctx: CallbackContext, response: LlmResponse) -> None:
 
 ---
 
-### Tools
+## Tools
 
 ```mermaid
 flowchart LR
@@ -384,6 +389,7 @@ flowchart LR
     A --> AT[AgentTool]:::tool
     A --> TT[make_transfer_tool]:::tool
     A --> EL[exit_loop_tool]:::tool
+    A --> LR[LongRunningFunctionTool]:::tool
     A --> MCP[MCPToolAdapter]:::tool
 
     FT -->|wraps| Fn["async def fn()"]:::external
@@ -394,7 +400,7 @@ flowchart LR
     MCP -->|fetches from| MS[("MCP Server")]:::external
 ```
 
-#### Function tools
+### Function tools
 
 Wrap any async function as a LangChain `BaseTool`:
 
@@ -411,7 +417,7 @@ tool = function_tool(search_web)
 
 Or use LangChain's `@tool` decorator directly — both work with `LlmAgent`.
 
-#### AgentTool — sub-agents as tools
+### AgentTool — sub-agents as tools
 
 Wrap a `BaseAgent` so it can be called as a tool by a parent agent:
 
@@ -423,7 +429,7 @@ research_tool = AgentTool(research_agent)
 # The tool derives a child context with branch isolation automatically.
 ```
 
-#### Transfer tool — explicit agent handoff
+### Transfer tool — explicit agent handoff
 
 ```python
 from langchain_adk import make_transfer_tool
@@ -433,7 +439,7 @@ transfer = make_transfer_tool([billing_agent, support_agent, tech_agent])
 # EventActions.transfer_to_agent is set; the parent routes accordingly.
 ```
 
-#### Exit loop tool
+### Exit loop tool
 
 Signal a `LoopAgent` to stop iterating:
 
@@ -447,7 +453,7 @@ loop_agent = LoopAgent(
 )
 ```
 
-#### ToolContext
+### ToolContext
 
 Inside a tool's `_arun()`, use `ToolContext` to read/write agent state:
 
@@ -467,7 +473,38 @@ class MyStatefulTool(BaseTool):
 
 `LlmAgent` automatically calls `inject_context()` on any tool that exposes it before each tool execution.
 
+### Long-running tools
+
+For tools that take significant time (deployments, data processing), use `LongRunningFunctionTool`. It instructs the LLM not to re-invoke the tool while pending:
+
+```python
+from langchain_adk.tools import LongRunningFunctionTool
+
+async def deploy_service(env: str) -> str:
+    """Deploy the service to the given environment."""
+    await some_long_operation(env)
+    return f"Deployed to {env}"
+
+tool = LongRunningFunctionTool(deploy_service)
+agent = LlmAgent(name="deployer", llm=llm, tools=[tool.as_tool()])
+```
+
+### Tool confirmation
+
+Gate dangerous tool executions with `ToolContext.request_confirmation()`:
+
+```python
+from langchain_adk.tools import ToolContext
+
+async def confirm_dangerous(ctx, tool_name: str, tool_args: dict) -> None:
+    if tool_name in ("delete_file", "drop_table"):
+        tool_ctx = ToolContext(ctx)
+        tool_ctx.request_confirmation()
+```
+
 ---
+
+## Orchestration
 
 ### Planners
 
@@ -595,6 +632,8 @@ Sections are only included when non-empty — no boilerplate padding.
 
 ---
 
+## Runtime
+
 ### Streaming
 
 Enable SSE streaming to get incremental text as the LLM generates it:
@@ -626,13 +665,20 @@ Partial events are suppressed automatically if the LLM decides to call a tool in
 Attach hooks at the agent, model, and tool level:
 
 ```python
-from langchain_adk import InvocationContext, LlmRequest, LlmResponse
+from langchain_adk import InvocationContext, LlmAgent
+from langchain_adk.models.llm_request import LlmRequest
+from langchain_adk.models.llm_response import LlmResponse
 
 async def log_llm_call(ctx: InvocationContext, request: LlmRequest) -> None:
     print(f"[{ctx.agent_name}] LLM call with {len(request.messages)} messages")
 
 async def track_usage(ctx: InvocationContext, response: LlmResponse) -> None:
     print(f"Tokens: {response.input_tokens} in / {response.output_tokens} out")
+
+async def handle_llm_error(ctx: InvocationContext, request: LlmRequest, error: Exception) -> LlmResponse | None:
+    """Called when an LLM call fails. Return a LlmResponse to recover, or None to propagate the error."""
+    print(f"LLM error: {error}")
+    return None  # yields ErrorEvent
 
 async def log_tool(ctx: InvocationContext, name: str, args: dict) -> None:
     print(f"[TOOL] {name}({args})")
@@ -642,6 +688,7 @@ agent = LlmAgent(
     llm=llm,
     before_model_callback=log_llm_call,
     after_model_callback=track_usage,
+    on_model_error_callback=handle_llm_error,
     before_tool_callback=log_tool,
 )
 ```
@@ -655,11 +702,9 @@ async def on_start(ctx: InvocationContext) -> None:
 agent.before_agent_callback = on_start
 ```
 
----
-
 ### Tracing (Langfuse, LangSmith, etc.)
 
-`RunConfig` is a superset of LangChain's `RunnableConfig` — pass `callbacks`, `tags`, `metadata`, `run_name` directly as fields. The entire agent run is wrapped in a single parent trace with all child operations nested automatically.
+`RunConfig` mirrors LangChain's `RunnableConfig` fields — pass `callbacks`, `tags`, `metadata`, `run_name` directly. The entire agent run is wrapped in a single parent trace with all child operations nested automatically.
 
 ```python
 from langfuse.langchain import CallbackHandler
@@ -895,7 +940,9 @@ async for event in loop.run(draft_text, ctx=ctx):
 
 ---
 
-## Agent-to-Agent (A2A) Server
+## Integrations
+
+### Agent-to-Agent (A2A) Server
 
 Expose any agent as a spec-compliant [A2A protocol](https://a2a-protocol.org/) endpoint (v0.3.0).
 
@@ -1007,7 +1054,7 @@ curl -N -X POST http://localhost:8000/ \
 
 ---
 
-## MCP Integration
+### MCP Integration
 
 Install with MCP support:
 

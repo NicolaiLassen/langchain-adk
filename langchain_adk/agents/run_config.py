@@ -1,6 +1,6 @@
 """RunConfig - per-run configuration for agent execution.
 
-A superset of LangChain's ``RunnableConfig`` — carries streaming mode,
+Mirrors LangChain's ``RunnableConfig`` fields — carries streaming mode,
 call limits, plus all standard LangChain config keys (callbacks, tags,
 metadata, run_name, etc.) in one flat object.
 """
@@ -36,7 +36,7 @@ class StreamingMode(Enum):
 class RunConfig(BaseModel):
     """Configuration for a single agent run.
 
-    A superset of LangChain's ``RunnableConfig``. All standard LangChain
+    Mirrors LangChain's ``RunnableConfig`` fields. All standard LangChain
     config keys (``callbacks``, ``tags``, ``metadata``, ``run_name``, etc.)
     are first-class fields, plus ADK-specific fields like ``streaming_mode``
     and ``max_llm_calls``.

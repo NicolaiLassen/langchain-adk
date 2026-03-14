@@ -42,6 +42,8 @@ class ToolContext:
         Name of the agent currently executing this tool.
     session_id : str
         Current session identifier.
+    function_call_id : str, optional
+        The ID of the current tool call. Set by the agent before execution.
     """
 
     def __init__(self, ctx: InvocationContext) -> None:
@@ -50,3 +52,34 @@ class ToolContext:
         self.actions: EventActions = EventActions()
         self.agent_name: str = ctx.agent_name
         self.session_id: str = ctx.session_id
+        self.function_call_id: str | None = None
+        self._confirmation_pending: bool = False
+
+    def request_confirmation(self) -> None:
+        """Request user confirmation before proceeding with this tool call.
+
+        When called from a ``before_tool_callback``, the tool execution is
+        paused and a confirmation request event is yielded to the caller.
+        The caller must approve or reject before execution continues.
+
+        Example
+        -------
+        ::
+
+            async def confirm_dangerous_tools(ctx, tool_name, tool_args):
+                if tool_name in ("delete_file", "drop_table"):
+                    tool_ctx = ToolContext(ctx)
+                    tool_ctx.request_confirmation()
+                    return tool_ctx
+
+            agent = LlmAgent(
+                ...,
+                before_tool_callback=confirm_dangerous_tools,
+            )
+        """
+        self._confirmation_pending = True
+
+    @property
+    def confirmation_pending(self) -> bool:
+        """Whether this tool has a pending confirmation request."""
+        return self._confirmation_pending
