@@ -50,9 +50,11 @@ sequenceDiagram
     C->>R: run_async(user_id, session_id, message)
     R->>S: get_session() or create_session()
     S-->>R: Session
-    R->>R: build InvocationContext from session.state
+    R->>R: build InvocationContext with session reference
+    R->>S: append_event(session, user_event)
+    note over S: persists USER_MESSAGE event
 
-    R->>A: run_with_callbacks(message, ctx)
+    R->>A: _run_with_callbacks(message, ctx)
 
     loop for each yielded event
         A-->>R: Event

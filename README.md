@@ -60,7 +60,8 @@
 
 `langchain-adk` gives you a structured way to build production-quality agents on top of any LangChain-compatible LLM. The core ideas:
 
-- **Async event stream**: every agent is an `async def run()` that yields typed `Event` objects — thoughts, tool calls, results, final answers.
+- **Async event stream**: every agent is an `async def astream()` that yields typed `Event` objects — thoughts, tool calls, results, final answers.
+- **Multi-turn sessions**: events ARE the conversation history (event-sourced). The `Runner` persists user messages and agent responses as events, and `LlmAgent` rebuilds LangChain message history from `session.events` on each turn.
 - **Composable hierarchy**: agents nest freely. Wrap a sub-agent as a tool (`AgentTool`), chain them (`SequentialAgent`), run them in parallel (`ParallelAgent`), or loop until done (`LoopAgent`).
 - **Manual tool-call loop**: `LlmAgent` drives its own ReAct loop using `llm.bind_tools()` — no LangGraph, no hidden graphs.
 - **Planners**: inject per-turn planning instructions and post-process responses before the agent acts.
@@ -162,11 +163,11 @@ asyncio.run(main())
 All agents inherit from `BaseAgent` and implement a single method:
 
 ```python
-async def run(self, input: str, *, ctx: InvocationContext) -> AsyncIterator[Event]:
+async def astream(self, input: str, *, ctx: InvocationContext) -> AsyncIterator[Event]:
     ...
 ```
 
-The `run_with_callbacks()` wrapper fires `before_agent_callback` / `after_agent_callback` hooks and emits `AGENT_START` / `AGENT_END` events around `run()`.
+The `_run_with_callbacks()` wrapper fires `before_agent_callback` / `after_agent_callback` hooks and emits `AGENT_START` / `AGENT_END` events around `astream()`.
 
 #### LlmAgent
 
@@ -180,7 +181,7 @@ sequenceDiagram
     participant L as LLM
     participant T as Tool
 
-    C->>A: run(input, ctx)
+    C->>A: astream(input, ctx)
     A-->>C: AgentStartEvent
 
     loop ReAct loop (max_iterations)
@@ -259,13 +260,14 @@ All events carry a `content: Content` field with typed parts (`TextPart`, `DataP
 
 | Event type | When emitted | Key fields |
 |---|---|---|
-| `AgentStartEvent` | Start of `run_with_callbacks()` | `agent_name` |
-| `AgentEndEvent` | End of `run_with_callbacks()` | `agent_name` |
+| `UserMessageEvent` | User input persisted by Runner | `.text` (user message) |
+| `AgentStartEvent` | Start of `_run_with_callbacks()` | `agent_name` |
+| `AgentEndEvent` | End of `_run_with_callbacks()` | `agent_name` |
 | `ThoughtEvent` | ReActAgent reasoning step | `.text` (thought), `scratchpad` |
 | `ActionEvent` | ReActAgent action decision | `action`, `action_input` |
 | `ObservationEvent` | ReActAgent tool result | `.text` (observation), `tool_name` |
-| `ToolCallEvent` | LlmAgent tool invocation | `tool_name`, `tool_input`, `llm_response` |
-| `ToolResultEvent` | Tool execution result | `.text` (result), `tool_name`, `error` |
+| `ToolCallEvent` | LlmAgent tool invocation | `tool_name`, `tool_input`, `llm_response`, `metadata.tool_call_id` |
+| `ToolResultEvent` | Tool execution result | `.text` (result), `tool_name`, `error`, `metadata.tool_call_id` |
 | `FinalAnswerEvent` | Agent's final response | `.text` (answer), `.data` (structured), `scratchpad`, `llm_response`, `partial` |
 | `ErrorEvent` | Unhandled exception | `message`, `exception_type` |
 
@@ -341,9 +343,12 @@ async for event in runner.run_async(
 
 `Runner` automatically:
 1. Fetches or creates the session
-2. Builds an `InvocationContext` from the session state
-3. Persists every event to the session via `append_event()`
-4. Applies `EventActions.state_delta` to the session state
+2. Persists the user's message as a `USER_MESSAGE` event
+3. Builds an `InvocationContext` with the session reference
+4. Persists every agent event to the session via `append_event()`
+5. Applies `EventActions.state_delta` to the session state
+
+**Multi-turn conversations** work automatically — `LlmAgent` rebuilds LangChain message history from `session.events` on each turn, so the LLM sees the full conversation context.
 
 #### Sessions directly
 
@@ -377,6 +382,7 @@ ctx = InvocationContext(
     app_name="my-app",
     agent_name="RootAgent",
     state={"user_name": "Alice"},
+    session=session,  # provides access to conversation history via session.events
 )
 ```
 
@@ -764,7 +770,7 @@ ctx = InvocationContext(
     agent_name="Agent",
     run_config=run_config,
 )
-async for event in agent.run_with_callbacks("Hello!", ctx=ctx):
+async for event in agent._run_with_callbacks("Hello!", ctx=ctx):
     ...
 ```
 
@@ -818,7 +824,7 @@ agent = LlmAgent(
 The structured output is available via `event.data` (the first `DataPart`):
 
 ```python
-async for event in agent.run("Analyze Apple", ctx=ctx):
+async for event in agent.astream("Analyze Apple", ctx=ctx):
     if isinstance(event, FinalAnswerEvent):
         data = event.data  # dict from DataPart
         print(f"{data['name']}: {data['recommendation']} ({data['confidence']:.0%})")
@@ -886,7 +892,7 @@ pipeline = SequentialAgent(
     agents=[research_agent, writer_agent, editor_agent],
 )
 
-async for event in pipeline.run("Write about quantum computing", ctx=ctx):
+async for event in pipeline.astream("Write about quantum computing", ctx=ctx):
     ...
 ```
 
@@ -919,7 +925,7 @@ parallel = ParallelAgent(
     agents=[web_agent, academic_agent, news_agent],
 )
 
-async for event in parallel.run("Find info about fusion energy", ctx=ctx):
+async for event in parallel.astream("Find info about fusion energy", ctx=ctx):
     # Events arrive from all three agents, tagged by agent_name
     print(f"[{event.agent_name}] {event.type}")
 ```
@@ -961,7 +967,7 @@ loop = LoopAgent(
     max_iterations=5,
 )
 
-async for event in loop.run(draft_text, ctx=ctx):
+async for event in loop.astream(draft_text, ctx=ctx):
     ...
 ```
 
@@ -990,12 +996,12 @@ sequenceDiagram
 
     Note over S: POST / (JSON-RPC 2.0)
     C->>S: message/send {message: {role, parts}}
-    S->>A: run_with_callbacks(text, ctx)
+    S->>A: _run_with_callbacks(text, ctx)
     A-->>S: SDK Events
     S-->>C: Task {status: completed, artifacts, history}
 
     C->>S: message/stream {message: {role, parts}}
-    S->>A: run_with_callbacks(text, ctx)
+    S->>A: _run_with_callbacks(text, ctx)
     loop SSE stream
         A-->>S: SDK Event
         S-->>C: data: {jsonrpc: "2.0", result: TaskStatusUpdateEvent}
@@ -1174,6 +1180,7 @@ The `examples/` directory contains runnable demos for every major feature. Each 
 | `human_in_the_loop.py` | Interactive `ask_human` tool for user input |
 | `task_orchestration.py` | TaskPlanner with managed task board |
 | `mcp_agent.py` | MCP tool server integration |
+| `langfuse_tracing.py` | Langfuse tracing integration |
 | `a2a_server.py` | A2A protocol server endpoint |
 
 ```bash
@@ -1233,9 +1240,11 @@ sequenceDiagram
     C->>R: run_async(user_id, session_id, message)
     R->>S: get_session() or create_session()
     S-->>R: Session
-    R->>R: build InvocationContext from session.state
+    R->>R: build InvocationContext with session reference
+    R->>S: append_event(session, user_event)
+    note over S: persists USER_MESSAGE event
 
-    R->>A: run_with_callbacks(message, ctx)
+    R->>A: _run_with_callbacks(message, ctx)
 
     loop for each yielded event
         A-->>R: Event

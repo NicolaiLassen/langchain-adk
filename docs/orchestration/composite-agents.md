@@ -24,7 +24,7 @@ pipeline = SequentialAgent(
     agents=[research_agent, writer_agent, editor_agent],
 )
 
-async for event in pipeline.run("Write about quantum computing", ctx=ctx):
+async for event in pipeline.astream("Write about quantum computing", ctx=ctx):
     ...
 ```
 
@@ -57,7 +57,7 @@ parallel = ParallelAgent(
     agents=[web_agent, academic_agent, news_agent],
 )
 
-async for event in parallel.run("Find info about fusion energy", ctx=ctx):
+async for event in parallel.astream("Find info about fusion energy", ctx=ctx):
     print(f"[{event.agent_name}] {event.type}")
 ```
 
@@ -98,7 +98,7 @@ loop = LoopAgent(
     max_iterations=5,
 )
 
-async for event in loop.run(draft_text, ctx=ctx):
+async for event in loop.astream(draft_text, ctx=ctx):
     ...
 ```
 

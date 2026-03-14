@@ -286,8 +286,7 @@ class LlmAgent(BaseAgent):
         """Convert session events to LangChain messages for multi-turn context.
 
         Reconstructs the conversation history from persisted events so the
-        LLM sees previous turns. Mirrors Google ADK's approach where
-        session events *are* the conversation memory.
+        LLM sees previous turns. Session events *are* the conversation memory.
         """
         messages: list[BaseMessage] = []
         for event in events:

@@ -1,8 +1,8 @@
 """Content and Part models — typed multimodal content for events.
 
-Aligns with Google ADK's Content/Part model and the A2A protocol's
-Part types (TextPart, DataPart, FilePart). Events carry a ``Content``
-object with a list of typed parts instead of loose string fields.
+Aligns with the A2A protocol's Part types (TextPart, DataPart, FilePart).
+Events carry a ``Content`` object with a list of typed parts instead of
+loose string fields.
 """
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ Part = TextPart | DataPart | FilePart
 class Content(BaseModel):
     """Container for multimodal content — a list of typed parts.
 
-    Mirrors Google ADK's ``Content`` and A2A's ``Message.parts``.
+    Mirrors the A2A protocol's ``Message.parts``.
 
     Attributes
     ----------

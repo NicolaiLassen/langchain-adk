@@ -1,9 +1,9 @@
 """Agent event models with Content/Part payloads.
 
 Events use a typed hierarchy with ``Content``-based payloads that align
-with Google ADK's Content/Part model and the A2A protocol. Each event
-carries a ``content: Content`` field with typed parts (TextPart, DataPart,
-FilePart) instead of loose string fields.
+with the A2A protocol's Content/Part model. Each event carries a
+``content: Content`` field with typed parts (TextPart, DataPart, FilePart)
+instead of loose string fields.
 
 Convenience properties (``.text``, ``.data``) provide quick access to the
 most common content types without iterating over parts manually.

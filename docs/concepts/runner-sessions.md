@@ -33,9 +33,12 @@ async for event in runner.run_async(
 `Runner` automatically:
 
 1. Fetches or creates the session
-2. Builds an `InvocationContext` from the session state
-3. Persists every event to the session via `append_event()`
-4. Applies `EventActions.state_delta` to the session state
+2. Persists the user's message as a `USER_MESSAGE` event
+3. Builds an `InvocationContext` with the session reference
+4. Persists every agent event to the session via `append_event()`
+5. Applies `EventActions.state_delta` to the session state
+
+**Multi-turn conversations** work automatically — `LlmAgent` rebuilds LangChain message history from `session.events` on each turn, so the LLM sees the full conversation context.
 
 ## Using sessions directly
 

@@ -3,11 +3,11 @@
 All agents inherit from `BaseAgent` and implement a single method:
 
 ```python
-async def run(self, input: str, *, ctx: InvocationContext) -> AsyncIterator[Event]:
+async def astream(self, input: str, *, ctx: InvocationContext) -> AsyncIterator[Event]:
     ...
 ```
 
-The `run_with_callbacks()` wrapper fires `before_agent_callback` / `after_agent_callback` hooks and emits `AGENT_START` / `AGENT_END` events around `run()`.
+The `_run_with_callbacks()` wrapper fires `before_agent_callback` / `after_agent_callback` hooks and emits `AGENT_START` / `AGENT_END` events around `astream()`.
 
 ```mermaid
 flowchart LR
@@ -43,7 +43,7 @@ sequenceDiagram
     participant L as LLM
     participant T as Tool
 
-    C->>A: run(input, ctx)
+    C->>A: astream(input, ctx)
     A-->>C: AgentStartEvent
 
     loop ReAct loop (max_iterations)

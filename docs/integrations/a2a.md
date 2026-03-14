@@ -14,12 +14,12 @@ sequenceDiagram
 
     Note over S: POST / (JSON-RPC 2.0)
     C->>S: message/send {message: {role, parts}}
-    S->>A: run_with_callbacks(text, ctx)
+    S->>A: _run_with_callbacks(text, ctx)
     A-->>S: SDK Events
     S-->>C: Task {status: completed, artifacts, history}
 
     C->>S: message/stream {message: {role, parts}}
-    S->>A: run_with_callbacks(text, ctx)
+    S->>A: _run_with_callbacks(text, ctx)
     loop SSE stream
         A-->>S: SDK Event
         S-->>C: data: TaskStatusUpdateEvent

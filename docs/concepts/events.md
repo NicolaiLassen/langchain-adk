@@ -4,13 +4,14 @@ Every agent yields a stream of typed `Event` objects:
 
 | Event type | When emitted | Key fields |
 |---|---|---|
-| `AgentStartEvent` | Start of `run_with_callbacks()` | `agent_name` |
-| `AgentEndEvent` | End of `run_with_callbacks()` | `agent_name` |
+| `UserMessageEvent` | User input persisted by Runner | `text` |
+| `AgentStartEvent` | Start of `_run_with_callbacks()` | `agent_name` |
+| `AgentEndEvent` | End of `_run_with_callbacks()` | `agent_name` |
 | `ThoughtEvent` | ReActAgent reasoning step | `text`, `scratchpad` |
 | `ActionEvent` | ReActAgent action decision | `action`, `action_input` |
 | `ObservationEvent` | ReActAgent tool result | `text`, `tool_name` |
-| `ToolCallEvent` | LlmAgent tool invocation | `tool_name`, `tool_input`, `llm_response` |
-| `ToolResultEvent` | Tool execution result | `tool_name`, `text`, `error` |
+| `ToolCallEvent` | LlmAgent tool invocation | `tool_name`, `tool_input`, `llm_response`, `metadata.tool_call_id` |
+| `ToolResultEvent` | Tool execution result | `tool_name`, `text`, `error`, `metadata.tool_call_id` |
 | `FinalAnswerEvent` | Agent's final response | `text`, `data`, `scratchpad`, `llm_response`, `partial` |
 | `ErrorEvent` | Unhandled exception | `message`, `exception_type` |
 

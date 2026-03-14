@@ -11,6 +11,7 @@ ctx = InvocationContext(
     app_name="my-app",
     agent_name="RootAgent",
     state={"user_name": "Alice"},
+    session=session,  # provides access to conversation history via session.events
 )
 ```
 

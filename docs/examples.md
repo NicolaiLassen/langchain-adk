@@ -16,6 +16,7 @@ The `examples/` directory contains runnable demos for every major feature. Each 
 | `human_in_the_loop.py` | Interactive `ask_human` tool for user input |
 | `task_orchestration.py` | TaskPlanner with managed task board |
 | `mcp_agent.py` | MCP tool server integration |
+| `langfuse_tracing.py` | Langfuse tracing integration |
 | `a2a_server.py` | A2A protocol server endpoint |
 
 ```bash
