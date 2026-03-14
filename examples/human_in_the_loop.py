@@ -84,9 +84,9 @@ async def main() -> None:
                 print(f"\n[TOOL CALL] {event.tool_name}({event.tool_input})")
         elif isinstance(event, ToolResultEvent):
             if event.tool_name != "ask_human":
-                print(f"[TOOL RESULT] {event.result}")
+                print(f"[TOOL RESULT] {event.text}")
         elif isinstance(event, FinalAnswerEvent):
-            print(f"\n[ANSWER] {event.answer}")
+            print(f"\n[ANSWER] {event.text}")
 
 
 if __name__ == "__main__":

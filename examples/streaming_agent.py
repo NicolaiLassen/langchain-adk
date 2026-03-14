@@ -66,7 +66,7 @@ async def main() -> None:
         if isinstance(event, ToolCallEvent):
             print(f"\n[TOOL CALL] {event.tool_name}({event.tool_input})")
         elif isinstance(event, ToolResultEvent):
-            print(f"[TOOL RESULT] {event.result or event.error}")
+            print(f"[TOOL RESULT] {event.text or event.error}")
         elif isinstance(event, FinalAnswerEvent):
             if event.partial:
                 # Stream tokens as they arrive
@@ -74,7 +74,7 @@ async def main() -> None:
                 sys.stdout.flush()
             else:
                 # Final complete answer
-                print(f"\n\n[ANSWER]\n{event.answer}")
+                print(f"\n\n[ANSWER]\n{event.text}")
 
 
 if __name__ == "__main__":

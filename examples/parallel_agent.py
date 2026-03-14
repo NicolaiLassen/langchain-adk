@@ -99,10 +99,10 @@ async def main() -> None:
         if isinstance(event, ToolCallEvent):
             print(f"  [{event.agent_name}] TOOL CALL: {event.tool_name}({event.tool_input})")
         elif isinstance(event, ToolResultEvent):
-            result_preview = (event.result or "")[:80]
+            result_preview = (event.text or "")[:80]
             print(f"  [{event.agent_name}] RESULT: {result_preview}...")
         elif isinstance(event, FinalAnswerEvent):
-            print(f"\n[{event.agent_name} ANSWER]\n{event.answer}\n")
+            print(f"\n[{event.agent_name} ANSWER]\n{event.text}\n")
 
 
 if __name__ == "__main__":

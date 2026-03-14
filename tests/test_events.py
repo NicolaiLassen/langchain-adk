@@ -13,6 +13,7 @@ from langchain_adk.events.event import (
     ToolResultEvent,
     ErrorEvent,
 )
+from langchain_adk.models.part import Content
 
 
 def test_event_actions_defaults():
@@ -43,16 +44,16 @@ def test_event_base_fields():
 
 
 def test_final_answer_event():
-    event = FinalAnswerEvent(session_id="s1", agent_name="agent", answer="42")
+    event = FinalAnswerEvent(session_id="s1", agent_name="agent", content=Content.from_text("42"))
     assert event.type == EventType.FINAL_ANSWER
-    assert event.answer == "42"
+    assert event.text == "42"
     assert event.scratchpad == ""
 
 
 def test_thought_event():
-    event = ThoughtEvent(session_id="s1", agent_name="agent", thought="thinking...")
+    event = ThoughtEvent(session_id="s1", agent_name="agent", content=Content.from_text("thinking..."))
     assert event.type == EventType.THOUGHT
-    assert event.thought == "thinking..."
+    assert event.text == "thinking..."
 
 
 def test_tool_call_event():
@@ -68,7 +69,7 @@ def test_tool_result_event_with_error():
         session_id="s1", agent_name="agent", tool_name="search", error="timeout"
     )
     assert event.error == "timeout"
-    assert event.result is None
+    assert event.text == ""
 
 
 def test_error_event():

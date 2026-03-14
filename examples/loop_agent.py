@@ -74,9 +74,9 @@ async def main() -> None:
             if agent == "Writer":
                 iteration += 1
                 print(f"--- Iteration {iteration} ---")
-                print(f"  [Writer]   {event.answer}")
+                print(f"  [Writer]   {event.text}")
             elif agent == "Reviewer":
-                print(f"  [Reviewer] {event.answer}")
+                print(f"  [Reviewer] {event.text}")
                 print()
 
 

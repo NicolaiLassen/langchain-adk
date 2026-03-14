@@ -47,6 +47,7 @@ from langchain_adk.agents import (
 )
 from langchain_adk.events.event import Event, EventType, FinalAnswerEvent
 from langchain_adk.events.event_actions import EventActions
+from langchain_adk.models.part import Content, TextPart, DataPart, FilePart
 from langchain_adk.context.invocation_context import InvocationContext
 from langchain_adk.sessions.session import Session
 from langchain_adk.sessions.in_memory_session_service import InMemorySessionService
@@ -73,6 +74,11 @@ __all__ = [
     "EventActions",
     "EventType",
     "FinalAnswerEvent",
+    # Content / Parts
+    "Content",
+    "TextPart",
+    "DataPart",
+    "FilePart",
     # Context
     "InvocationContext",
     "ReadonlyContext",

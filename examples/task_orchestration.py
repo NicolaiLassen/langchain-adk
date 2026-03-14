@@ -71,7 +71,7 @@ async def main() -> None:
         if isinstance(event, ToolCallEvent):
             print(f"[TOOL] {event.tool_name}")
         elif isinstance(event, FinalAnswerEvent):
-            print(f"\n[DONE]\n{event.answer}")
+            print(f"\n[DONE]\n{event.text}")
 
     # Show final task board state
     from langchain_adk.planners.task_board import list_task_items

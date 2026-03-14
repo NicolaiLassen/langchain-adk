@@ -156,7 +156,7 @@ class A2AServer:
         async for event in self.agent.run_with_callbacks(user_message, ctx=ctx):
             from langchain_adk.events.event import FinalAnswerEvent
             if isinstance(event, FinalAnswerEvent) and not event.partial:
-                final_answer = event.answer
+                final_answer = event.text
 
         # Build agent response message
         agent_msg = Message(

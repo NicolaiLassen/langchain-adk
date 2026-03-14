@@ -89,13 +89,13 @@ async def main() -> None:
 
     async for event in agent.run(query, ctx=ctx):
         if isinstance(event, ThoughtEvent):
-            print(f"[THOUGHT] {event.thought[:200]}")
+            print(f"[THOUGHT] {event.text[:200]}")
         elif isinstance(event, ToolCallEvent):
             print(f"[TOOL] {event.tool_name}({event.tool_input})")
         elif isinstance(event, ToolResultEvent):
-            print(f"[RESULT] {event.result}")
+            print(f"[RESULT] {event.text}")
         elif isinstance(event, FinalAnswerEvent):
-            print(f"\n[ANSWER]\n{event.answer}")
+            print(f"\n[ANSWER]\n{event.text}")
 
 
 if __name__ == "__main__":

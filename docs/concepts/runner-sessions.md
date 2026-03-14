@@ -27,7 +27,7 @@ async for event in runner.run_async(
     run_config=RunConfig(streaming_mode=StreamingMode.SSE),
 ):
     if isinstance(event, FinalAnswerEvent) and event.partial:
-        print(event.answer, end="", flush=True)
+        print(event.text, end="", flush=True)
 ```
 
 `Runner` automatically:

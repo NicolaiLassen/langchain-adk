@@ -1,7 +1,5 @@
 from langchain_adk.events.event import (
     Event,
-    EventActions,
-    EventCompaction,
     EventType,
     ThoughtEvent,
     ActionEvent,
@@ -11,6 +9,7 @@ from langchain_adk.events.event import (
     ToolResultEvent,
     ErrorEvent,
 )
+from langchain_adk.events.event_actions import EventActions, EventCompaction
 
 __all__ = [
     "Event",

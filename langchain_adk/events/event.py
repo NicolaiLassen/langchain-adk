@@ -1,21 +1,12 @@
-"""Agent event models.
+"""Agent event models with Content/Part payloads.
 
-Represents discrete events emitted during an agent's execution loop:
-thoughts, tool calls, observations, and final answers.
+Events use a typed hierarchy with ``Content``-based payloads that align
+with Google ADK's Content/Part model and the A2A protocol. Each event
+carries a ``content: Content`` field with typed parts (TextPart, DataPart,
+FilePart) instead of loose string fields.
 
-Design
-------
-A typed event hierarchy (ThoughtEvent, ToolCallEvent, etc.) is used rather
-than a single unified Event model, because LangChain does not use
-Gemini Content/Part objects. The typed hierarchy is more Pythonic and gives
-better IDE support.
-
-LlmResponse
------------
-Events that are direct LLM outputs (FinalAnswerEvent, ToolCallEvent) carry
-an optional ``llm_response: LlmResponse`` field. This preserves token usage,
-model version, and any extra metadata from the model without coupling the
-rest of the event model to LangChain types directly.
+Convenience properties (``.text``, ``.data``) provide quick access to the
+most common content types without iterating over parts manually.
 """
 
 from __future__ import annotations
@@ -27,8 +18,9 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from langchain_adk.events.event_actions import EventActions, EventCompaction
+from langchain_adk.events.event_actions import EventActions
 from langchain_adk.models.llm_response import LlmResponse
+from langchain_adk.models.part import Content
 
 
 # ---------------------------------------------------------------------------
@@ -37,29 +29,7 @@ from langchain_adk.models.llm_response import LlmResponse
 
 
 class EventType(str, Enum):
-    """All possible event types emitted during agent execution.
-
-    Attributes
-    ----------
-    AGENT_START : str
-        The agent has started processing a request.
-    AGENT_END : str
-        The agent has finished processing a request.
-    THOUGHT : str
-        The agent produced an internal thought (ReAct loop).
-    ACTION : str
-        The agent decided on an action to take.
-    OBSERVATION : str
-        The result of a tool call was observed.
-    FINAL_ANSWER : str
-        The agent produced a final answer.
-    TOOL_CALL : str
-        A tool was invoked.
-    TOOL_RESULT : str
-        A tool returned a result.
-    ERROR : str
-        An error occurred during agent execution.
-    """
+    """All possible event types emitted during agent execution."""
 
     AGENT_START = "agent_start"
     AGENT_END = "agent_end"
@@ -80,43 +50,35 @@ class EventType(str, Enum):
 class Event(BaseModel):
     """Base event emitted during agent execution.
 
-    Every event in the SDK extends this class. Agents yield a stream of
-    events; sessions store them via append_event(). The type hierarchy
-    (ThoughtEvent, ToolCallEvent, etc.) provides structured payloads on
-    top of these shared base fields.
+    Every event carries a ``content: Content`` field with typed parts.
+    Subclasses add convenience properties for their specific use case.
 
     Attributes
     ----------
     id : str
-        Unique identifier for this event. Auto-generated.
+        Unique identifier for this event.
     type : EventType
         The kind of event.
     timestamp : float
         Unix timestamp of when this event was created.
     invocation_id : str
-        ID of the agent invocation that produced this event. Links all
-        events from a single run() call together.
+        ID of the agent invocation that produced this event.
     session_id : str, optional
         The session this event belongs to.
     author : str
-        Who produced this event: "user" or the agent name. Mirrors ADK.
+        Who produced this event: "user" or the agent name.
     agent_name : str, optional
-        Name of the agent that emitted this event. Same value as author
-        for agent-produced events; kept for explicit attribution.
+        Name of the agent that emitted this event.
     branch : str
-        Dot-separated path showing which agent in the tree produced this
-        event (e.g. "root.planner.coder"). Enables filtering parallel
-        agent streams. Mirrors ADK's Event.branch.
+        Dot-separated path showing which agent in the tree produced this.
     partial : bool, optional
-        When True, the event is an incomplete streaming chunk. Consumers
-        should buffer partial events and not treat them as final until a
-        non-partial event with the same type arrives.
-    content : Any
-        Primary payload of the event. Type depends on the event subclass.
+        When True, the event is an incomplete streaming chunk.
+    content : Content
+        The event payload as typed parts (text, data, files).
     actions : EventActions
         Side-effects to apply when this event is committed to the session.
     metadata : dict[str, Any]
-        Arbitrary extra metadata. Not interpreted by the SDK.
+        Arbitrary extra metadata.
     """
 
     id: str = Field(default_factory=lambda: str(uuid4()))
@@ -130,25 +92,22 @@ class Event(BaseModel):
     agent_name: Optional[str] = None
     branch: str = ""
     partial: Optional[bool] = None
-    content: Any = None
+    content: Content = Field(default_factory=Content)
     actions: EventActions = Field(default_factory=EventActions)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+    @property
+    def text(self) -> str:
+        """Concatenate all text parts in content."""
+        return self.content.text
+
+    @property
+    def data(self) -> dict[str, Any] | None:
+        """Return the first DataPart's data, or None."""
+        return self.content.data
+
     def is_final_response(self) -> bool:
-        """Return True if this event represents the agent's final answer.
-
-        Mirrors ADK's Event.is_final_response(). An event is considered
-        final when:
-        - It is a FinalAnswerEvent, or
-        - skip_summarization is set (tool result the agent wants to pass
-          through directly), or
-        - It is not a tool call or tool result, and is not partial.
-
-        Returns
-        -------
-        bool
-            True if this is the last meaningful event from the agent.
-        """
+        """Return True if this event represents the agent's final answer."""
         if self.actions.skip_summarization:
             return True
         if isinstance(self, FinalAnswerEvent):
@@ -159,13 +118,7 @@ class Event(BaseModel):
 
     @staticmethod
     def new_id() -> str:
-        """Generate a new unique event ID.
-
-        Returns
-        -------
-        str
-            A UUID4 string.
-        """
+        """Generate a new unique event ID."""
         return str(uuid4())
 
 
@@ -177,129 +130,77 @@ class Event(BaseModel):
 class ThoughtEvent(Event):
     """Emitted when the agent produces an internal thought.
 
-    Used by ReActAgent to surface explicit reasoning steps before taking
-    an action.
-
-    Attributes
-    ----------
-    thought : str
-        The agent's reasoning text for this step.
-    scratchpad : str
-        Accumulated working notes from prior iterations.
+    Content: TextPart with the thought text.
+    Access via ``.text`` property.
     """
 
     type: EventType = EventType.THOUGHT
-    thought: str
     scratchpad: str = ""
 
 
 class ActionEvent(Event):
-    """Emitted when the agent decides on an action to take.
-
-    Attributes
-    ----------
-    action : str
-        The name of the tool or action to invoke.
-    action_input : str
-        The input to pass to the action.
-    """
+    """Emitted when the agent decides on an action to take."""
 
     type: EventType = EventType.ACTION
-    action: str
-    action_input: str
+    action: str = ""
+    action_input: str = ""
 
 
 class ObservationEvent(Event):
     """Emitted when a tool result is observed.
 
-    Attributes
-    ----------
-    observation : str
-        The result returned by the tool.
-    tool_name : str
-        The name of the tool that produced this observation.
+    Content: TextPart with the observation text.
+    Access via ``.text`` property.
     """
 
     type: EventType = EventType.OBSERVATION
-    observation: str
-    tool_name: str
+    tool_name: str = ""
 
 
 class FinalAnswerEvent(Event):
     """Emitted when the agent produces its final answer.
 
-    Always has is_final_response() == True. SequentialAgent passes
-    this event's answer as input to the next agent in the pipeline.
+    Content parts:
+    - TextPart: the answer text
+    - DataPart: structured output (when output_schema is set)
 
-    Attributes
-    ----------
-    answer : str
-        The final answer text.
-    scratchpad : str
-        Accumulated working notes from the full reasoning loop.
-    llm_response : LlmResponse, optional
-        The wrapped model response that produced this answer. Carries
-        token usage and model version without coupling consumers to
-        LangChain types.
+    Access via:
+    - ``.text`` → concatenated text parts (the answer)
+    - ``.data`` → first DataPart's data dict (structured output)
     """
 
     type: EventType = EventType.FINAL_ANSWER
-    answer: str
     scratchpad: str = ""
     llm_response: Optional[LlmResponse] = None
-    structured_output: Any = None
 
 
 class ToolCallEvent(Event):
-    """Emitted immediately before a tool is invoked.
-
-    Attributes
-    ----------
-    tool_name : str
-        The name of the tool being called.
-    tool_input : Any
-        The arguments passed to the tool.
-    llm_response : LlmResponse, optional
-        The wrapped model response that triggered this tool call. Carries
-        token usage and model version for the LLM turn that produced it.
-    """
+    """Emitted immediately before a tool is invoked."""
 
     type: EventType = EventType.TOOL_CALL
-    tool_name: str
-    tool_input: Any
+    tool_name: str = ""
+    tool_input: Any = None
     llm_response: Optional[LlmResponse] = None
 
 
 class ToolResultEvent(Event):
     """Emitted after a tool returns a result.
 
-    Attributes
-    ----------
-    tool_name : str
-        The name of the tool that was called.
-    result : Any
-        The value returned by the tool on success.
-    error : str, optional
-        Error message if the tool call failed. Mutually exclusive with result.
+    Content parts:
+    - TextPart/DataPart: the tool's output
+
+    The ``error`` field is set when the tool call failed.
+    Access via ``.text`` property for text results, ``.data`` for structured.
     """
 
     type: EventType = EventType.TOOL_RESULT
-    tool_name: str
-    result: Any = None
+    tool_name: str = ""
     error: Optional[str] = None
 
 
 class ErrorEvent(Event):
-    """Emitted when an unrecoverable error occurs during agent execution.
-
-    Attributes
-    ----------
-    message : str
-        Human-readable description of the error.
-    exception_type : str, optional
-        Class name of the exception that was raised.
-    """
+    """Emitted when an unrecoverable error occurs during agent execution."""
 
     type: EventType = EventType.ERROR
-    message: str
+    message: str = ""
     exception_type: Optional[str] = None

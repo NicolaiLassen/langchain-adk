@@ -44,6 +44,7 @@ from langchain_adk.events.event import (
 from langchain_adk.events.event_actions import EventActions
 from langchain_adk.models.llm_request import LlmRequest
 from langchain_adk.models.llm_response import LlmResponse
+from langchain_adk.models.part import Content, DataPart, TextPart
 
 # Type alias for instruction providers - either a static string or a callable
 # that receives the current InvocationContext and returns a string.
@@ -357,7 +358,7 @@ class LlmAgent(BaseAgent):
                     FinalAnswerEvent(
                         session_id=session_id,
                         agent_name=self.name,
-                        answer=accumulated_text,
+                        content=Content.from_text(accumulated_text),
                         partial=True,
                     )
                 )
@@ -459,10 +460,13 @@ class LlmAgent(BaseAgent):
                     yield partial_event
 
                 answer_text = llm_response.text
-                structured_output = None
+                parts: list[TextPart | DataPart] = []
+                if answer_text:
+                    parts.append(TextPart(text=answer_text))
 
                 # Parse structured output if schema is set
                 if self._output_schema is not None:
+                    structured_output = None
                     parser = _make_output_parser(self._output_schema)
                     # 1) Try parsing the LLM text directly (fast, streaming-safe)
                     if answer_text:
@@ -481,14 +485,13 @@ class LlmAgent(BaseAgent):
                             except Exception:
                                 pass
                     if structured_output is not None:
-                        answer_text = structured_output.model_dump_json(indent=2)
+                        parts.append(DataPart(data=structured_output.model_dump()))
 
                 yield FinalAnswerEvent(
                     session_id=ctx.session_id,
                     agent_name=self.name,
-                    answer=answer_text,
+                    content=Content(parts=parts),
                     llm_response=llm_response,
-                    structured_output=structured_output,
                     partial=False,
                 )
                 return
@@ -548,7 +551,7 @@ class LlmAgent(BaseAgent):
                         session_id=ctx.session_id,
                         agent_name=self.name,
                         tool_name=tool_name,
-                        result=result,
+                        content=Content.from_text(result_str),
                         actions=actions,
                     )
                     tool_messages.append(

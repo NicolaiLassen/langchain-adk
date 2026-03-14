@@ -35,7 +35,7 @@ async def main():
         new_message="What's the weather in Copenhagen and Berlin?",
     ):
         if isinstance(event, FinalAnswerEvent):
-            print(event.answer)
+            print(event.text)
 
 asyncio.run(main())
 ```

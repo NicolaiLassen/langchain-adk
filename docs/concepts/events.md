@@ -6,12 +6,12 @@ Every agent yields a stream of typed `Event` objects:
 |---|---|---|
 | `AgentStartEvent` | Start of `run_with_callbacks()` | `agent_name` |
 | `AgentEndEvent` | End of `run_with_callbacks()` | `agent_name` |
-| `ThoughtEvent` | ReActAgent reasoning step | `thought`, `scratchpad` |
+| `ThoughtEvent` | ReActAgent reasoning step | `text`, `scratchpad` |
 | `ActionEvent` | ReActAgent action decision | `action`, `action_input` |
-| `ObservationEvent` | ReActAgent tool result | `observation`, `tool_name` |
+| `ObservationEvent` | ReActAgent tool result | `text`, `tool_name` |
 | `ToolCallEvent` | LlmAgent tool invocation | `tool_name`, `tool_input`, `llm_response` |
-| `ToolResultEvent` | Tool execution result | `tool_name`, `result`, `error` |
-| `FinalAnswerEvent` | Agent's final response | `answer`, `scratchpad`, `llm_response`, `partial` |
+| `ToolResultEvent` | Tool execution result | `tool_name`, `text`, `error` |
+| `FinalAnswerEvent` | Agent's final response | `text`, `data`, `scratchpad`, `llm_response`, `partial` |
 | `ErrorEvent` | Unhandled exception | `message`, `exception_type` |
 
 ## EventActions

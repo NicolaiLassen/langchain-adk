@@ -106,7 +106,7 @@ async def main() -> None:
         if isinstance(event, ToolCallEvent):
             print(f"[TOOL] {event.agent_name} → {event.tool_name}")
         elif isinstance(event, FinalAnswerEvent):
-            print(f"\n[FINAL - {event.agent_name}]\n{event.answer[:500]}...")
+            print(f"\n[FINAL - {event.agent_name}]\n{event.text[:500]}...")
 
 
 if __name__ == "__main__":

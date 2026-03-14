@@ -11,7 +11,8 @@ from typing import Any, AsyncIterator, Awaitable, Callable, Optional
 
 from langchain_adk.agents.tracing import open_trace
 from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import Event, EventType, EventActions
+from langchain_adk.events.event import Event, EventType
+from langchain_adk.events.event_actions import EventActions
 
 
 class BaseAgent(ABC):

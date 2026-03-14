@@ -4,6 +4,7 @@ import pytest
 from langchain_adk.sessions.session import Session
 from langchain_adk.sessions.in_memory_session_service import InMemorySessionService
 from langchain_adk.events.event import FinalAnswerEvent, EventActions
+from langchain_adk.models.part import Content
 
 
 @pytest.fixture
@@ -81,7 +82,7 @@ async def test_append_event_applies_state_delta(service):
     event = FinalAnswerEvent(
         session_id=session.id,
         agent_name="agent",
-        answer="done",
+        content=Content.from_text("done"),
         actions=EventActions(state_delta={"result": "done"}),
     )
     await service.append_event(session, event)

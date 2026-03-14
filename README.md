@@ -148,7 +148,7 @@ async def main():
         new_message="What's the weather in Copenhagen and Berlin?",
     ):
         if isinstance(event, FinalAnswerEvent):
-            print(event.answer)
+            print(event.text)
 
 asyncio.run(main())
 ```
@@ -255,17 +255,35 @@ Yields: `ThoughtEvent` -> `ActionEvent` -> `ObservationEvent` -> ... -> `FinalAn
 
 Every agent yields a stream of typed `Event` objects:
 
+All events carry a `content: Content` field with typed parts (`TextPart`, `DataPart`, `FilePart`). Use `.text` and `.data` convenience properties for quick access.
+
 | Event type | When emitted | Key fields |
 |---|---|---|
 | `AgentStartEvent` | Start of `run_with_callbacks()` | `agent_name` |
 | `AgentEndEvent` | End of `run_with_callbacks()` | `agent_name` |
-| `ThoughtEvent` | ReActAgent reasoning step | `thought`, `scratchpad` |
+| `ThoughtEvent` | ReActAgent reasoning step | `.text` (thought), `scratchpad` |
 | `ActionEvent` | ReActAgent action decision | `action`, `action_input` |
-| `ObservationEvent` | ReActAgent tool result | `observation`, `tool_name` |
+| `ObservationEvent` | ReActAgent tool result | `.text` (observation), `tool_name` |
 | `ToolCallEvent` | LlmAgent tool invocation | `tool_name`, `tool_input`, `llm_response` |
-| `ToolResultEvent` | Tool execution result | `tool_name`, `result`, `error` |
-| `FinalAnswerEvent` | Agent's final response | `answer`, `scratchpad`, `llm_response`, `partial` |
+| `ToolResultEvent` | Tool execution result | `.text` (result), `tool_name`, `error` |
+| `FinalAnswerEvent` | Agent's final response | `.text` (answer), `.data` (structured), `scratchpad`, `llm_response`, `partial` |
 | `ErrorEvent` | Unhandled exception | `message`, `exception_type` |
+
+**Content/Parts model:**
+
+```python
+from langchain_adk import Content, TextPart, DataPart, FilePart
+
+# Events use Content with typed parts
+event.content          # Content object with .parts list
+event.text             # Concatenated text from all TextParts
+event.data             # First DataPart's data dict, or None
+
+# Create Content directly
+Content.from_text("hello")                    # Content with a single TextPart
+Content.from_data({"key": "value"})           # Content with a single DataPart
+Content(parts=[TextPart(text="hi"), DataPart(data={"k": "v"})])  # Multiple parts
+```
 
 Events carry `EventActions` for side-effects:
 
@@ -318,7 +336,7 @@ async for event in runner.run_async(
     run_config=RunConfig(streaming_mode=StreamingMode.SSE),
 ):
     if isinstance(event, FinalAnswerEvent) and event.partial:
-        print(event.answer, end="", flush=True)
+        print(event.text, end="", flush=True)
 ```
 
 `Runner` automatically:
@@ -664,7 +682,7 @@ async for event in runner.run_async(
     if isinstance(event, FinalAnswerEvent):
         if event.partial:
             # Stream chunk to the client (WebSocket, SSE endpoint, etc.)
-            print(event.answer, end="", flush=True)
+            print(event.text, end="", flush=True)
         else:
             # Final complete event
             print(f"\n[DONE] tokens: {event.llm_response.output_tokens}")
@@ -797,13 +815,13 @@ agent = LlmAgent(
 )
 ```
 
-The parsed object is available on `FinalAnswerEvent.structured_output`:
+The structured output is available via `event.data` (the first `DataPart`):
 
 ```python
 async for event in agent.run("Analyze Apple", ctx=ctx):
     if isinstance(event, FinalAnswerEvent):
-        analysis = event.structured_output  # CompanyAnalysis instance
-        print(f"{analysis.name}: {analysis.recommendation} ({analysis.confidence:.0%})")
+        data = event.data  # dict from DataPart
+        print(f"{data['name']}: {data['recommendation']} ({data['confidence']:.0%})")
 ```
 
 **How it works:**

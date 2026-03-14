@@ -24,12 +24,12 @@ agent = LlmAgent(
 )
 ```
 
-The parsed object is available on `FinalAnswerEvent.structured_output`:
+The parsed object is available on `FinalAnswerEvent.data`:
 
 ```python
 async for event in agent.run("Analyze Apple", ctx=ctx):
     if isinstance(event, FinalAnswerEvent):
-        analysis = event.structured_output  # CompanyAnalysis instance
+        analysis = event.data  # CompanyAnalysis instance
         print(f"{analysis.name}: {analysis.recommendation} ({analysis.confidence:.0%})")
 ```
 

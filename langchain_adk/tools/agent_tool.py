@@ -27,7 +27,7 @@ class AgentTool(BaseTool):
     """Wraps a BaseAgent as a LangChain tool.
 
     When invoked, runs the wrapped agent with the given request and
-    returns its FinalAnswerEvent.answer as the tool result. The child
+    returns its FinalAnswerEvent.text as the tool result. The child
     agent runs in an isolated branch of the parent context.
 
     Attributes
@@ -114,6 +114,6 @@ class AgentTool(BaseTool):
         final_answer: Optional[str] = None
         async for event in agent.run(request, ctx=child_ctx):
             if isinstance(event, FinalAnswerEvent):
-                final_answer = event.answer
+                final_answer = event.text
 
         return final_answer or f"Agent '{agent.name}' produced no final answer."

@@ -14,7 +14,7 @@ async for event in runner.run_async(
     if isinstance(event, FinalAnswerEvent):
         if event.partial:
             # Stream chunk to the client (WebSocket, SSE endpoint, etc.)
-            print(event.answer, end="", flush=True)
+            print(event.text, end="", flush=True)
         else:
             # Final complete event
             print(f"\n[DONE] tokens: {event.llm_response.output_tokens}")

@@ -16,7 +16,7 @@ from langchain_adk.events.event import Event, FinalAnswerEvent
 class SequentialAgent(BaseAgent):
     """Runs a list of sub-agents sequentially, chaining their output.
 
-    The output (FinalAnswerEvent.answer) of each agent becomes the input
+    The output (FinalAnswerEvent.text) of each agent becomes the input
     to the next. All events from all agents are yielded upstream.
 
     If a sub-agent emits an event with `actions.escalate = True`, the
@@ -76,4 +76,4 @@ class SequentialAgent(BaseAgent):
 
                 # Chain final answer to next agent's input
                 if isinstance(event, FinalAnswerEvent):
-                    current_input = event.answer
+                    current_input = event.text

@@ -25,7 +25,7 @@ Basic usage::
         new_message="Hello!",
     ):
         if event.is_final_response():
-            print(event.answer)
+            print(event.text)
 """
 
 from __future__ import annotations

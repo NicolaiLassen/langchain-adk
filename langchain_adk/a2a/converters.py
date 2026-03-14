@@ -37,7 +37,7 @@ async def events_to_a2a_stream(
                 continue
             # Emit artifact with the final answer
             artifact = Artifact(
-                parts=[TextPart(text=event.answer)],
+                parts=[TextPart(text=event.text)],
                 name="answer",
             )
             yield TaskArtifactUpdateEvent(
@@ -60,7 +60,7 @@ async def events_to_a2a_stream(
             )
 
         elif isinstance(event, ToolResultEvent):
-            result_text = str(event.result) if event.result else (event.error or "")
+            result_text = event.text or (event.error or "")
             artifact = Artifact(
                 parts=[TextPart(text=result_text)],
                 name=f"tool_result:{event.tool_name}",

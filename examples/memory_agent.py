@@ -85,7 +85,7 @@ async def main() -> None:
         ctx=ctx,
     ):
         if isinstance(event, FinalAnswerEvent):
-            print(f"\n[ANSWER] {event.answer}")
+            print(f"\n[ANSWER] {event.text}")
 
     # Save session to memory for future recall
     session.events = []  # In a real app, events accumulate automatically

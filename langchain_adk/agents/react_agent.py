@@ -31,6 +31,7 @@ from langchain_adk.events.event import (
     ToolCallEvent,
     ToolResultEvent,
 )
+from langchain_adk.models.part import Content
 
 
 # ---------------------------------------------------------------------------
@@ -184,7 +185,7 @@ class ReActAgent(BaseAgent):
                 yield FinalAnswerEvent(
                     session_id=ctx.session_id,
                     agent_name=self.name,
-                    answer=output.answer,
+                    content=Content.from_text(output.answer),
                     scratchpad=output.scratchpad,
                 )
                 return
@@ -193,7 +194,7 @@ class ReActAgent(BaseAgent):
             yield ThoughtEvent(
                 session_id=ctx.session_id,
                 agent_name=self.name,
-                thought=output.thought,
+                content=Content.from_text(output.thought),
                 scratchpad=output.scratchpad,
             )
             yield ActionEvent(
@@ -220,7 +221,7 @@ class ReActAgent(BaseAgent):
                         session_id=ctx.session_id,
                         agent_name=self.name,
                         tool_name=output.action,
-                        result=result,
+                        content=Content.from_text(str(result)),
                     )
                 except Exception as exc:
                     observation = f"Error: {exc}"
@@ -234,7 +235,7 @@ class ReActAgent(BaseAgent):
             yield ObservationEvent(
                 session_id=ctx.session_id,
                 agent_name=self.name,
-                observation=observation,
+                content=Content.from_text(observation),
                 tool_name=output.action,
             )
 

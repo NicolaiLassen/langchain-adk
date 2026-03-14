@@ -3,7 +3,7 @@
 Demonstrates:
   - output_schema parameter for type-safe structured responses
   - Pydantic model automatically parsed from LLM output
-  - Combining tools with structured final output via FinalAnswerEvent.structured_output
+  - Combining tools with structured final output via FinalAnswerEvent.data
 """
 
 from __future__ import annotations
@@ -90,9 +90,9 @@ async def main() -> None:
             if isinstance(event, ToolCallEvent):
                 print(f"  [TOOL] {event.tool_name}({event.tool_input})")
             elif isinstance(event, ToolResultEvent):
-                print(f"  [DATA] {(event.result or '')[:60]}...")
+                print(f"  [DATA] {(event.text or '')[:60]}...")
             elif isinstance(event, FinalAnswerEvent):
-                analysis = event.structured_output
+                analysis = event.data
                 if isinstance(analysis, CompanyAnalysis):
                     print(f"\n  Company:        {analysis.name}")
                     print(f"  Industry:       {analysis.industry}")
@@ -101,7 +101,7 @@ async def main() -> None:
                     print(f"  Recommendation: {analysis.recommendation}")
                     print(f"  Confidence:     {analysis.confidence:.0%}")
                 else:
-                    print(f"\n  [RAW OUTPUT] {event.answer}")
+                    print(f"\n  [RAW OUTPUT] {event.text}")
 
 
 if __name__ == "__main__":

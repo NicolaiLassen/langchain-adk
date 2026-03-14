@@ -70,9 +70,9 @@ async def main() -> None:
         if isinstance(event, ToolCallEvent):
             print(f"[TOOL CALL] {event.tool_name}({event.tool_input})")
         elif isinstance(event, ToolResultEvent):
-            print(f"[TOOL RESULT] {event.result or event.error}")
+            print(f"[TOOL RESULT] {event.text or event.error}")
         elif isinstance(event, FinalAnswerEvent):
-            print(f"\n[ANSWER] {event.answer}")
+            print(f"\n[ANSWER] {event.text}")
 
     # Flush to ensure trace is sent
     from langfuse import Langfuse

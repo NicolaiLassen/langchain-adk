@@ -44,10 +44,10 @@ class InMemoryMemoryStore(MemoryStore):
 
         for event in session.events:
             if isinstance(event, FinalAnswerEvent):
-                content = event.answer
+                content = event.text
                 author = event.agent_name or "agent"
             elif isinstance(event, ThoughtEvent):
-                content = event.thought
+                content = event.text
                 author = event.agent_name or "agent"
             else:
                 continue
