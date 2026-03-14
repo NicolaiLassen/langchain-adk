@@ -168,7 +168,6 @@ class Runner:
             run_config=resolved_config,
         )
 
-        # Persist user message as an event (Google ADK style)
         user_event = Event(
             type=EventType.USER_MESSAGE,
             author="user",
