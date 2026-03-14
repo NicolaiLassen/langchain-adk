@@ -60,6 +60,7 @@ class InvocationContext(BaseModel):
     state: dict[str, Any] = Field(default_factory=dict)
     run_config: Optional[Any] = None  # RunConfig; Any to avoid circular import at runtime
     memory_service: Optional[Any] = None
+    langchain_run_config: dict[str, Any] = Field(default_factory=dict)
 
     def derive(
         self,
@@ -94,5 +95,6 @@ class InvocationContext(BaseModel):
                 "branch": new_branch,
                 "state": self.state,       # shared reference - intentional
                 "run_config": self.run_config,
+                "langchain_run_config": self.langchain_run_config,
             }
         )

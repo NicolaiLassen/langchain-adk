@@ -22,6 +22,7 @@ A LangChain-powered Agent Development Toolkit — async event-streaming agents, 
   - [Prompts](#prompts)
   - [Streaming](#streaming)
   - [Callbacks](#callbacks)
+  - [Tracing](#tracing-langfuse-langsmith-etc)
   - [Structured Output](#structured-output)
   - [Human-in-the-Loop](#human-in-the-loop)
 - [Composite Agents](#composite-agents)
@@ -653,6 +654,61 @@ async def on_start(ctx: InvocationContext) -> None:
 
 agent.before_agent_callback = on_start
 ```
+
+---
+
+### Tracing (Langfuse, LangSmith, etc.)
+
+`RunConfig` is a superset of LangChain's `RunnableConfig` — pass `callbacks`, `tags`, `metadata`, `run_name` directly as fields. The entire agent run is wrapped in a single parent trace with all child operations nested automatically.
+
+```python
+from langfuse.langchain import CallbackHandler
+from langchain_adk import RunConfig
+
+run_config = RunConfig(
+    callbacks=[CallbackHandler()],  # Langfuse, LangSmith, or any BaseCallbackHandler
+    tags=["production", "user-facing"],
+    metadata={"user_id": "u-123"},
+    run_name="MyAgent",
+)
+
+# Via Runner
+async for event in runner.run_async(
+    user_id="user-1",
+    session_id="session-1",
+    new_message="Hello!",
+    run_config=run_config,
+):
+    ...
+
+# Or direct agent usage
+ctx = InvocationContext(
+    session_id="s1",
+    agent_name="Agent",
+    run_config=run_config,
+)
+async for event in agent.run_with_callbacks("Hello!", ctx=ctx):
+    ...
+```
+
+Set the Langfuse environment variables:
+
+```bash
+export LANGFUSE_SECRET_KEY="sk-lf-..."
+export LANGFUSE_PUBLIC_KEY="pk-lf-..."
+export LANGFUSE_BASE_URL="https://cloud.langfuse.com"
+```
+
+`RunConfig` supports all LangChain `RunnableConfig` keys as first-class fields: `callbacks`, `tags`, `metadata`, `run_name`, `max_concurrency`, `configurable`.
+
+**What gets traced:**
+- Each agent run as a single parent trace (named after the agent)
+- All LLM calls (`ainvoke` / `astream`) as child spans with token usage
+- All tool executions as child spans with inputs/outputs
+- Structured output fallback calls
+- Works with composite agents — each sub-agent creates its own nested trace
+
+**Across A2A boundaries:** A2A is HTTP, so callbacks can't cross the wire. Each A2A server should create its own handler. Link traces by passing a `trace_id` in task metadata.
 
 ---
 

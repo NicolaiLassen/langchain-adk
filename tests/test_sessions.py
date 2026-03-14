@@ -84,7 +84,7 @@ async def test_append_event_applies_state_delta(service):
         answer="done",
         actions=EventActions(state_delta={"result": "done"}),
     )
-    service.append_event(session, event)
+    await service.append_event(session, event)
     assert session.state["result"] == "done"
     assert len(session.events) == 1
     assert session.last_update_time > 0

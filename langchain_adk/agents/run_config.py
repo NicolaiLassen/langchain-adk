@@ -1,13 +1,14 @@
 """RunConfig - per-run configuration for agent execution.
 
-Controls streaming mode and per-run limits passed into the Runner and
-down through InvocationContext.
+A superset of LangChain's ``RunnableConfig`` — carries streaming mode,
+call limits, plus all standard LangChain config keys (callbacks, tags,
+metadata, run_name, etc.) in one flat object.
 """
 
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -35,20 +36,63 @@ class StreamingMode(Enum):
 class RunConfig(BaseModel):
     """Configuration for a single agent run.
 
+    A superset of LangChain's ``RunnableConfig``. All standard LangChain
+    config keys (``callbacks``, ``tags``, ``metadata``, ``run_name``, etc.)
+    are first-class fields, plus ADK-specific fields like ``streaming_mode``
+    and ``max_llm_calls``.
+
     Pass an instance to ``Runner.run_async()`` or store it on
-    ``InvocationContext.run_config`` to control streaming and call limits
-    for the entire invocation.
+    ``InvocationContext.run_config``.
 
     Attributes
     ----------
     streaming_mode : StreamingMode
         Whether to stream partial text events. Defaults to NONE.
     max_llm_calls : int
-        Maximum total LLM calls allowed in this run. The runner raises an
-        error if the agent exceeds this limit. Set to 0 for no limit.
+        Maximum total LLM calls allowed in this run. Set to 0 for no limit.
+    callbacks : list[Any], optional
+        LangChain callback handlers (e.g. Langfuse, LangSmith). Passed to
+        every ``ainvoke()`` / ``astream()`` call for automatic tracing.
+    tags : list[str], optional
+        Tags propagated to all LangChain calls for filtering in tracing UIs.
+    metadata : dict[str, Any], optional
+        Metadata propagated to all LangChain calls.
+    run_name : str, optional
+        Name for the top-level trace span. Defaults to the agent name.
+    max_concurrency : int, optional
+        Max concurrent LangChain calls (passed through to RunnableConfig).
+    configurable : dict[str, Any], optional
+        Extra configurable values (passed through to RunnableConfig).
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
+    # ADK-specific
     streaming_mode: StreamingMode = StreamingMode.NONE
     max_llm_calls: int = Field(default=500, ge=0)
+
+    # LangChain RunnableConfig fields
+    callbacks: Optional[list[Any]] = None
+    tags: Optional[list[str]] = None
+    metadata: Optional[dict[str, Any]] = None
+    run_name: Optional[str] = None
+    max_concurrency: Optional[int] = None
+    configurable: Optional[dict[str, Any]] = None
+
+    def as_langchain_config(self) -> dict[str, Any]:
+        """Build a LangChain ``RunnableConfig`` dict from this run config.
+
+        Only includes keys that are set (non-None), so LangChain's defaults
+        apply for omitted fields.
+
+        Returns
+        -------
+        dict[str, Any]
+            A dict suitable for LangChain's ``config`` parameter.
+        """
+        config: dict[str, Any] = {}
+        for key in ("callbacks", "tags", "metadata", "run_name", "max_concurrency", "configurable"):
+            value = getattr(self, key)
+            if value is not None:
+                config[key] = value
+        return config

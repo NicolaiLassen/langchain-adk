@@ -283,6 +283,7 @@ class LlmAgent(BaseAgent):
         messages: list[BaseMessage],
         run_config: Optional[RunConfig],
         session_id: str,
+        lc_config: dict[str, Any] | None = None,
     ) -> tuple[AIMessage, list[FinalAnswerEvent]]:
         """Invoke the LLM and return the raw message plus any partial events.
 
@@ -300,6 +301,9 @@ class LlmAgent(BaseAgent):
             Controls whether to use streaming.
         session_id : str
             Session ID for constructing partial events.
+        lc_config : dict, optional
+            LangChain RunnableConfig with child callbacks from the parent
+            trace. When set, all LLM calls nest under the parent trace.
 
         Returns
         -------
@@ -310,9 +314,10 @@ class LlmAgent(BaseAgent):
             run_config is not None
             and run_config.streaming_mode == StreamingMode.SSE
         )
+        rc = lc_config or {}
 
         if not streaming:
-            raw = await llm.ainvoke(messages)
+            raw = await llm.ainvoke(messages, config=rc)
             return raw, []
 
         chunks: list[AIMessageChunk] = []
@@ -320,7 +325,7 @@ class LlmAgent(BaseAgent):
         accumulated_text = ""
         has_tool_calls = False
 
-        async for chunk in llm.astream(messages):
+        async for chunk in llm.astream(messages, config=rc):
             chunks.append(chunk)
 
             if not has_tool_calls and (
@@ -370,6 +375,8 @@ class LlmAgent(BaseAgent):
             The user message or task.
         ctx : InvocationContext
             The invocation context. ``ctx.run_config`` controls streaming.
+            ``ctx.langchain_run_config`` carries child callbacks from the
+            parent trace (set up by ``run_with_callbacks``).
 
         Yields
         ------
@@ -377,6 +384,7 @@ class LlmAgent(BaseAgent):
             ToolCallEvent, ToolResultEvent, FinalAnswerEvent, or ErrorEvent.
         """
         run_config: Optional[RunConfig] = ctx.run_config  # type: ignore[assignment]
+        lc_config = ctx.langchain_run_config
         system_prompt = await self._resolve_instructions(ctx)
         messages: list[BaseMessage] = []
         if system_prompt:
@@ -398,7 +406,7 @@ class LlmAgent(BaseAgent):
 
             try:
                 raw_response, partial_events = await self._call_llm(
-                    llm, messages, run_config, ctx.session_id
+                    llm, messages, run_config, ctx.session_id, lc_config,
                 )
             except Exception as exc:
                 yield ErrorEvent(
@@ -446,7 +454,9 @@ class LlmAgent(BaseAgent):
                         structured_llm = self._build_structured_llm()
                         if structured_llm is not None:
                             try:
-                                structured_output = await structured_llm.ainvoke(messages)
+                                structured_output = await structured_llm.ainvoke(
+                                    messages, config=lc_config,
+                                )
                             except Exception:
                                 pass
                     if structured_output is not None:
@@ -500,7 +510,7 @@ class LlmAgent(BaseAgent):
                     await self.before_tool_callback(ctx, tool_name, tool_args)
 
                 try:
-                    result = await tool.ainvoke(tool_args)
+                    result = await tool.ainvoke(tool_args, config=lc_config)
 
                     if self.after_tool_callback:
                         await self.after_tool_callback(ctx, tool_name, result)

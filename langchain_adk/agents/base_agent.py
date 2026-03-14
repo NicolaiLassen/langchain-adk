@@ -7,8 +7,9 @@ given an input and an InvocationContext, yield a stream of Events.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import AsyncIterator, Awaitable, Callable, Optional
+from typing import Any, AsyncIterator, Awaitable, Callable, Optional
 
+from langchain_adk.agents.tracing import open_trace
 from langchain_adk.context.invocation_context import InvocationContext
 from langchain_adk.events.event import Event, EventType, EventActions
 
@@ -81,10 +82,14 @@ class BaseAgent(ABC):
         *,
         ctx: InvocationContext,
     ) -> AsyncIterator[Event]:
-        """Run the agent, firing before/after callbacks.
+        """Run the agent, firing before/after callbacks and managing tracing.
+
+        When ``RunConfig.langchain_config`` has callbacks, opens a parent
+        LangChain trace so every LLM and tool call nests under a single span.
+        The child config is stored on ``ctx.langchain_run_config`` and
+        propagated to sub-agents via ``ctx.derive()``.
 
         Yields an AGENT_START event before execution and AGENT_END after.
-        Callbacks are called with the current context.
 
         Parameters
         ----------
@@ -98,6 +103,12 @@ class BaseAgent(ABC):
         Event
             Events emitted during execution, wrapped with start/end events.
         """
+        # Set up tracing — opens parent span, stores child config on ctx
+        lc_config = ctx.run_config.as_langchain_config() if ctx.run_config else {}
+        child_config, run_manager = await open_trace(self.name, lc_config, input)
+        if child_config:
+            ctx.langchain_run_config = child_config
+
         if self.before_agent_callback:
             await self.before_agent_callback(ctx)
 
@@ -107,14 +118,22 @@ class BaseAgent(ABC):
             agent_name=self.name,
         )
 
-        async for event in self.run(input, ctx=ctx):
-            yield event
+        try:
+            async for event in self.run(input, ctx=ctx):
+                yield event
+        except Exception as exc:
+            if run_manager:
+                await run_manager.on_chain_error(exc)
+            raise
 
         yield Event(
             type=EventType.AGENT_END,
             session_id=ctx.session_id,
             agent_name=self.name,
         )
+
+        if run_manager:
+            await run_manager.on_chain_end({"output": "completed"})
 
         if self.after_agent_callback:
             await self.after_agent_callback(ctx)

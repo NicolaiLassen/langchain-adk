@@ -72,7 +72,7 @@ class BaseSessionService(ABC):
         """
         ...
 
-    def append_event(self, session: Session, event: Event) -> Event:
+    async def append_event(self, session: Session, event: Event) -> Event:
         """Apply an event's side-effects and append it to the session.
 
         Applies ``event.actions.state_delta`` to ``session.state``,
