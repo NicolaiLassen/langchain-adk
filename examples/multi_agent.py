@@ -14,13 +14,9 @@ import asyncio
 
 from langchain_core.tools import tool
 
-from langchain_adk.agents.llm_agent import LlmAgent
-from langchain_adk.agents.sequential_agent import SequentialAgent
-from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import FinalAnswerEvent, ToolCallEvent
+from langchain_adk import LlmAgent, SequentialAgent, InvocationContext, FinalAnswerEvent, ToolCallEvent, InMemorySessionService
 from langchain_adk.prompts.catalog import build_system_prompt
 from langchain_adk.prompts.context import PromptContext
-from langchain_adk.sessions.in_memory_session_service import InMemorySessionService
 from langchain_adk.skills.skill import Skill
 from langchain_adk.skills.skill_store import InMemorySkillStore
 from langchain_adk.skills.load_skill_tool import make_load_skill_tool, make_list_skills_tool
@@ -102,7 +98,7 @@ async def main() -> None:
 
     print(f"Pipeline: {pipeline.name}\n{'='*40}")
 
-    async for event in pipeline.run("Write an article about LLM agents", ctx=ctx):
+    async for event in pipeline.astream("Write an article about LLM agents", ctx=ctx):
         if isinstance(event, ToolCallEvent):
             print(f"[TOOL] {event.agent_name} → {event.tool_name}")
         elif isinstance(event, FinalAnswerEvent):

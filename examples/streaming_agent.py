@@ -17,10 +17,11 @@ import sys
 
 from langchain_core.tools import tool
 
-from langchain_adk.agents.llm_agent import LlmAgent
-from langchain_adk.agents.run_config import RunConfig, StreamingMode
-from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import (
+from langchain_adk import (
+    LlmAgent,
+    RunConfig,
+    StreamingMode,
+    InvocationContext,
     FinalAnswerEvent,
     ToolCallEvent,
     ToolResultEvent,
@@ -59,7 +60,7 @@ async def main() -> None:
 
     print(f"Running agent (streaming): {agent.name}\n{'=' * 50}")
 
-    async for event in agent.run(
+    async for event in agent.astream(
         "What's the weather in Copenhagen and Berlin?",
         ctx=ctx,
     ):

@@ -32,8 +32,8 @@ class InMemoryMemoryStore(MemoryStore):
             The session to extract events from. Must be a
             ``sessions.session.Session`` instance.
         """
-        from langchain_adk.sessions.session import Session
         from langchain_adk.events.event import FinalAnswerEvent, ThoughtEvent
+        from langchain_adk.sessions.session import Session
 
         if not isinstance(session, Session):
             return

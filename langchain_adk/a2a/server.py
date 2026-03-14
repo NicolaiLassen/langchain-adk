@@ -1,7 +1,7 @@
 """A2AServer — spec-compliant A2A server over JSON-RPC 2.0.
 
 Exposes any BaseAgent as an A2A endpoint with:
-  - POST /             — JSON-RPC 2.0 dispatch (message/send, message/stream, tasks/get, tasks/cancel)
+  - POST / — JSON-RPC 2.0 dispatch (message/send, message/stream, etc.)
   - GET  /.well-known/agent.json  — Agent Card discovery
 
 Run with:
@@ -21,14 +21,16 @@ Examples
 from __future__ import annotations
 
 import uuid
+from collections.abc import AsyncIterator
 from datetime import datetime, timezone
-from typing import Any, AsyncIterator, Optional
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from langchain_adk.a2a.converters import events_to_a2a_stream
 from langchain_adk.a2a.types import (
+    TERMINAL_STATES,
     A2AErrorCode,
     AgentCapabilities,
     AgentCard,
@@ -47,7 +49,6 @@ from langchain_adk.a2a.types import (
     TaskStatus,
     TaskStatusUpdateEvent,
     TextPart,
-    TERMINAL_STATES,
 )
 from langchain_adk.agents.base_agent import BaseAgent
 from langchain_adk.context.invocation_context import InvocationContext
@@ -77,7 +78,7 @@ class A2AServer:
         app_name: str = "agent-sdk",
         version: str = "1.0.0",
         url: str = "http://localhost:8000",
-        skills: Optional[list[AgentSkill]] = None,
+        skills: list[AgentSkill] | None = None,
     ) -> None:
         self.agent = agent
         self.session_service = session_service
@@ -110,7 +111,7 @@ class A2AServer:
     # Task helpers
     # ------------------------------------------------------------------
 
-    def _create_task(self, message: Message, context_id: Optional[str] = None) -> Task:
+    def _create_task(self, message: Message, context_id: str | None = None) -> Task:
         task = Task(
             id=str(uuid.uuid4()),
             context_id=context_id or str(uuid.uuid4()),
@@ -124,7 +125,7 @@ class A2AServer:
         self,
         task: Task,
         state: TaskState,
-        agent_message: Optional[Message] = None,
+        agent_message: Message | None = None,
     ) -> None:
         task.status = TaskStatus(
             state=state,
@@ -148,12 +149,13 @@ class A2AServer:
             app_name=self.app_name,
             agent_name=self.agent.name,
             state=dict(session.state),
+            session=session,
         )
 
         self._update_task_status(task, TaskState.working)
 
         final_answer = ""
-        async for event in self.agent.run_with_callbacks(user_message, ctx=ctx):
+        async for event in self.agent._run_with_callbacks(user_message, ctx=ctx):
             from langchain_adk.events.event import FinalAnswerEvent
             if isinstance(event, FinalAnswerEvent) and not event.partial:
                 final_answer = event.text
@@ -223,6 +225,7 @@ class A2AServer:
             app_name=self.app_name,
             agent_name=self.agent.name,
             state=dict(session.state),
+            session=session,
         )
 
         self._update_task_status(task, TaskState.working)
@@ -238,7 +241,7 @@ class A2AServer:
 
         # Stream agent events, converting to A2A events
         async for a2a_event in events_to_a2a_stream(
-            self.agent.run_with_callbacks(user_text, ctx=ctx),
+            self.agent._run_with_callbacks(user_text, ctx=ctx),
             task_id=task.id,
             context_id=task.context_id,
         ):

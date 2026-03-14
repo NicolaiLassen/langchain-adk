@@ -4,7 +4,7 @@ The Runner is the main entry point for running agents. It:
 
 1. Fetches or creates the session via the session service.
 2. Builds an ``InvocationContext`` from the session and run config.
-3. Delegates to ``agent.run_with_callbacks()``.
+3. Delegates to ``agent._run_with_callbacks()``.
 4. Persists every event to the session via ``append_event()``.
 5. Yields the event stream back to the caller.
 
@@ -31,11 +31,13 @@ Basic usage::
 from __future__ import annotations
 
 import logging
-from typing import AsyncIterator, Optional, TYPE_CHECKING
+from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING
 
 from langchain_adk.agents.run_config import RunConfig
 from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import Event
+from langchain_adk.events.event import Event, EventType
+from langchain_adk.models.part import Content
 from langchain_adk.sessions.base_session_service import BaseSessionService
 from langchain_adk.sessions.session import Session
 
@@ -125,7 +127,7 @@ class Runner:
         user_id: str,
         session_id: str,
         new_message: str,
-        run_config: Optional[RunConfig] = None,
+        run_config: RunConfig | None = None,
     ) -> AsyncIterator[Event]:
         """Run the agent and yield its event stream.
 
@@ -162,8 +164,19 @@ class Runner:
             app_name=self.app_name,
             agent_name=self.agent.name,
             state=dict(session.state),
+            session=session,
             run_config=resolved_config,
         )
+
+        # Persist user message as an event (Google ADK style)
+        user_event = Event(
+            type=EventType.USER_MESSAGE,
+            author="user",
+            session_id=session.id,
+            invocation_id=ctx.invocation_id,
+            content=Content.from_text(new_message),
+        )
+        await self.session_service.append_event(session, user_event)
 
         logger.debug(
             "Runner starting: agent=%s session=%s user=%s",
@@ -172,6 +185,6 @@ class Runner:
             user_id,
         )
 
-        async for event in self.agent.run_with_callbacks(new_message, ctx=ctx):
+        async for event in self.agent._run_with_callbacks(new_message, ctx=ctx):
             await self.session_service.append_event(session, event)
             yield event

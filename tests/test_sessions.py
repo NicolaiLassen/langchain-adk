@@ -96,3 +96,21 @@ async def test_update_session_state(service):
     session = await service.create_session(app_name="app", user_id="u1")
     updated = await service.update_session(session.id, state={"foo": "bar"})
     assert updated.state["foo"] == "bar"
+
+
+@pytest.mark.asyncio
+async def test_append_user_message_event(service):
+    """USER_MESSAGE events should be persisted in session.events."""
+    from langchain_adk.events.event import Event, EventType
+
+    session = await service.create_session(app_name="app", user_id="u1")
+    user_event = Event(
+        type=EventType.USER_MESSAGE,
+        author="user",
+        session_id=session.id,
+        content=Content.from_text("Hello agent"),
+    )
+    await service.append_event(session, user_event)
+    assert len(session.events) == 1
+    assert session.events[0].type == EventType.USER_MESSAGE
+    assert session.events[0].text == "Hello agent"

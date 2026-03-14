@@ -6,7 +6,7 @@ SSE streaming = token-level partial ThoughtEvents. No streaming = complete event
 
 from __future__ import annotations
 
-from typing import AsyncIterator, Optional
+from collections.abc import AsyncIterator
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
@@ -31,11 +31,19 @@ from langchain_adk.models.part import Content
 class ReActStep(BaseModel):
     """A single ReAct step — either reason+act or final answer."""
 
-    scratchpad: str = Field(description="Running notes and observations accumulated across steps")
+    scratchpad: str = Field(
+        description="Running notes and observations accumulated across steps",
+    )
     thought: str = Field(description="Current reasoning about the problem")
-    action: Optional[str] = Field(default=None, description="Tool name to call, or null if giving final answer")
-    action_input: Optional[str] = Field(default=None, description="Input for the tool, or null if giving final answer")
-    answer: Optional[str] = Field(default=None, description="Final answer text, or null if calling a tool")
+    action: str | None = Field(
+        default=None, description="Tool name to call, or null if giving final answer",
+    )
+    action_input: str | None = Field(
+        default=None, description="Input for the tool, or null if giving final answer",
+    )
+    answer: str | None = Field(
+        default=None, description="Final answer text, or null if calling a tool",
+    )
 
     @property
     def is_final(self) -> bool:
@@ -116,45 +124,126 @@ class ReActAgent(BaseAgent):
             content=_SYSTEM_PROMPT.format(tool_descriptions=tool_descriptions)
         )
 
-    async def _get_step(
+    async def _invoke_step(
         self,
         messages: list[BaseMessage],
         ctx: InvocationContext,
-    ) -> AsyncIterator[ThoughtEvent | ReActStep]:
-        """Get a ReActStep from the LLM. Yields partial ThoughtEvents if SSE streaming.
+    ) -> AsyncIterator[Event]:
+        """Invoke the LLM for one ReAct step and yield all events.
 
-        Always yields the final ReActStep as the last item.
+        When SSE streaming is on, yields partial ``ThoughtEvent`` and
+        ``FinalAnswerEvent`` as the JSON fields build up token by token,
+        followed by the complete events. When streaming is off, yields
+        only complete events.
+
+        After the step, executes tool calls and yields tool events.
         """
         streaming = self.is_streaming(ctx)
 
-        if not streaming:
-            yield await self._llm.ainvoke(messages)
+        # --- Get the step (streaming or not) ---
+        if streaming:
+            last_thought = ""
+            last_answer = ""
+            step: ReActStep | None = None
+
+            async for partial in self._llm.astream(messages):
+                if not isinstance(partial, ReActStep):
+                    continue
+                step = partial
+
+                current_thought = partial.thought or ""
+                if current_thought != last_thought:
+                    last_thought = current_thought
+                    yield ThoughtEvent(
+                        session_id=ctx.session_id,
+                        agent_name=self.name,
+                        content=Content.from_text(current_thought),
+                        scratchpad=partial.scratchpad or "",
+                        partial=True,
+                    )
+
+                current_answer = partial.answer or ""
+                if current_answer and current_answer != last_answer:
+                    last_answer = current_answer
+                    yield FinalAnswerEvent(
+                        session_id=ctx.session_id,
+                        agent_name=self.name,
+                        content=Content.from_text(current_answer),
+                        scratchpad=partial.scratchpad or "",
+                        partial=True,
+                    )
+
+            if step is None:
+                raise RuntimeError("Streaming produced no output")
+        else:
+            step = await self._llm.ainvoke(messages)
+
+        # --- Complete thought ---
+        yield ThoughtEvent(
+            session_id=ctx.session_id,
+            agent_name=self.name,
+            content=Content.from_text(step.thought),
+            scratchpad=step.scratchpad,
+            partial=False,
+        )
+
+        # --- Final answer ---
+        if step.is_final:
+            yield FinalAnswerEvent(
+                session_id=ctx.session_id,
+                agent_name=self.name,
+                content=Content.from_text(step.answer),
+                scratchpad=step.scratchpad,
+            )
             return
 
-        # SSE: stream partial thoughts as the JSON builds up
-        last_thought = ""
-        final_step: Optional[ReActStep] = None
+        # --- Tool call ---
+        yield ActionEvent(
+            session_id=ctx.session_id,
+            agent_name=self.name,
+            action=step.action,
+            action_input=step.action_input,
+        )
 
-        async for partial in self._llm.astream(messages):
-            if not isinstance(partial, ReActStep):
-                continue
-            final_step = partial
-            current_thought = partial.thought or ""
-            if current_thought != last_thought:
-                last_thought = current_thought
-                yield ThoughtEvent(
+        tool = self._tools.get(step.action)
+        if tool is None:
+            observation = f"Error: tool '{step.action}' not found."
+        else:
+            yield ToolCallEvent(
+                session_id=ctx.session_id,
+                agent_name=self.name,
+                tool_name=step.action,
+                tool_input=step.action_input,
+            )
+            try:
+                result = await tool.ainvoke(step.action_input)
+                observation = str(result)
+                yield ToolResultEvent(
                     session_id=ctx.session_id,
                     agent_name=self.name,
-                    content=Content.from_text(current_thought),
-                    scratchpad=partial.scratchpad or "",
-                    partial=True,
+                    tool_name=step.action,
+                    content=Content.from_text(observation),
+                )
+            except Exception as exc:
+                observation = f"Error: {exc}"
+                yield ToolResultEvent(
+                    session_id=ctx.session_id,
+                    agent_name=self.name,
+                    tool_name=step.action,
+                    error=str(exc),
                 )
 
-        if final_step is None:
-            raise RuntimeError("Streaming produced no output")
-        yield final_step
+        yield ObservationEvent(
+            session_id=ctx.session_id,
+            agent_name=self.name,
+            content=Content.from_text(observation),
+            tool_name=step.action,
+        )
 
-    async def run(
+        messages.append(AIMessage(content=str(step.model_dump())))
+        messages.append(HumanMessage(content=f"Observation: {observation}"))
+
+    async def astream(
         self,
         input: str,
         *,
@@ -166,14 +255,11 @@ class ReActAgent(BaseAgent):
         ]
 
         for _ in range(self.max_iterations):
-            # Get step — may yield partial ThoughtEvents before the final ReActStep
-            step: Optional[ReActStep] = None
             try:
-                async for item in self._get_step(messages, ctx):
-                    if isinstance(item, ThoughtEvent):
-                        yield item  # partial thought
-                    else:
-                        step = item  # final ReActStep
+                async for event in self._invoke_step(messages, ctx):
+                    yield event
+                    if isinstance(event, FinalAnswerEvent) and not event.partial:
+                        return
             except Exception as exc:
                 yield ErrorEvent(
                     session_id=ctx.session_id,
@@ -182,70 +268,6 @@ class ReActAgent(BaseAgent):
                     exception_type=type(exc).__name__,
                 )
                 return
-
-            # Complete thought (partial=False)
-            yield ThoughtEvent(
-                session_id=ctx.session_id,
-                agent_name=self.name,
-                content=Content.from_text(step.thought),
-                scratchpad=step.scratchpad,
-                partial=False,
-            )
-
-            if step.is_final:
-                yield FinalAnswerEvent(
-                    session_id=ctx.session_id,
-                    agent_name=self.name,
-                    content=Content.from_text(step.answer),
-                    scratchpad=step.scratchpad,
-                )
-                return
-
-            # Tool call
-            yield ActionEvent(
-                session_id=ctx.session_id,
-                agent_name=self.name,
-                action=step.action,
-                action_input=step.action_input,
-            )
-
-            tool = self._tools.get(step.action)
-            if tool is None:
-                observation = f"Error: tool '{step.action}' not found."
-            else:
-                yield ToolCallEvent(
-                    session_id=ctx.session_id,
-                    agent_name=self.name,
-                    tool_name=step.action,
-                    tool_input=step.action_input,
-                )
-                try:
-                    result = await tool.ainvoke(step.action_input)
-                    observation = str(result)
-                    yield ToolResultEvent(
-                        session_id=ctx.session_id,
-                        agent_name=self.name,
-                        tool_name=step.action,
-                        content=Content.from_text(str(result)),
-                    )
-                except Exception as exc:
-                    observation = f"Error: {exc}"
-                    yield ToolResultEvent(
-                        session_id=ctx.session_id,
-                        agent_name=self.name,
-                        tool_name=step.action,
-                        error=str(exc),
-                    )
-
-            yield ObservationEvent(
-                session_id=ctx.session_id,
-                agent_name=self.name,
-                content=Content.from_text(observation),
-                tool_name=step.action,
-            )
-
-            messages.append(AIMessage(content=str(step.model_dump())))
-            messages.append(HumanMessage(content=f"Observation: {observation}"))
 
         yield ErrorEvent(
             session_id=ctx.session_id,

@@ -7,7 +7,7 @@ control, compact history, or signal loop termination.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -70,8 +70,8 @@ class EventActions(BaseModel):
     """
 
     state_delta: dict[str, Any] = Field(default_factory=dict)
-    transfer_to_agent: Optional[str] = None
-    escalate: Optional[bool] = None
-    skip_summarization: Optional[bool] = None
-    end_of_agent: Optional[bool] = None
-    compaction: Optional[EventCompaction] = None
+    transfer_to_agent: str | None = None
+    escalate: bool | None = None
+    skip_summarization: bool | None = None
+    end_of_agent: bool | None = None
+    compaction: EventCompaction | None = None

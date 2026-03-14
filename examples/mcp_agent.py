@@ -16,9 +16,7 @@ import asyncio
 
 from fastmcp import FastMCP
 
-from langchain_adk.agents.llm_agent import LlmAgent
-from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import FinalAnswerEvent, ToolCallEvent, ToolResultEvent
+from langchain_adk import LlmAgent, InvocationContext, FinalAnswerEvent, ToolCallEvent, ToolResultEvent
 from langchain_adk.integrations.mcp import MCPClient, MCPToolAdapter
 
 
@@ -68,7 +66,7 @@ async def main() -> None:
 
     print(f"\nRunning agent: {agent.name}\n{'=' * 40}")
 
-    async for event in agent.run(
+    async for event in agent.astream(
         "What's the weather in Copenhagen and give me a 5-day forecast?",
         ctx=ctx,
     ):

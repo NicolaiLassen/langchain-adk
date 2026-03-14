@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from langchain_adk.prompts.context import PromptContext
 
-
 # ---------------------------------------------------------------------------
 # Block builders
 # ---------------------------------------------------------------------------

@@ -8,7 +8,7 @@ metadata, run_name, etc.) in one flat object.
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -72,12 +72,12 @@ class RunConfig(BaseModel):
     max_llm_calls: int = Field(default=500, ge=0)
 
     # LangChain RunnableConfig fields
-    callbacks: Optional[list[Any]] = None
-    tags: Optional[list[str]] = None
-    metadata: Optional[dict[str, Any]] = None
-    run_name: Optional[str] = None
-    max_concurrency: Optional[int] = None
-    configurable: Optional[dict[str, Any]] = None
+    callbacks: list[Any] | None = None
+    tags: list[str] | None = None
+    metadata: dict[str, Any] | None = None
+    run_name: str | None = None
+    max_concurrency: int | None = None
+    configurable: dict[str, Any] | None = None
 
     def as_langchain_config(self) -> dict[str, Any]:
         """Build a LangChain ``RunnableConfig`` dict from this run config.

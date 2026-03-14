@@ -16,7 +16,7 @@ Attach a planner to an LlmAgent via the ``planner`` constructor argument.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from langchain_adk.agents.readonly_context import ReadonlyContext
@@ -37,7 +37,7 @@ class BasePlanner(ABC):
         self,
         readonly_context: ReadonlyContext,
         llm_request: LlmRequest,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Return an instruction string to append to the system prompt.
 
         Called before every LLM invocation. The returned string is appended
@@ -62,7 +62,7 @@ class BasePlanner(ABC):
         self,
         readonly_context: ReadonlyContext,
         response: LlmResponse,
-    ) -> Optional[LlmResponse]:
+    ) -> LlmResponse | None:
         """Optionally transform the LLM response after it arrives.
 
         Called after every LLM invocation, before the agent acts on the

@@ -48,10 +48,9 @@ raise NotImplementedError(
     "and comment out this raise."
 )
 
-from langchain_adk.agents.llm_agent import LlmAgent
+from langchain_adk import LlmAgent, InMemorySessionService
 from langchain_adk.a2a.server import A2AServer
 from langchain_adk.a2a.types import AgentSkill
-from langchain_adk.sessions.in_memory_session_service import InMemorySessionService
 
 agent = LlmAgent(
     name="AssistantAgent",

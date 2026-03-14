@@ -7,7 +7,7 @@ object with a list of typed parts instead of loose string fields.
 
 from __future__ import annotations
 
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -47,14 +47,14 @@ class FilePart(BaseModel):
     """
 
     type: Literal["file"] = "file"
-    uri: Optional[str] = None
-    inline_bytes: Optional[str] = None
-    mime_type: Optional[str] = None
-    name: Optional[str] = None
+    uri: str | None = None
+    inline_bytes: str | None = None
+    mime_type: str | None = None
+    name: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
-Part = Union[TextPart, DataPart, FilePart]
+Part = TextPart | DataPart | FilePart
 
 
 class Content(BaseModel):
@@ -70,16 +70,16 @@ class Content(BaseModel):
         Ordered list of content parts.
     """
 
-    role: Optional[str] = None
+    role: str | None = None
     parts: list[Part] = Field(default_factory=list)
 
     @staticmethod
-    def from_text(text: str, *, role: Optional[str] = None) -> Content:
+    def from_text(text: str, *, role: str | None = None) -> Content:
         """Create a Content with a single TextPart."""
         return Content(role=role, parts=[TextPart(text=text)])
 
     @staticmethod
-    def from_data(data: dict[str, Any], *, role: Optional[str] = None) -> Content:
+    def from_data(data: dict[str, Any], *, role: str | None = None) -> Content:
         """Create a Content with a single DataPart."""
         return Content(role=role, parts=[DataPart(data=data)])
 

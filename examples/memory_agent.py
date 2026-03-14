@@ -10,12 +10,9 @@ from __future__ import annotations
 
 import asyncio
 
-from langchain_adk.agents.llm_agent import LlmAgent
-from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import FinalAnswerEvent
+from langchain_adk import LlmAgent, InvocationContext, FinalAnswerEvent, InMemorySessionService
 from langchain_adk.memory.in_memory_store import InMemoryMemoryStore
 from langchain_adk.memory.memory import Memory
-from langchain_adk.sessions.in_memory_session_service import InMemorySessionService
 
 
 async def main() -> None:
@@ -80,7 +77,7 @@ async def main() -> None:
     print("Session 1: Asking a personalized question")
     print("=" * 50)
 
-    async for event in agent.run(
+    async for event in agent.astream(
         "What programming language should I use for my new service?",
         ctx=ctx,
     ):

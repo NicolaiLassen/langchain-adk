@@ -13,9 +13,7 @@ import asyncio
 from pydantic import BaseModel, Field
 from langchain_core.tools import tool
 
-from langchain_adk.agents.llm_agent import LlmAgent
-from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import FinalAnswerEvent, ToolCallEvent, ToolResultEvent
+from langchain_adk import LlmAgent, InvocationContext, FinalAnswerEvent, ToolCallEvent, ToolResultEvent
 
 
 # --- Structured output schema ---
@@ -86,7 +84,7 @@ async def main() -> None:
         print(f"\nAnalyzing: {company}")
         print("=" * 50)
 
-        async for event in agent.run(f"Analyze {company}", ctx=ctx):
+        async for event in agent.astream(f"Analyze {company}", ctx=ctx):
             if isinstance(event, ToolCallEvent):
                 print(f"  [TOOL] {event.tool_name}({event.tool_input})")
             elif isinstance(event, ToolResultEvent):

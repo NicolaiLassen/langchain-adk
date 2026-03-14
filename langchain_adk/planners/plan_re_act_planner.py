@@ -13,14 +13,13 @@ and reasoning/planning sections are treated as thought events.
 
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from langchain_adk.planners.base_planner import BasePlanner
 
 if TYPE_CHECKING:
     from langchain_adk.agents.readonly_context import ReadonlyContext
     from langchain_adk.models.llm_request import LlmRequest
-    from langchain_adk.models.llm_response import LlmResponse
 
 
 PLANNING_TAG = "/*PLANNING*/"
@@ -81,7 +80,7 @@ class PlanReActPlanner(BasePlanner):
         self,
         readonly_context: ReadonlyContext,
         llm_request: LlmRequest,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Return the Plan-Re-Act structured instruction.
 
         Parameters

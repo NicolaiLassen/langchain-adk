@@ -7,9 +7,9 @@ telling the LLM not to call it again if it already returned a pending status.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
-from langchain_core.tools import StructuredTool, BaseTool
+from langchain_core.tools import BaseTool, StructuredTool
 
 
 class LongRunningFunctionTool:

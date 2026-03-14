@@ -267,7 +267,8 @@ def apply_task_action(
     resolved = normalize_action(action)
 
     if resolved is None:
-        return board, None, f"Unknown action '{action}'. Use: list, create, update, complete, remove."
+        msg = f"Unknown action '{action}'. Use: list, create, update, complete, remove."
+        return board, None, msg
 
     if resolved == TaskAction.LIST:
         return board, None, "Showing current tasks."

@@ -11,10 +11,7 @@ from __future__ import annotations
 
 import asyncio
 
-from langchain_adk.agents.llm_agent import LlmAgent
-from langchain_adk.agents.loop_agent import LoopAgent
-from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import FinalAnswerEvent
+from langchain_adk import LlmAgent, LoopAgent, InvocationContext, FinalAnswerEvent
 
 
 async def main() -> None:
@@ -65,7 +62,7 @@ async def main() -> None:
     print("Product: 'An AI-powered code editor'\n")
 
     iteration = 0
-    async for event in loop.run(
+    async for event in loop.astream(
         "Write a tagline for: An AI-powered code editor that understands your codebase",
         ctx=ctx,
     ):

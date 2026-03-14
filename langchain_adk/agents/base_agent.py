@@ -2,35 +2,37 @@
 
 All agents in the SDK extend BaseAgent. The contract is simple:
 given an input and an InvocationContext, yield a stream of Events.
+
+Follows LangChain's Runnable interface:
+  - ``astream(input, *, ctx)`` — core abstract method, yields events
+  - ``ainvoke(input, *, ctx)`` — runs to completion, returns final answer
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, AsyncIterator, Awaitable, Callable, Optional
-
-from langchain_adk.agents.tracing import open_trace
-from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import Event, EventType
-from langchain_adk.events.event_actions import EventActions
+from collections.abc import AsyncIterator, Awaitable, Callable
 
 # Avoid circular import — RunConfig/StreamingMode used only at runtime
 from typing import TYPE_CHECKING
 
+from langchain_adk.agents.tracing import open_trace
+from langchain_adk.context.invocation_context import InvocationContext
+from langchain_adk.events.event import Event, EventType, FinalAnswerEvent
+
 if TYPE_CHECKING:
-    from langchain_adk.agents.run_config import RunConfig
+    pass
 
 
 class BaseAgent(ABC):
     """Abstract base class for all agents.
 
-    Agents are composable async generators. Every agent, whether a single
-    LLM call or a complex orchestration tree, exposes the same interface:
-    `run(input, *, ctx)` yields `Event` objects as execution proceeds.
+    Agents are composable async generators following LangChain's Runnable
+    interface. Every agent exposes ``astream()`` (yields events) and
+    ``ainvoke()`` (returns the final answer).
 
-    Sub-agents are registered via `sub_agents` and can be looked up by
-    name with `find_agent()`. Parent agents set `parent_agent` when they
-    register a child.
+    Sub-agents are registered via ``sub_agents`` and can be looked up by
+    name with ``find_agent()``.
 
     Attributes
     ----------
@@ -43,22 +45,18 @@ class BaseAgent(ABC):
     parent_agent : BaseAgent, optional
         The parent agent (set automatically on registration).
     before_agent_callback : callable, optional
-        Called before run() starts.
+        Called before astream() starts.
     after_agent_callback : callable, optional
-        Called after run() completes.
+        Called after astream() completes.
     """
 
     def __init__(self, name: str, description: str = "") -> None:
         self.name = name
         self.description = description
         self.sub_agents: list[BaseAgent] = []
-        self.parent_agent: Optional[BaseAgent] = None
-        self.before_agent_callback: Optional[
-            Callable[[InvocationContext], Awaitable[None]]
-        ] = None
-        self.after_agent_callback: Optional[
-            Callable[[InvocationContext], Awaitable[None]]
-        ] = None
+        self.parent_agent: BaseAgent | None = None
+        self.before_agent_callback: Callable[[InvocationContext], Awaitable[None]] | None = None
+        self.after_agent_callback: Callable[[InvocationContext], Awaitable[None]] | None = None
 
     def is_streaming(self, ctx: InvocationContext) -> bool:
         """Check if SSE streaming is enabled for this run.
@@ -72,13 +70,16 @@ class BaseAgent(ABC):
         return rc is not None and rc.streaming_mode == StreamingMode.SSE
 
     @abstractmethod
-    async def run(
+    async def astream(
         self,
         input: str,
         *,
         ctx: InvocationContext,
     ) -> AsyncIterator[Event]:
-        """Run the agent and stream events.
+        """Stream all events from the agent.
+
+        This is the core method that subclasses implement. Equivalent to
+        LangChain's ``Runnable.astream``.
 
         Parameters
         ----------
@@ -94,20 +95,53 @@ class BaseAgent(ABC):
         """
         ...
 
-    async def run_with_callbacks(
+    async def ainvoke(
+        self,
+        input: str,
+        *,
+        ctx: InvocationContext,
+    ) -> FinalAnswerEvent:
+        """Call the agent and return the final answer.
+
+        Runs the agent to completion, discarding partial and intermediate
+        events. Equivalent to LangChain's ``Runnable.ainvoke``.
+
+        Parameters
+        ----------
+        input : str
+            The user message or task description.
+        ctx : InvocationContext
+            The invocation context for this run.
+
+        Returns
+        -------
+        FinalAnswerEvent
+            The agent's final answer.
+
+        Raises
+        ------
+        RuntimeError
+            If the agent finishes without producing a final answer.
+        """
+        last_answer: FinalAnswerEvent | None = None
+        async for event in self.astream(input, ctx=ctx):
+            if isinstance(event, FinalAnswerEvent) and not event.partial:
+                last_answer = event
+        if last_answer is None:
+            raise RuntimeError(f"Agent {self.name!r} produced no final answer")
+        return last_answer
+
+    async def _run_with_callbacks(
         self,
         input: str,
         *,
         ctx: InvocationContext,
     ) -> AsyncIterator[Event]:
-        """Run the agent, firing before/after callbacks and managing tracing.
+        """Run the agent with before/after callbacks and tracing.
 
-        When ``RunConfig.langchain_config`` has callbacks, opens a parent
-        LangChain trace so every LLM and tool call nests under a single span.
-        The child config is stored on ``ctx.langchain_run_config`` and
-        propagated to sub-agents via ``ctx.derive()``.
-
-        Yields an AGENT_START event before execution and AGENT_END after.
+        Internal method used by Runner and orchestration agents. Opens a
+        LangChain trace span, fires callbacks, and wraps the event stream
+        with AGENT_START / AGENT_END events.
 
         Parameters
         ----------
@@ -137,7 +171,7 @@ class BaseAgent(ABC):
         )
 
         try:
-            async for event in self.run(input, ctx=ctx):
+            async for event in self.astream(input, ctx=ctx):
                 yield event
         except Exception as exc:
             if run_manager:
@@ -167,7 +201,7 @@ class BaseAgent(ABC):
         agent.parent_agent = self
         self.sub_agents.append(agent)
 
-    def find_agent(self, name: str) -> Optional[BaseAgent]:
+    def find_agent(self, name: str) -> BaseAgent | None:
         """Recursively search the agent tree for an agent by name.
 
         Parameters

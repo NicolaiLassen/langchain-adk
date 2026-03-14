@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -21,7 +21,6 @@ from pydantic import BaseModel, Field
 from langchain_adk.events.event_actions import EventActions
 from langchain_adk.models.llm_response import LlmResponse
 from langchain_adk.models.part import Content
-
 
 # ---------------------------------------------------------------------------
 # EventType
@@ -31,6 +30,7 @@ from langchain_adk.models.part import Content
 class EventType(str, Enum):
     """All possible event types emitted during agent execution."""
 
+    USER_MESSAGE = "user_message"
     AGENT_START = "agent_start"
     AGENT_END = "agent_end"
     THOUGHT = "thought"
@@ -87,11 +87,11 @@ class Event(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc).timestamp()
     )
     invocation_id: str = ""
-    session_id: Optional[str] = None
+    session_id: str | None = None
     author: str = ""
-    agent_name: Optional[str] = None
+    agent_name: str | None = None
     branch: str = ""
-    partial: Optional[bool] = None
+    partial: bool | None = None
     content: Content = Field(default_factory=Content)
     actions: EventActions = Field(default_factory=EventActions)
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -171,7 +171,7 @@ class FinalAnswerEvent(Event):
 
     type: EventType = EventType.FINAL_ANSWER
     scratchpad: str = ""
-    llm_response: Optional[LlmResponse] = None
+    llm_response: LlmResponse | None = None
 
 
 class ToolCallEvent(Event):
@@ -180,7 +180,7 @@ class ToolCallEvent(Event):
     type: EventType = EventType.TOOL_CALL
     tool_name: str = ""
     tool_input: Any = None
-    llm_response: Optional[LlmResponse] = None
+    llm_response: LlmResponse | None = None
 
 
 class ToolResultEvent(Event):
@@ -195,7 +195,7 @@ class ToolResultEvent(Event):
 
     type: EventType = EventType.TOOL_RESULT
     tool_name: str = ""
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class ErrorEvent(Event):
@@ -203,4 +203,4 @@ class ErrorEvent(Event):
 
     type: EventType = EventType.ERROR
     message: str = ""
-    exception_type: Optional[str] = None
+    exception_type: str | None = None

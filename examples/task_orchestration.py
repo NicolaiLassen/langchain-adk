@@ -10,9 +10,7 @@ from __future__ import annotations
 
 import asyncio
 
-from langchain_adk.agents.llm_agent import LlmAgent
-from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import FinalAnswerEvent, ToolCallEvent
+from langchain_adk import LlmAgent, InvocationContext, FinalAnswerEvent, ToolCallEvent
 from langchain_adk.planners.task_planner import ManageTasksTool
 from langchain_adk.prompts.catalog import build_system_prompt
 from langchain_adk.prompts.context import PromptContext
@@ -64,7 +62,7 @@ async def main() -> None:
 
     print(f"Agent: {agent.name}\n{'='*40}")
 
-    async for event in agent.run(
+    async for event in agent.astream(
         "Set up a 3-step plan to launch a website: design, develop, deploy.",
         ctx=ctx,
     ):

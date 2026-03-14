@@ -12,10 +12,7 @@ import asyncio
 
 from langchain_core.tools import tool
 
-from langchain_adk.agents.llm_agent import LlmAgent
-from langchain_adk.agents.parallel_agent import ParallelAgent
-from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import FinalAnswerEvent, ToolCallEvent, ToolResultEvent
+from langchain_adk import LlmAgent, ParallelAgent, InvocationContext, FinalAnswerEvent, ToolCallEvent, ToolResultEvent
 
 
 # --- Simulated data sources ---
@@ -95,7 +92,7 @@ async def main() -> None:
     print(f"Running: {parallel.name}\n{'=' * 50}")
     print("(3 agents researching in parallel)\n")
 
-    async for event in parallel.run("AI agents", ctx=ctx):
+    async for event in parallel.astream("AI agents", ctx=ctx):
         if isinstance(event, ToolCallEvent):
             print(f"  [{event.agent_name}] TOOL CALL: {event.tool_name}({event.tool_input})")
         elif isinstance(event, ToolResultEvent):

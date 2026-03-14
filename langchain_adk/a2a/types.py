@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import uuid
 from enum import Enum
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -35,34 +35,34 @@ class A2AModel(BaseModel):
 class TextPart(A2AModel):
     kind: Literal["text"] = "text"
     text: str
-    metadata: Optional[dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 class FileWithBytes(A2AModel):
     bytes: str  # base64
-    mime_type: Optional[str] = None
-    name: Optional[str] = None
+    mime_type: str | None = None
+    name: str | None = None
 
 
 class FileWithUri(A2AModel):
     uri: str
-    mime_type: Optional[str] = None
-    name: Optional[str] = None
+    mime_type: str | None = None
+    name: str | None = None
 
 
 class FilePart(A2AModel):
     kind: Literal["file"] = "file"
-    file: Union[FileWithBytes, FileWithUri]
-    metadata: Optional[dict[str, Any]] = None
+    file: FileWithBytes | FileWithUri
+    metadata: dict[str, Any] | None = None
 
 
 class DataPart(A2AModel):
     kind: Literal["data"] = "data"
     data: dict[str, Any]
-    metadata: Optional[dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
-Part = Union[TextPart, FilePart, DataPart]
+Part = TextPart | FilePart | DataPart
 
 
 # ---------------------------------------------------------------------------
@@ -80,10 +80,10 @@ class Message(A2AModel):
     role: Role
     parts: list[Part]
     kind: Literal["message"] = "message"
-    context_id: Optional[str] = None
-    task_id: Optional[str] = None
-    reference_task_ids: Optional[list[str]] = None
-    metadata: Optional[dict[str, Any]] = None
+    context_id: str | None = None
+    task_id: str | None = None
+    reference_task_ids: list[str] | None = None
+    metadata: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -94,9 +94,9 @@ class Message(A2AModel):
 class Artifact(A2AModel):
     artifact_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     parts: list[Part]
-    name: Optional[str] = None
-    description: Optional[str] = None
-    metadata: Optional[dict[str, Any]] = None
+    name: str | None = None
+    description: str | None = None
+    metadata: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -126,8 +126,8 @@ TERMINAL_STATES = {
 
 class TaskStatus(A2AModel):
     state: TaskState
-    message: Optional[Message] = None
-    timestamp: Optional[str] = None
+    message: Message | None = None
+    timestamp: str | None = None
 
 
 class Task(A2AModel):
@@ -135,9 +135,9 @@ class Task(A2AModel):
     context_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     status: TaskStatus
     kind: Literal["task"] = "task"
-    history: Optional[list[Message]] = None
-    artifacts: Optional[list[Artifact]] = None
-    metadata: Optional[dict[str, Any]] = None
+    history: list[Message] | None = None
+    artifacts: list[Artifact] | None = None
+    metadata: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -151,7 +151,7 @@ class TaskStatusUpdateEvent(A2AModel):
     context_id: str
     status: TaskStatus
     final: bool = False
-    metadata: Optional[dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 class TaskArtifactUpdateEvent(A2AModel):
@@ -159,9 +159,9 @@ class TaskArtifactUpdateEvent(A2AModel):
     task_id: str
     context_id: str
     artifact: Artifact
-    append: Optional[bool] = None
-    last_chunk: Optional[bool] = None
-    metadata: Optional[dict[str, Any]] = None
+    append: bool | None = None
+    last_chunk: bool | None = None
+    metadata: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -179,15 +179,15 @@ class AgentSkill(A2AModel):
     name: str
     description: str
     tags: list[str] = Field(default_factory=list)
-    examples: Optional[list[str]] = None
-    input_modes: Optional[list[str]] = None
-    output_modes: Optional[list[str]] = None
+    examples: list[str] | None = None
+    input_modes: list[str] | None = None
+    output_modes: list[str] | None = None
 
 
 class AgentCapabilities(A2AModel):
-    streaming: Optional[bool] = None
-    push_notifications: Optional[bool] = None
-    state_transition_history: Optional[bool] = None
+    streaming: bool | None = None
+    push_notifications: bool | None = None
+    state_transition_history: bool | None = None
 
 
 class AgentInterface(A2AModel):
@@ -209,9 +209,9 @@ class AgentCard(A2AModel):
     default_output_modes: list[str] = Field(
         default_factory=lambda: ["application/json"],
     )
-    provider: Optional[AgentProvider] = None
-    documentation_url: Optional[str] = None
-    icon_url: Optional[str] = None
+    provider: AgentProvider | None = None
+    documentation_url: str | None = None
+    icon_url: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -222,21 +222,21 @@ class AgentCard(A2AModel):
 class JSONRPCError(A2AModel):
     code: int
     message: str
-    data: Optional[Any] = None
+    data: Any | None = None
 
 
 class JSONRPCRequest(A2AModel):
     jsonrpc: Literal["2.0"] = "2.0"
-    id: Union[str, int]
+    id: str | int
     method: str
-    params: Optional[dict[str, Any]] = None
+    params: dict[str, Any] | None = None
 
 
 class JSONRPCResponse(A2AModel):
     jsonrpc: Literal["2.0"] = "2.0"
-    id: Union[str, int]
-    result: Optional[Any] = None
-    error: Optional[JSONRPCError] = None
+    id: str | int
+    result: Any | None = None
+    error: JSONRPCError | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -245,25 +245,25 @@ class JSONRPCResponse(A2AModel):
 
 
 class MessageSendConfiguration(A2AModel):
-    accepted_output_modes: Optional[list[str]] = None
-    history_length: Optional[int] = None
-    blocking: Optional[bool] = None
+    accepted_output_modes: list[str] | None = None
+    history_length: int | None = None
+    blocking: bool | None = None
 
 
 class MessageSendParams(A2AModel):
     message: Message
-    configuration: Optional[MessageSendConfiguration] = None
-    metadata: Optional[dict[str, Any]] = None
+    configuration: MessageSendConfiguration | None = None
+    metadata: dict[str, Any] | None = None
 
 
 class TaskQueryParams(A2AModel):
     id: str
-    history_length: Optional[int] = None
+    history_length: int | None = None
 
 
 class TaskIdParams(A2AModel):
     id: str
-    metadata: Optional[dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------

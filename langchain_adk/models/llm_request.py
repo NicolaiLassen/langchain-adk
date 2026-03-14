@@ -11,14 +11,12 @@ LangChain internals and makes the full request loggable and testable.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:
-    from langchain_core.language_models import BaseChatModel
-    from langchain_core.messages import BaseMessage
-    from langchain_core.tools import BaseTool
+    pass
 
 
 class LlmRequest(BaseModel):
@@ -53,12 +51,12 @@ class LlmRequest(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    model: Optional[str] = None
+    model: str | None = None
     system_instruction: str = ""
     messages: list[Any] = Field(default_factory=list)
     tools: list[Any] = Field(default_factory=list)
     tools_dict: dict[str, Any] = Field(default_factory=dict, exclude=True)
-    output_schema: Optional[Any] = None
+    output_schema: Any | None = None
     config: dict[str, Any] = Field(default_factory=dict)
 
     def add_tool(self, tool: Any) -> None:

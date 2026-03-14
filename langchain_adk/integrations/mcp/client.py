@@ -6,7 +6,7 @@ Uses a fresh session per call. Suitable for request-scoped usage.
 
 from __future__ import annotations
 
-from typing import Any, Union
+from typing import Any
 
 
 class MCPClient:
@@ -19,7 +19,7 @@ class MCPClient:
         or a FastMCP server object for in-memory usage.
     """
 
-    def __init__(self, transport: Union[str, Any]) -> None:
+    def __init__(self, transport: str | Any) -> None:
         self._transport = transport
 
     @property

@@ -10,7 +10,7 @@ Uses the pre-3.11 asyncio approach for Python 3.10 compatibility.
 from __future__ import annotations
 
 import asyncio
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from langchain_adk.agents.base_agent import BaseAgent
 from langchain_adk.context.invocation_context import InvocationContext
@@ -41,7 +41,7 @@ class ParallelAgent(BaseAgent):
         for agent in agents:
             self.register_sub_agent(agent)
 
-    async def run(
+    async def astream(
         self,
         input: str,
         *,
@@ -74,7 +74,7 @@ class ParallelAgent(BaseAgent):
                 branch_suffix=f"{self.name}.{agent.name}",
             )
             try:
-                async for event in agent.run_with_callbacks(input, ctx=child_ctx):
+                async for event in agent._run_with_callbacks(input, ctx=child_ctx):
                     resume = asyncio.Event()
                     await queue.put((event, resume))
                     # Wait until the consumer yields this event before continuing

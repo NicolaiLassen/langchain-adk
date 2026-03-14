@@ -10,13 +10,17 @@ Uses an enum constraint on agent_name to prevent LLMs from hallucinating invalid
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Type
+from typing import TYPE_CHECKING
 
 from langchain_core.tools import BaseTool
-from pydantic import BaseModel, Field, create_model
+from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
     from langchain_adk.agents.base_agent import BaseAgent
+
+# Sentinel prefix — LlmAgent intercepts tool results starting with this
+# to emit EventActions.transfer_to_agent.
+TRANSFER_SENTINEL = "__TRANSFER_TO__"
 
 
 def make_transfer_tool(available_agents: list[BaseAgent]) -> BaseTool:
@@ -34,7 +38,7 @@ def make_transfer_tool(available_agents: list[BaseAgent]) -> BaseTool:
     -------
     BaseTool
         A LangChain BaseTool that signals a transfer via the
-        __TRANSFER_TO__ sentinel in its return value.
+        ``TRANSFER_SENTINEL`` prefix in its return value.
 
     Raises
     ------
@@ -69,12 +73,12 @@ def make_transfer_tool(available_agents: list[BaseAgent]) -> BaseTool:
             "Transfer the conversation to a specialized agent. "
             "Use this when another agent is better suited to handle the request."
         )
-        args_schema: Type[BaseModel] = TransferInput
+        args_schema: type[BaseModel] = TransferInput
 
         def _run(self, agent_name: str, reason: str = "") -> str:
             """Return the transfer sentinel string."""
             # Return sentinel - LlmAgent intercepts this
-            return f"__TRANSFER_TO__{agent_name}"
+            return f"{TRANSFER_SENTINEL}{agent_name}"
 
         async def _arun(self, agent_name: str, reason: str = "") -> str:
             """Async version of _run."""

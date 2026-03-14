@@ -7,7 +7,7 @@ its final answer is returned as the tool result.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Type
+from typing import TYPE_CHECKING, Any
 
 from langchain_core.callbacks import AsyncCallbackManagerForToolRun
 from langchain_core.tools import BaseTool
@@ -43,11 +43,11 @@ class AgentTool(BaseTool):
 
     name: str
     description: str
-    args_schema: Type[BaseModel] = AgentToolInput
+    args_schema: type[BaseModel] = AgentToolInput
     skip_summarization: bool = False
 
     # Injected at runtime by LlmAgent before tool execution
-    _ctx: Optional[Any] = None
+    _ctx: Any | None = None
 
     def __init__(self, agent: BaseAgent, *, skip_summarization: bool = False) -> None:
         super().__init__(
@@ -76,7 +76,7 @@ class AgentTool(BaseTool):
     async def _arun(
         self,
         request: str,
-        run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
+        run_manager: AsyncCallbackManagerForToolRun | None = None,
         **kwargs: Any,
     ) -> str:
         """Run the wrapped agent asynchronously and return its final answer.
@@ -101,7 +101,7 @@ class AgentTool(BaseTool):
         from langchain_adk.events.event import FinalAnswerEvent
 
         agent = object.__getattribute__(self, "_agent")
-        ctx: Optional[InvocationContext] = object.__getattribute__(self, "_ctx")
+        ctx: InvocationContext | None = object.__getattribute__(self, "_ctx")
 
         if ctx is None:
             raise RuntimeError(
@@ -111,8 +111,8 @@ class AgentTool(BaseTool):
 
         child_ctx = ctx.derive(agent_name=agent.name)
 
-        final_answer: Optional[str] = None
-        async for event in agent.run(request, ctx=child_ctx):
+        final_answer: str | None = None
+        async for event in agent.astream(request, ctx=child_ctx):
             if isinstance(event, FinalAnswerEvent):
                 final_answer = event.text
 

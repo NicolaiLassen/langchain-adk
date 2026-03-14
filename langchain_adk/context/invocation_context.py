@@ -7,13 +7,13 @@ and how the run is configured (streaming mode, call limits).
 
 from __future__ import annotations
 
-from typing import Any, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:
-    from langchain_adk.agents.run_config import RunConfig
+    from langchain_adk.sessions.session import Session
 
 
 class InvocationContext(BaseModel):
@@ -42,6 +42,9 @@ class InvocationContext(BaseModel):
         Mutable key-value store for cross-agent state within one run.
         Agents may read/write this freely; changes are not persisted
         automatically - the Runner handles persistence.
+    session : Session, optional
+        The session this invocation belongs to. Provides access to
+        conversation history (events) and persisted state for multi-turn.
     run_config : RunConfig, optional
         Per-run configuration (streaming mode, LLM call limits). Set by
         the Runner before the first agent call.
@@ -58,8 +61,9 @@ class InvocationContext(BaseModel):
     agent_name: str
     branch: str = ""
     state: dict[str, Any] = Field(default_factory=dict)
-    run_config: Optional[Any] = None  # RunConfig; Any to avoid circular import at runtime
-    memory_service: Optional[Any] = None
+    session: Any | None = None  # Session; Any to avoid circular import at runtime
+    run_config: Any | None = None  # RunConfig; Any to avoid circular import at runtime
+    memory_service: Any | None = None
     langchain_run_config: dict[str, Any] = Field(default_factory=dict)
 
     def derive(
@@ -94,6 +98,7 @@ class InvocationContext(BaseModel):
                 "agent_name": agent_name,
                 "branch": new_branch,
                 "state": self.state,       # shared reference - intentional
+                "session": self.session,   # shared reference - intentional
                 "run_config": self.run_config,
                 "langchain_run_config": self.langchain_run_config,
             }

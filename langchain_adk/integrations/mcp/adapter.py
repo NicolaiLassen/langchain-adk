@@ -7,7 +7,7 @@ MCP tool's JSON Schema definition.
 
 from __future__ import annotations
 
-from typing import Any, Optional, Type
+from typing import Any
 
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, create_model
@@ -15,7 +15,7 @@ from pydantic import BaseModel, create_model
 from langchain_adk.integrations.mcp.client import MCPClient
 
 
-def _build_input_model(tool_name: str, json_schema: dict[str, Any]) -> Type[BaseModel]:
+def _build_input_model(tool_name: str, json_schema: dict[str, Any]) -> type[BaseModel]:
     """Build a Pydantic model from a JSON Schema properties dict.
 
     Parameters
@@ -42,7 +42,10 @@ def _build_input_model(tool_name: str, json_schema: dict[str, Any]) -> Type[Base
             fields[field_name] = (field_type, Field(description=description))
         else:
             from pydantic import Field
-            fields[field_name] = (Optional[field_type], Field(default=None, description=description))
+            fields[field_name] = (
+                field_type | None,
+                Field(default=None, description=description),
+            )
 
     return create_model(f"{tool_name}Input", **fields)
 
@@ -120,7 +123,7 @@ class MCPToolAdapter:
         class WrappedMCPTool(BaseTool):
             name: str = tool_name
             description: str = tool_description
-            args_schema: Type[BaseModel] = input_model
+            args_schema: type[BaseModel] = input_model
 
             def _run(self, **kwargs: Any) -> Any:
                 """Raise an error - WrappedMCPTool is async-only."""

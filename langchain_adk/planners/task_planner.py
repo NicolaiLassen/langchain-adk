@@ -32,8 +32,7 @@ Usage::
 
 from __future__ import annotations
 
-import json
-from typing import Any, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
@@ -44,14 +43,12 @@ from langchain_adk.planners.task_board import (
     apply_task_action,
     initialize_task_board,
     list_task_items,
-    normalize_task_board,
 )
 
 if TYPE_CHECKING:
     from langchain_adk.agents.readonly_context import ReadonlyContext
     from langchain_adk.context.invocation_context import InvocationContext
     from langchain_adk.models.llm_request import LlmRequest
-    from langchain_adk.models.llm_response import LlmResponse
 
 
 # ---------------------------------------------------------------------------
@@ -95,7 +92,7 @@ class TaskPlanner(BasePlanner):
         self,
         readonly_context: ReadonlyContext,
         llm_request: LlmRequest,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Inject current task board status into the system prompt.
 
         Parameters
@@ -160,23 +157,23 @@ class _ManageTasksInput(BaseModel):
             "initialize, list, create, update, complete, remove."
         )
     )
-    task_id: Optional[str] = Field(
+    task_id: str | None = Field(
         default=None,
         description="Task ID (e.g. 't1'). Required for update, complete, remove.",
     )
-    title: Optional[str] = Field(
+    title: str | None = Field(
         default=None,
         description="Task title. Required for create; used to look up tasks by name.",
     )
-    description: Optional[str] = Field(
+    description: str | None = Field(
         default=None,
         description="Task description.",
     )
-    status: Optional[str] = Field(
+    status: str | None = Field(
         default=None,
         description="Task status: pending, in_progress, completed, blocked.",
     )
-    tasks: Optional[list[dict[str, Any]]] = Field(
+    tasks: list[dict[str, Any]] | None = Field(
         default=None,
         description="List of tasks for initialize action.",
     )
@@ -204,7 +201,7 @@ class ManageTasksTool(BaseTool):
     args_schema: type[BaseModel] = _ManageTasksInput
 
     planner: Any = None
-    _ctx: Optional[Any] = None
+    _ctx: Any | None = None
 
     def inject_context(self, ctx: InvocationContext) -> None:
         """Inject the invocation context before tool execution.
@@ -223,11 +220,11 @@ class ManageTasksTool(BaseTool):
     async def _arun(
         self,
         action: str,
-        task_id: Optional[str] = None,
-        title: Optional[str] = None,
-        description: Optional[str] = None,
-        status: Optional[str] = None,
-        tasks: Optional[list[dict[str, Any]]] = None,
+        task_id: str | None = None,
+        title: str | None = None,
+        description: str | None = None,
+        status: str | None = None,
+        tasks: list[dict[str, Any]] | None = None,
         **kwargs: Any,
     ) -> str:
         """Execute a task board action asynchronously.
@@ -253,11 +250,11 @@ class ManageTasksTool(BaseTool):
         str
             A human-readable result message for the LLM.
         """
-        ctx: Optional[Any] = object.__getattribute__(self, "_ctx")
+        ctx: Any | None = object.__getattribute__(self, "_ctx")
         if ctx is None:
             return "Error: manage_tasks tool has no context. Call inject_context(ctx) first."
 
-        planner: Optional[TaskPlanner] = object.__getattribute__(self, "planner")
+        planner: TaskPlanner | None = object.__getattribute__(self, "planner")
         if planner is not None:
             board = planner._ensure_board(ctx)
         else:

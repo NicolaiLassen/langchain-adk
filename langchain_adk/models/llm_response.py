@@ -11,7 +11,7 @@ model version, and tool-call metadata alongside the event payload.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -56,9 +56,9 @@ class LlmResponse(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     text: str = ""
-    model_version: Optional[str] = None
-    input_tokens: Optional[int] = None
-    output_tokens: Optional[int] = None
+    model_version: str | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
     tool_calls: list[dict[str, Any]] = Field(default_factory=list)
     partial: bool = False
     raw_message: Any = None

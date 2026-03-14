@@ -12,10 +12,8 @@ import asyncio
 
 from langchain_core.tools import tool
 
-from langchain_adk.agents.llm_agent import LlmAgent
-from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import FinalAnswerEvent, ThoughtEvent, ToolCallEvent, ToolResultEvent
-from langchain_adk.planners.plan_re_act_planner import PlanReActPlanner
+from langchain_adk import LlmAgent, InvocationContext, FinalAnswerEvent, ToolCallEvent, ToolResultEvent, PlanReActPlanner
+from langchain_adk.events.event import ThoughtEvent
 
 
 # --- Research tools ---
@@ -87,7 +85,7 @@ async def main() -> None:
 
     print(f"Query: {query}\n{'=' * 60}\n")
 
-    async for event in agent.run(query, ctx=ctx):
+    async for event in agent.astream(query, ctx=ctx):
         if isinstance(event, ThoughtEvent):
             print(f"[THOUGHT] {event.text[:200]}")
         elif isinstance(event, ToolCallEvent):

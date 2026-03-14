@@ -9,11 +9,11 @@ The escalate signal is the canonical way for a sub-agent to signal completion.
 
 from __future__ import annotations
 
-from typing import AsyncIterator, Callable, Optional
+from collections.abc import AsyncIterator, Callable
 
 from langchain_adk.agents.base_agent import BaseAgent
 from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import Event, ErrorEvent
+from langchain_adk.events.event import ErrorEvent, Event
 
 
 class LoopAgent(BaseAgent):
@@ -46,8 +46,8 @@ class LoopAgent(BaseAgent):
         agents: list[BaseAgent],
         *,
         description: str = "",
-        max_iterations: Optional[int] = 10,
-        should_continue: Optional[Callable[[Event], bool]] = None,
+        max_iterations: int | None = 10,
+        should_continue: Callable[[Event], bool] | None = None,
     ) -> None:
         super().__init__(name=name, description=description)
         for agent in agents:
@@ -55,7 +55,7 @@ class LoopAgent(BaseAgent):
         self.max_iterations = max_iterations
         self.should_continue = should_continue
 
-    async def run(
+    async def astream(
         self,
         input: str,
         *,
@@ -79,7 +79,7 @@ class LoopAgent(BaseAgent):
             return
 
         iteration = 0
-        last_event: Optional[Event] = None
+        last_event: Event | None = None
 
         while True:
             if self.max_iterations is not None and iteration >= self.max_iterations:
@@ -96,7 +96,7 @@ class LoopAgent(BaseAgent):
             for sub_agent in self.sub_agents:
                 child_ctx = ctx.derive(agent_name=sub_agent.name)
 
-                async for event in sub_agent.run_with_callbacks(input, ctx=child_ctx):
+                async for event in sub_agent._run_with_callbacks(input, ctx=child_ctx):
                     yield event
                     last_event = event
 

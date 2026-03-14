@@ -12,9 +12,7 @@ import asyncio
 
 from langchain_core.tools import tool
 
-from langchain_adk.agents.llm_agent import LlmAgent
-from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import FinalAnswerEvent, ToolCallEvent, ToolResultEvent
+from langchain_adk import LlmAgent, InvocationContext, FinalAnswerEvent, ToolCallEvent, ToolResultEvent
 
 
 # --- Ask-human tool ---
@@ -78,7 +76,7 @@ async def main() -> None:
 
     print(f"User: {query}\n")
 
-    async for event in agent.run(query, ctx=ctx):
+    async for event in agent.astream(query, ctx=ctx):
         if isinstance(event, ToolCallEvent):
             if event.tool_name != "ask_human":
                 print(f"\n[TOOL CALL] {event.tool_name}({event.tool_input})")

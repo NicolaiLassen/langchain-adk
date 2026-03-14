@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import AsyncIterator, Union
+from collections.abc import AsyncIterator
 
 from langchain_adk.a2a.types import (
     Artifact,
@@ -25,7 +25,7 @@ async def events_to_a2a_stream(
     *,
     task_id: str,
     context_id: str,
-) -> AsyncIterator[Union[TaskStatusUpdateEvent, TaskArtifactUpdateEvent]]:
+) -> AsyncIterator[TaskStatusUpdateEvent | TaskArtifactUpdateEvent]:
     """Convert SDK event stream into A2A-compliant streaming events.
 
     Yields TaskStatusUpdateEvent for status changes and

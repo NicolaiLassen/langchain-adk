@@ -6,7 +6,7 @@ creating a processing pipeline.
 
 from __future__ import annotations
 
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from langchain_adk.agents.base_agent import BaseAgent
 from langchain_adk.context.invocation_context import InvocationContext
@@ -39,7 +39,7 @@ class SequentialAgent(BaseAgent):
         for agent in agents:
             self.register_sub_agent(agent)
 
-    async def run(
+    async def astream(
         self,
         input: str,
         *,
@@ -67,7 +67,7 @@ class SequentialAgent(BaseAgent):
         for sub_agent in self.sub_agents:
             child_ctx = ctx.derive(agent_name=sub_agent.name)
 
-            async for event in sub_agent.run_with_callbacks(current_input, ctx=child_ctx):
+            async for event in sub_agent._run_with_callbacks(current_input, ctx=child_ctx):
                 yield event
 
                 # Stop pipeline if sub-agent escalates
