@@ -104,6 +104,40 @@
     background-color: #e6e9ef;
 }
 
+/* Buttons */
+.md-typeset .md-button--primary {
+    background-color: #89b4fa;
+    border-color: #89b4fa;
+    color: #1e1e2e;
+}
+
+.md-typeset .md-button--primary:hover {
+    background-color: #b4d0fb;
+    border-color: #b4d0fb;
+    color: #1e1e2e;
+}
+
+.md-typeset .md-button:not(.md-button--primary) {
+    border-color: #45475a;
+    color: #cdd6f4;
+}
+
+.md-typeset .md-button:not(.md-button--primary):hover {
+    border-color: #89b4fa;
+    color: #89b4fa;
+}
+
+[data-md-color-scheme="default"] .md-typeset .md-button--primary {
+    background-color: #1e66f5;
+    border-color: #1e66f5;
+    color: #eff1f5;
+}
+
+[data-md-color-scheme="default"] .md-typeset .md-button:not(.md-button--primary) {
+    border-color: #ccd0da;
+    color: #4c4f69;
+}
+
 /* Hero on home page */
 .md-main .hero-section {
     padding: 60px 0 40px;
