@@ -10,15 +10,7 @@ from langchain_core.tools import tool
 
 from langchain_adk.agents.react_agent import ReActAgent, ReActStep
 from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import (
-    ErrorEvent,
-    FinalAnswerEvent,
-    ThoughtEvent,
-    ToolCallEvent,
-    ToolResultEvent,
-    ObservationEvent,
-    ActionEvent,
-)
+from langchain_adk.events.event import Event, EventType
 
 
 class FakeStructuredModel(BaseChatModel):
@@ -82,8 +74,13 @@ async def test_react_direct_answer():
 
     events = [e async for e in agent.astream("what is 6*7?", ctx=_ctx())]
 
-    thoughts = [e for e in events if isinstance(e, ThoughtEvent) and not e.partial]
-    finals = [e for e in events if isinstance(e, FinalAnswerEvent) and not e.partial]
+    thoughts = [
+        e for e in events
+        if e.type == EventType.AGENT_MESSAGE
+        and e.metadata.get("react_step") == "thought"
+        and not e.partial
+    ]
+    finals = [e for e in events if e.is_final_response()]
 
     assert len(thoughts) == 1
     assert "know the answer" in thoughts[0].text
@@ -114,15 +111,18 @@ async def test_react_tool_call_then_answer():
 
     events = [e async for e in agent.astream("look up test_key", ctx=_ctx())]
 
-    tool_calls = [e for e in events if isinstance(e, ToolCallEvent)]
-    tool_results = [e for e in events if isinstance(e, ToolResultEvent)]
-    observations = [e for e in events if isinstance(e, ObservationEvent)]
-    finals = [e for e in events if isinstance(e, FinalAnswerEvent) and not e.partial]
+    tool_calls = [e for e in events if e.has_tool_calls]
+    tool_results = [e for e in events if e.type == EventType.TOOL_RESPONSE]
+    observations = [
+        e for e in events
+        if e.metadata.get("react_step") == "observation"
+    ]
+    finals = [e for e in events if e.is_final_response()]
 
     assert len(tool_calls) == 1
-    assert tool_calls[0].tool_name == "lookup"
+    assert tool_calls[0].tool_calls[0].tool_name == "lookup"
     assert len(tool_results) == 1
-    assert "value_for_test_key" in tool_results[0].text
+    assert "value_for_test_key" in tool_results[0].content.tool_responses[0].result
     assert len(finals) == 1
 
 
@@ -144,7 +144,10 @@ async def test_react_tool_not_found():
 
     events = [e async for e in agent.astream("test", ctx=_ctx())]
 
-    observations = [e for e in events if isinstance(e, ObservationEvent)]
+    observations = [
+        e for e in events
+        if e.metadata.get("react_step") == "observation"
+    ]
     assert len(observations) == 1
     assert "not found" in observations[0].text
 
@@ -162,6 +165,6 @@ async def test_react_max_iterations():
 
     events = [e async for e in agent.astream("loop forever", ctx=_ctx())]
 
-    errors = [e for e in events if isinstance(e, ErrorEvent)]
+    errors = [e for e in events if e.metadata.get("error")]
     assert len(errors) == 1
-    assert "Max iterations" in errors[0].message
+    assert "Max iterations" in errors[0].text

@@ -13,7 +13,8 @@ from collections.abc import AsyncIterator, Callable
 
 from langchain_adk.agents.base_agent import BaseAgent
 from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import ErrorEvent, Event
+from langchain_adk.events.event import Event, EventType
+from langchain_adk.models.part import Content
 
 
 class LoopAgent(BaseAgent):
@@ -26,7 +27,7 @@ class LoopAgent(BaseAgent):
 
     Termination:
       - Any event with actions.escalate = True stops the loop.
-      - max_iterations reached stops the loop (yields an ErrorEvent).
+      - max_iterations reached stops the loop (yields an error event).
       - should_continue callback returning False stops the loop.
 
     Attributes
@@ -83,13 +84,16 @@ class LoopAgent(BaseAgent):
 
         while True:
             if self.max_iterations is not None and iteration >= self.max_iterations:
-                yield ErrorEvent(
+                yield Event(
+                    type=EventType.AGENT_MESSAGE,
                     session_id=ctx.session_id,
                     agent_name=self.name,
-                    message=(
+                    author=self.name,
+                    content=Content.from_text(
                         f"LoopAgent '{self.name}' reached max_iterations "
                         f"({self.max_iterations}) without escalating."
                     ),
+                    metadata={"error": True},
                 )
                 return
 

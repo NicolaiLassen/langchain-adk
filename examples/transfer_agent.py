@@ -12,7 +12,8 @@ import asyncio
 
 from langchain_core.tools import tool
 
-from langchain_adk import LlmAgent, InvocationContext, FinalAnswerEvent, ToolCallEvent, ToolResultEvent
+from langchain_adk import LlmAgent, InvocationContext
+from langchain_adk.events.event import Event, EventType
 from langchain_adk.tools.transfer_tool import make_transfer_tool
 
 
@@ -104,11 +105,11 @@ async def main() -> None:
         print("-" * 50)
 
         async for event in triage_agent.astream(query, ctx=ctx):
-            if isinstance(event, ToolCallEvent):
+            if event.has_tool_calls:
                 print(f"  [TOOL] {event.tool_name}({event.tool_input})")
-            elif isinstance(event, ToolResultEvent):
+            elif event.type == EventType.TOOL_RESPONSE:
                 print(f"  [RESULT] {event.text}")
-            elif isinstance(event, FinalAnswerEvent):
+            elif event.is_final_response():
                 print(f"  [ANSWER] {event.text}")
 
 

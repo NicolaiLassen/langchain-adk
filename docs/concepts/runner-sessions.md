@@ -26,7 +26,7 @@ async for event in runner.run_async(
     new_message="Hello!",
     run_config=RunConfig(streaming_mode=StreamingMode.SSE),
 ):
-    if isinstance(event, FinalAnswerEvent) and event.partial:
+    if event.type == EventType.AGENT_MESSAGE and event.partial:
         print(event.text, end="", flush=True)
 ```
 

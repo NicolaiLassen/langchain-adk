@@ -11,7 +11,7 @@ from __future__ import annotations
 from langchain_core.tools import BaseTool, StructuredTool
 
 # Sentinel string returned by exit_loop; LlmAgent intercepts this to set
-# EventActions.escalate = True on the emitted ToolResultEvent.
+# EventActions.escalate = True on the emitted TOOL_RESPONSE event.
 EXIT_LOOP_SENTINEL = "__EXIT_LOOP__"
 
 

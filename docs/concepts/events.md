@@ -1,19 +1,72 @@
 # Events
 
-Every agent yields a stream of typed `Event` objects:
+Every agent yields a stream of unified `Event` objects. All events share the same `Event` class and are distinguished by their `type` field using the `EventType` enum.
 
-| Event type | When emitted | Key fields |
+## EventType values
+
+| `EventType` | When emitted | Description |
 |---|---|---|
-| `UserMessageEvent` | User input persisted by Runner | `text` |
-| `AgentStartEvent` | Start of `_run_with_callbacks()` | `agent_name` |
-| `AgentEndEvent` | End of `_run_with_callbacks()` | `agent_name` |
-| `ThoughtEvent` | ReActAgent reasoning step | `text`, `scratchpad` |
-| `ActionEvent` | ReActAgent action decision | `action`, `action_input` |
-| `ObservationEvent` | ReActAgent tool result | `text`, `tool_name` |
-| `ToolCallEvent` | LlmAgent tool invocation | `tool_name`, `tool_input`, `llm_response`, `metadata.tool_call_id` |
-| `ToolResultEvent` | Tool execution result | `tool_name`, `text`, `error`, `metadata.tool_call_id` |
-| `FinalAnswerEvent` | Agent's final response | `text`, `data`, `scratchpad`, `llm_response`, `partial` |
-| `ErrorEvent` | Unhandled exception | `message`, `exception_type` |
+| `USER_MESSAGE` | User input persisted by Runner | The user's message at the start of a turn |
+| `AGENT_MESSAGE` | Agent response | Final answers, thoughts, tool call requests, or partial streaming chunks |
+| `TOOL_RESPONSE` | Tool execution result | The result returned by a tool after execution |
+| `AGENT_START` | Start of `_run_with_callbacks()` | Marks the beginning of an agent's execution |
+| `AGENT_END` | End of `_run_with_callbacks()` | Marks the end of an agent's execution |
+
+## Convenience properties
+
+| Property | Type | Description |
+|---|---|---|
+| `event.text` | `str` | Concatenated text from all TextParts in the event's content |
+| `event.data` | `dict \| None` | First DataPart's data dict, or `None` |
+| `event.tool_name` | `str \| None` | Name of the tool (for `TOOL_RESPONSE` events) |
+| `event.tool_input` | `dict \| None` | Input arguments passed to the tool |
+| `event.tool_calls` | `list[dict]` | List of tool call requests from the LLM response |
+| `event.has_tool_calls` | `bool` | `True` if the event contains tool call requests |
+| `event.error` | `str \| None` | Error message, if the event represents an error |
+
+## Key methods
+
+| Method | Description |
+|---|---|
+| `event.is_final_response()` | Returns `True` if this is the agent's final answer (an `AGENT_MESSAGE` with no tool calls and not a partial streaming chunk) |
+| `event.to_langchain_message()` | Converts the event to the corresponding LangChain message type (`HumanMessage`, `AIMessage`, `ToolMessage`, etc.) |
+| `Event.from_langchain_message(msg)` | Class method that creates an `Event` from a LangChain message |
+
+## Checking event types
+
+Use the `EventType` enum and convenience methods instead of `isinstance` checks:
+
+```python
+from langchain_adk.events.event import Event, EventType
+
+# Check for final response (replaces isinstance(event, FinalAnswerEvent))
+if event.is_final_response():
+    print(event.text)
+
+# Check for tool calls (replaces isinstance(event, ToolCallEvent))
+if event.has_tool_calls:
+    for tc in event.tool_calls:
+        print(f"Calling {tc['name']} with {tc['args']}")
+
+# Check for tool results (replaces isinstance(event, ToolResultEvent))
+if event.type == EventType.TOOL_RESPONSE:
+    print(f"{event.tool_name} returned: {event.text}")
+
+# Check for agent lifecycle
+if event.type == EventType.AGENT_START:
+    print(f"Agent {event.agent_name} starting")
+```
+
+## Metadata conventions
+
+Events use the `metadata` dict for additional context. Common keys:
+
+| Key | Description |
+|---|---|
+| `react_step` | The ReAct loop iteration number |
+| `error` | Error message string when something went wrong |
+| `exception_type` | The Python exception class name (e.g. `"ValueError"`) |
+| `scratchpad` | Internal reasoning or planning notes from the agent |
 
 ## EventActions
 
@@ -31,7 +84,7 @@ class EventActions(BaseModel):
 
 ## LlmResponse
 
-`FinalAnswerEvent` and `ToolCallEvent` carry an `llm_response: LlmResponse` field with token usage and model version:
+`AGENT_MESSAGE` events may carry an `llm_response: LlmResponse` field with token usage and model version:
 
 ```python
 event.llm_response.input_tokens

@@ -1,7 +1,7 @@
 """ReActAgent - structured Reason+Act loop.
 
 Uses with_structured_output() to get a typed ReActStep per iteration.
-SSE streaming = token-level partial ThoughtEvents. No streaming = complete events only.
+SSE streaming = token-level partial events. No streaming = complete events only.
 """
 
 from __future__ import annotations
@@ -15,17 +15,8 @@ from pydantic import BaseModel, Field
 
 from langchain_adk.agents.base_agent import BaseAgent
 from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import (
-    ActionEvent,
-    ErrorEvent,
-    Event,
-    FinalAnswerEvent,
-    ObservationEvent,
-    ThoughtEvent,
-    ToolCallEvent,
-    ToolResultEvent,
-)
-from langchain_adk.models.part import Content
+from langchain_adk.events.event import Event, EventType
+from langchain_adk.models.part import Content, ToolCallPart, ToolResponsePart
 
 
 class ReActStep(BaseModel):
@@ -81,8 +72,7 @@ class ReActAgent(BaseAgent):
 
     Uses LangChain ``with_structured_output()`` to enforce a typed
     ``ReActStep`` at every iteration. SSE streaming emits token-level
-    partial ``ThoughtEvent`` objects; without streaming only complete
-    events are yielded.
+    partial events; without streaming only complete events are yielded.
 
     Attributes
     ----------
@@ -129,15 +119,7 @@ class ReActAgent(BaseAgent):
         messages: list[BaseMessage],
         ctx: InvocationContext,
     ) -> AsyncIterator[Event]:
-        """Invoke the LLM for one ReAct step and yield all events.
-
-        When SSE streaming is on, yields partial ``ThoughtEvent`` and
-        ``FinalAnswerEvent`` as the JSON fields build up token by token,
-        followed by the complete events. When streaming is off, yields
-        only complete events.
-
-        After the step, executes tool calls and yields tool events.
-        """
+        """Invoke the LLM for one ReAct step and yield all events."""
         streaming = self.is_streaming(ctx)
 
         # --- Get the step (streaming or not) ---
@@ -154,23 +136,32 @@ class ReActAgent(BaseAgent):
                 current_thought = partial.thought or ""
                 if current_thought != last_thought:
                     last_thought = current_thought
-                    yield ThoughtEvent(
+                    yield Event(
+                        type=EventType.AGENT_MESSAGE,
                         session_id=ctx.session_id,
                         agent_name=self.name,
+                        author=self.name,
                         content=Content.from_text(current_thought),
-                        scratchpad=partial.scratchpad or "",
+                        metadata={
+                            "react_step": "thought",
+                            "scratchpad": partial.scratchpad or "",
+                        },
                         partial=True,
+                        turn_complete=False,
                     )
 
                 current_answer = partial.answer or ""
                 if current_answer and current_answer != last_answer:
                     last_answer = current_answer
-                    yield FinalAnswerEvent(
+                    yield Event(
+                        type=EventType.AGENT_MESSAGE,
                         session_id=ctx.session_id,
                         agent_name=self.name,
+                        author=self.name,
                         content=Content.from_text(current_answer),
-                        scratchpad=partial.scratchpad or "",
+                        metadata={"scratchpad": partial.scratchpad or ""},
                         partial=True,
+                        turn_complete=False,
                     )
 
             if step is None:
@@ -179,65 +170,106 @@ class ReActAgent(BaseAgent):
             step = await self._llm.ainvoke(messages)
 
         # --- Complete thought ---
-        yield ThoughtEvent(
+        yield Event(
+            type=EventType.AGENT_MESSAGE,
             session_id=ctx.session_id,
             agent_name=self.name,
+            author=self.name,
             content=Content.from_text(step.thought),
-            scratchpad=step.scratchpad,
+            metadata={
+                "react_step": "thought",
+                "scratchpad": step.scratchpad,
+            },
             partial=False,
         )
 
         # --- Final answer ---
         if step.is_final:
-            yield FinalAnswerEvent(
+            yield Event(
+                type=EventType.AGENT_MESSAGE,
                 session_id=ctx.session_id,
                 agent_name=self.name,
+                author=self.name,
                 content=Content.from_text(step.answer),
-                scratchpad=step.scratchpad,
+                metadata={"scratchpad": step.scratchpad},
             )
             return
 
         # --- Tool call ---
-        yield ActionEvent(
+        yield Event(
+            type=EventType.AGENT_MESSAGE,
             session_id=ctx.session_id,
             agent_name=self.name,
-            action=step.action,
-            action_input=step.action_input,
+            author=self.name,
+            metadata={
+                "react_step": "action",
+                "action": step.action,
+                "action_input": step.action_input,
+            },
         )
 
         tool = self._tools.get(step.action)
         if tool is None:
             observation = f"Error: tool '{step.action}' not found."
         else:
-            yield ToolCallEvent(
+            yield Event(
+                type=EventType.AGENT_MESSAGE,
                 session_id=ctx.session_id,
                 agent_name=self.name,
-                tool_name=step.action,
-                tool_input=step.action_input,
+                author=self.name,
+                content=Content(
+                    parts=[
+                        ToolCallPart(
+                            tool_call_id=f"react_{step.action}",
+                            tool_name=step.action,
+                            args={"input": step.action_input},
+                        )
+                    ]
+                ),
             )
             try:
                 result = await tool.ainvoke(step.action_input)
                 observation = str(result)
-                yield ToolResultEvent(
+                yield Event(
+                    type=EventType.TOOL_RESPONSE,
                     session_id=ctx.session_id,
                     agent_name=self.name,
-                    tool_name=step.action,
-                    content=Content.from_text(observation),
+                    author=self.name,
+                    content=Content(
+                        parts=[
+                            ToolResponsePart(
+                                tool_call_id=f"react_{step.action}",
+                                tool_name=step.action,
+                                result=observation,
+                            )
+                        ]
+                    ),
                 )
             except Exception as exc:
                 observation = f"Error: {exc}"
-                yield ToolResultEvent(
+                yield Event(
+                    type=EventType.TOOL_RESPONSE,
                     session_id=ctx.session_id,
                     agent_name=self.name,
-                    tool_name=step.action,
-                    error=str(exc),
+                    author=self.name,
+                    content=Content(
+                        parts=[
+                            ToolResponsePart(
+                                tool_call_id=f"react_{step.action}",
+                                tool_name=step.action,
+                                error=str(exc),
+                            )
+                        ]
+                    ),
                 )
 
-        yield ObservationEvent(
+        yield Event(
+            type=EventType.AGENT_MESSAGE,
             session_id=ctx.session_id,
             agent_name=self.name,
+            author=self.name,
             content=Content.from_text(observation),
-            tool_name=step.action,
+            metadata={"react_step": "observation", "tool_name": step.action},
         )
 
         messages.append(AIMessage(content=str(step.model_dump())))
@@ -258,19 +290,29 @@ class ReActAgent(BaseAgent):
             try:
                 async for event in self._invoke_step(messages, ctx):
                     yield event
-                    if isinstance(event, FinalAnswerEvent) and not event.partial:
+                    if event.is_final_response():
                         return
             except Exception as exc:
-                yield ErrorEvent(
+                yield Event(
+                    type=EventType.AGENT_MESSAGE,
                     session_id=ctx.session_id,
                     agent_name=self.name,
-                    message=str(exc),
-                    exception_type=type(exc).__name__,
+                    author=self.name,
+                    content=Content.from_text(str(exc)),
+                    metadata={
+                        "error": True,
+                        "exception_type": type(exc).__name__,
+                    },
                 )
                 return
 
-        yield ErrorEvent(
+        yield Event(
+            type=EventType.AGENT_MESSAGE,
             session_id=ctx.session_id,
             agent_name=self.name,
-            message=f"Max iterations ({self.max_iterations}) reached without a final answer.",
+            author=self.name,
+            content=Content.from_text(
+                f"Max iterations ({self.max_iterations}) reached without a final answer."
+            ),
+            metadata={"error": True},
         )

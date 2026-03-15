@@ -54,7 +54,28 @@ class FilePart(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
-Part = TextPart | DataPart | FilePart
+class ToolCallPart(BaseModel):
+    """A tool/function call part — the agent wants to invoke a tool."""
+
+    type: Literal["tool_call"] = "tool_call"
+    tool_call_id: str
+    tool_name: str
+    args: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ToolResponsePart(BaseModel):
+    """A tool/function response part — result from a tool execution."""
+
+    type: Literal["tool_response"] = "tool_response"
+    tool_call_id: str
+    tool_name: str
+    result: str = ""
+    error: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+Part = TextPart | DataPart | FilePart | ToolCallPart | ToolResponsePart
 
 
 class Content(BaseModel):
@@ -95,3 +116,18 @@ class Content(BaseModel):
             if isinstance(p, DataPart):
                 return p.data
         return None
+
+    @property
+    def tool_calls(self) -> list[ToolCallPart]:
+        """Return all ToolCallPart entries."""
+        return [p for p in self.parts if isinstance(p, ToolCallPart)]
+
+    @property
+    def tool_responses(self) -> list[ToolResponsePart]:
+        """Return all ToolResponsePart entries."""
+        return [p for p in self.parts if isinstance(p, ToolResponsePart)]
+
+    @property
+    def has_tool_calls(self) -> bool:
+        """Return True if content contains any tool call parts."""
+        return any(isinstance(p, ToolCallPart) for p in self.parts)

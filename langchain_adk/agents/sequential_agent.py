@@ -10,13 +10,13 @@ from collections.abc import AsyncIterator
 
 from langchain_adk.agents.base_agent import BaseAgent
 from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import Event, FinalAnswerEvent
+from langchain_adk.events.event import Event
 
 
 class SequentialAgent(BaseAgent):
     """Runs a list of sub-agents sequentially, chaining their output.
 
-    The output (FinalAnswerEvent.text) of each agent becomes the input
+    The output (final event's text) of each agent becomes the input
     to the next. All events from all agents are yielded upstream.
 
     If a sub-agent emits an event with `actions.escalate = True`, the
@@ -75,5 +75,5 @@ class SequentialAgent(BaseAgent):
                     return
 
                 # Chain final answer to next agent's input
-                if isinstance(event, FinalAnswerEvent):
+                if event.is_final_response():
                     current_input = event.text

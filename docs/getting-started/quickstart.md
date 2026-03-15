@@ -8,7 +8,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.tools import tool
 
 from langchain_adk import LlmAgent, Runner, InMemorySessionService
-from langchain_adk.events.event import FinalAnswerEvent
+from langchain_adk.events.event import Event, EventType
 
 @tool
 def get_weather(city: str) -> str:
@@ -34,7 +34,7 @@ async def main():
         session_id="session-1",
         new_message="What's the weather in Copenhagen and Berlin?",
     ):
-        if isinstance(event, FinalAnswerEvent):
+        if event.is_final_response():
             print(event.text)
 
 asyncio.run(main())

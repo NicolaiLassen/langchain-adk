@@ -4,7 +4,7 @@ LangChain's ``BaseChatModel.ainvoke()`` returns an ``AIMessage``. LlmResponse
 normalises that into a stable, serialisable Pydantic model so that agents,
 tools, and events never need to import LangChain types directly.
 
-Events that are direct model outputs (``FinalAnswerEvent``, ``ToolCallEvent``)
+Events that are direct model outputs (AGENT_MESSAGE events with tool calls)
 carry an optional ``llm_response`` field of this type, preserving token usage,
 model version, and tool-call metadata alongside the event payload.
 """

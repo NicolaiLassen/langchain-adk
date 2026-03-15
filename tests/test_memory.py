@@ -5,13 +5,14 @@ from langchain_adk.memory.memory import Memory
 from langchain_adk.memory.memory_store import SearchMemoryResponse
 from langchain_adk.memory.in_memory_store import InMemoryMemoryStore
 from langchain_adk.sessions.session import Session
-from langchain_adk.events.event import FinalAnswerEvent
+from langchain_adk.events.event import Event, EventType
 from langchain_adk.models.part import Content
 
 
 def _make_session_with_events():
     session = Session(app_name="app", user_id="u1")
-    event = FinalAnswerEvent(
+    event = Event(
+        type=EventType.AGENT_MESSAGE,
         session_id=session.id,
         agent_name="agent",
         content=Content.from_text("The capital of France is Paris."),

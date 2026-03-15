@@ -18,7 +18,7 @@ async def handle_llm_error(
 ) -> LlmResponse | None:
     """Called when an LLM call fails. Return a LlmResponse to recover, or None to propagate."""
     print(f"LLM error: {error}")
-    return None  # yields ErrorEvent
+    return None  # yields an Event with error metadata
 
 async def log_tool(ctx: InvocationContext, name: str, args: dict) -> None:
     print(f"[TOOL] {name}({args})")

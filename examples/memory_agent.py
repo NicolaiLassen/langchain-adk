@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import asyncio
 
-from langchain_adk import LlmAgent, InvocationContext, FinalAnswerEvent, InMemorySessionService
+from langchain_adk import LlmAgent, InvocationContext, InMemorySessionService
+from langchain_adk.events.event import Event, EventType
 from langchain_adk.memory.in_memory_store import InMemoryMemoryStore
 from langchain_adk.memory.memory import Memory
 
@@ -81,7 +82,7 @@ async def main() -> None:
         "What programming language should I use for my new service?",
         ctx=ctx,
     ):
-        if isinstance(event, FinalAnswerEvent):
+        if event.is_final_response():
             print(f"\n[ANSWER] {event.text}")
 
     # Save session to memory for future recall

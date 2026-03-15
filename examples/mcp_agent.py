@@ -16,7 +16,8 @@ import asyncio
 
 from fastmcp import FastMCP
 
-from langchain_adk import LlmAgent, InvocationContext, FinalAnswerEvent, ToolCallEvent, ToolResultEvent
+from langchain_adk import LlmAgent, InvocationContext
+from langchain_adk.events.event import Event, EventType
 from langchain_adk.integrations.mcp import MCPClient, MCPToolAdapter
 
 
@@ -70,11 +71,11 @@ async def main() -> None:
         "What's the weather in Copenhagen and give me a 5-day forecast?",
         ctx=ctx,
     ):
-        if isinstance(event, ToolCallEvent):
+        if event.has_tool_calls:
             print(f"[TOOL CALL] {event.tool_name}({event.tool_input})")
-        elif isinstance(event, ToolResultEvent):
+        elif event.type == EventType.TOOL_RESPONSE:
             print(f"[TOOL RESULT] {event.text or event.error}")
-        elif isinstance(event, FinalAnswerEvent):
+        elif event.is_final_response():
             print(f"\n[ANSWER] {event.text}")
 
 

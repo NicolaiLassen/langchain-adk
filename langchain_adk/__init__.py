@@ -16,7 +16,7 @@ Planners::
 
 Events::
 
-    from langchain_adk.events.event import Event, FinalAnswerEvent
+    from langchain_adk.events.event import Event, EventType
     from langchain_adk.events.event_actions import EventActions
 
 Context::
@@ -46,15 +46,16 @@ from langchain_adk.agents import (
     StreamingMode,
 )
 from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import (
-    Event,
-    EventType,
-    FinalAnswerEvent,
-    ToolCallEvent,
-    ToolResultEvent,
-)
+from langchain_adk.events.event import Event, EventType
 from langchain_adk.events.event_actions import EventActions
-from langchain_adk.models.part import Content, DataPart, FilePart, TextPart
+from langchain_adk.models.part import (
+    Content,
+    DataPart,
+    FilePart,
+    TextPart,
+    ToolCallPart,
+    ToolResponsePart,
+)
 from langchain_adk.planners import BasePlanner, PlanReActPlanner, TaskPlanner
 from langchain_adk.runner import Runner
 from langchain_adk.sessions.in_memory_session_service import InMemorySessionService
@@ -79,14 +80,13 @@ __all__ = [
     "Event",
     "EventActions",
     "EventType",
-    "FinalAnswerEvent",
-    "ToolCallEvent",
-    "ToolResultEvent",
     # Content / Parts
     "Content",
     "TextPart",
     "DataPart",
     "FilePart",
+    "ToolCallPart",
+    "ToolResponsePart",
     # Context
     "InvocationContext",
     "ReadonlyContext",

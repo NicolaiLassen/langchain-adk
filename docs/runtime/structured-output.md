@@ -5,7 +5,7 @@ Force an agent to return a typed Pydantic object instead of free-form text. Pass
 ```python
 from pydantic import BaseModel, Field
 from langchain_adk import LlmAgent
-from langchain_adk.events.event import FinalAnswerEvent
+from langchain_adk.events.event import Event, EventType
 
 class CompanyAnalysis(BaseModel):
     name: str = Field(description="Company name")
@@ -24,11 +24,11 @@ agent = LlmAgent(
 )
 ```
 
-The parsed object is available on `FinalAnswerEvent.data`:
+The parsed object is available on `event.data` when it's the final response:
 
 ```python
 async for event in agent.astream("Analyze Apple", ctx=ctx):
-    if isinstance(event, FinalAnswerEvent):
+    if event.is_final_response():
         analysis = event.data  # CompanyAnalysis instance
         print(f"{analysis.name}: {analysis.recommendation} ({analysis.confidence:.0%})")
 ```

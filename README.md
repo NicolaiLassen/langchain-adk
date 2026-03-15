@@ -122,7 +122,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.tools import tool
 
 from langchain_adk import LlmAgent, Runner, InMemorySessionService
-from langchain_adk.events.event import FinalAnswerEvent
+from langchain_adk.events.event import Event, EventType
 
 @tool
 def get_weather(city: str) -> str:
@@ -148,7 +148,7 @@ async def main():
         session_id="session-1",
         new_message="What's the weather in Copenhagen and Berlin?",
     ):
-        if isinstance(event, FinalAnswerEvent):
+        if event.is_final_response():
             print(event.text)
 
 asyncio.run(main())
@@ -191,12 +191,12 @@ sequenceDiagram
         L-->>A: AIMessage
 
         alt tool_calls present
-            A-->>C: ToolCallEvent
+            A-->>C: Event(AGENT_MESSAGE, has_tool_calls=True)
             A->>T: tool._arun(args)
             T-->>A: result
-            A-->>C: ToolResultEvent
+            A-->>C: Event(TOOL_RESPONSE)
         else no tool_calls
-            A-->>C: FinalAnswerEvent
+            A-->>C: Event(AGENT_MESSAGE, final response)
             note over A: loop exits
         end
     end
@@ -248,28 +248,38 @@ agent = ReActAgent(
 )
 ```
 
-Yields: `ThoughtEvent` -> `ActionEvent` -> `ObservationEvent` -> ... -> `FinalAnswerEvent`.
+Yields events with types: `AGENT_START` -> `AGENT_MESSAGE` (thoughts/actions) -> `TOOL_RESPONSE` (observations) -> ... -> `AGENT_MESSAGE` (final answer) -> `AGENT_END`.
 
 ---
 
 ### Events
 
-Every agent yields a stream of typed `Event` objects:
+Every agent yields a stream of unified `Event` objects. All events share the same `Event` class and are distinguished by their `type` field (`EventType` enum):
 
-All events carry a `content: Content` field with typed parts (`TextPart`, `DataPart`, `FilePart`). Use `.text` and `.data` convenience properties for quick access.
-
-| Event type | When emitted | Key fields |
+| `EventType` | When emitted | Key fields |
 |---|---|---|
-| `UserMessageEvent` | User input persisted by Runner | `.text` (user message) |
-| `AgentStartEvent` | Start of `_run_with_callbacks()` | `agent_name` |
-| `AgentEndEvent` | End of `_run_with_callbacks()` | `agent_name` |
-| `ThoughtEvent` | ReActAgent reasoning step | `.text` (thought), `scratchpad` |
-| `ActionEvent` | ReActAgent action decision | `action`, `action_input` |
-| `ObservationEvent` | ReActAgent tool result | `.text` (observation), `tool_name` |
-| `ToolCallEvent` | LlmAgent tool invocation | `tool_name`, `tool_input`, `llm_response`, `metadata.tool_call_id` |
-| `ToolResultEvent` | Tool execution result | `.text` (result), `tool_name`, `error`, `metadata.tool_call_id` |
-| `FinalAnswerEvent` | Agent's final response | `.text` (answer), `.data` (structured), `scratchpad`, `llm_response`, `partial` |
-| `ErrorEvent` | Unhandled exception | `message`, `exception_type` |
+| `USER_MESSAGE` | User input persisted by Runner | `.text` (user message) |
+| `AGENT_MESSAGE` | Agent response (final answer, thoughts, tool calls) | `.text`, `.data`, `.tool_calls`, `.has_tool_calls`, `partial` |
+| `TOOL_RESPONSE` | Tool execution result | `.text` (result), `.tool_name`, `.error` |
+| `AGENT_START` | Start of `_run_with_callbacks()` | `agent_name` |
+| `AGENT_END` | End of `_run_with_callbacks()` | `agent_name` |
+
+**Convenience properties:**
+
+| Property / Method | Description |
+|---|---|
+| `event.text` | Concatenated text from all TextParts |
+| `event.data` | First DataPart's data dict, or None |
+| `event.tool_name` | Name of the tool (for `TOOL_RESPONSE` events) |
+| `event.tool_input` | Input passed to the tool |
+| `event.tool_calls` | List of tool calls from the LLM response |
+| `event.has_tool_calls` | `True` if the event contains tool call requests |
+| `event.error` | Error message, if any |
+| `event.is_final_response()` | `True` if this is the agent's final answer (no tool calls, not partial) |
+| `event.to_langchain_message()` | Convert to a LangChain message |
+| `Event.from_langchain_message()` | Create an Event from a LangChain message |
+
+**Metadata conventions:** `react_step`, `error`, `exception_type`, `scratchpad`.
 
 **Content/Parts model:**
 
@@ -287,6 +297,25 @@ Content.from_data({"key": "value"})           # Content with a single DataPart
 Content(parts=[TextPart(text="hi"), DataPart(data={"k": "v"})])  # Multiple parts
 ```
 
+**Checking event types:**
+
+```python
+from langchain_adk.events.event import Event, EventType
+
+# Check for final response
+if event.is_final_response():
+    print(event.text)
+
+# Check for tool calls
+if event.has_tool_calls:
+    for tc in event.tool_calls:
+        print(f"Calling {tc['name']}")
+
+# Check for tool results
+if event.type == EventType.TOOL_RESPONSE:
+    print(f"{event.tool_name} returned: {event.text}")
+```
+
 Events carry `EventActions` for side-effects:
 
 ```python
@@ -299,7 +328,7 @@ class EventActions(BaseModel):
     compaction: EventCompaction | None = None
 ```
 
-`FinalAnswerEvent` and `ToolCallEvent` carry an `llm_response: LlmResponse` field with token usage and model version:
+`AGENT_MESSAGE` events may carry an `llm_response: LlmResponse` field with token usage and model version:
 
 ```python
 event.llm_response.input_tokens
@@ -330,14 +359,14 @@ async for event in runner.run_async(
 ):
     ...
 
-# SSE streaming — yields partial FinalAnswerEvents as text arrives
+# SSE streaming — yields partial AGENT_MESSAGE events as text arrives
 async for event in runner.run_async(
     user_id="user-1",
     session_id="session-abc",
     new_message="Hello!",
     run_config=RunConfig(streaming_mode=StreamingMode.SSE),
 ):
-    if isinstance(event, FinalAnswerEvent) and event.partial:
+    if event.type == EventType.AGENT_MESSAGE and event.partial:
         print(event.text, end="", flush=True)
 ```
 
@@ -685,13 +714,11 @@ async for event in runner.run_async(
     new_message="Write me a long essay about distributed systems.",
     run_config=RunConfig(streaming_mode=StreamingMode.SSE),
 ):
-    if isinstance(event, FinalAnswerEvent):
-        if event.partial:
-            # Stream chunk to the client (WebSocket, SSE endpoint, etc.)
-            print(event.text, end="", flush=True)
-        else:
-            # Final complete event
-            print(f"\n[DONE] tokens: {event.llm_response.output_tokens}")
+    if event.is_final_response():
+        print(f"\n[DONE] tokens: {event.llm_response.output_tokens}")
+    elif event.type == EventType.AGENT_MESSAGE and event.partial:
+        # Stream chunk to the client (WebSocket, SSE endpoint, etc.)
+        print(event.text, end="", flush=True)
 ```
 
 Partial events are suppressed automatically if the LLM decides to call a tool instead of answering — only real text chunks are streamed.
@@ -716,7 +743,7 @@ async def track_usage(ctx: InvocationContext, response: LlmResponse) -> None:
 async def handle_llm_error(ctx: InvocationContext, request: LlmRequest, error: Exception) -> LlmResponse | None:
     """Called when an LLM call fails. Return a LlmResponse to recover, or None to propagate the error."""
     print(f"LLM error: {error}")
-    return None  # yields ErrorEvent
+    return None  # yields an Event with error metadata
 
 async def log_tool(ctx: InvocationContext, name: str, args: dict) -> None:
     print(f"[TOOL] {name}({args})")
@@ -802,7 +829,7 @@ Force an agent to return a typed Pydantic object instead of free-form text. Pass
 ```python
 from pydantic import BaseModel, Field
 from langchain_adk import LlmAgent
-from langchain_adk.events.event import FinalAnswerEvent
+from langchain_adk.events.event import Event, EventType
 
 class CompanyAnalysis(BaseModel):
     name: str = Field(description="Company name")
@@ -825,7 +852,7 @@ The structured output is available via `event.data` (the first `DataPart`):
 
 ```python
 async for event in agent.astream("Analyze Apple", ctx=ctx):
-    if isinstance(event, FinalAnswerEvent):
+    if event.is_final_response():
         data = event.data  # dict from DataPart
         print(f"{data['name']}: {data['recommendation']} ({data['confidence']:.0%})")
 ```
@@ -1224,10 +1251,10 @@ flowchart TD
     Tools --> MCP[MCPToolAdapter]:::tool
 
     LlmAgent --> Events:::event
-    Events --> TC[ToolCallEvent]:::event
-    Events --> TR[ToolResultEvent]:::event
-    Events --> FA[FinalAnswerEvent\npartial=True for SSE]:::event
-    Events --> ERR[ErrorEvent]:::event
+    Events --> AM[AGENT_MESSAGE\nfinal answer · tool calls · partial]:::event
+    Events --> TR[TOOL_RESPONSE]:::event
+    Events --> AS[AGENT_START / AGENT_END]:::event
+    Events --> UM[USER_MESSAGE]:::event
 ```
 
 ```mermaid
@@ -1304,3 +1331,17 @@ class MyPlanner(BasePlanner):
 ```
 
 Pass it to any `LlmAgent` via `planner=MyPlanner()`.
+
+---
+
+## Acknowledgments
+
+This project is built on the shoulders of several outstanding open-source projects and research efforts:
+
+- [LangChain](https://github.com/langchain-ai/langchain)
+- [Google Agent Development Kit (ADK)](https://github.com/google/adk-python)
+- [LangGraph](https://github.com/langchain-ai/langgraph)
+- [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
+- [Agent-to-Agent Protocol (A2A)](https://a2a-protocol.org/)
+
+Special thanks to the open-source AI community for pushing the boundaries of what's possible with agent frameworks.

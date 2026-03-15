@@ -65,6 +65,9 @@ class InvocationContext(BaseModel):
     run_config: Any | None = None  # RunConfig; Any to avoid circular import at runtime
     memory_service: Any | None = None
     langchain_run_config: dict[str, Any] = Field(default_factory=dict)
+    # Shared list tools can append events to during execution.
+    # LlmAgent drains this after each round of tool calls and yields the events.
+    event_emitter: list[Any] = Field(default_factory=list)
 
     def derive(
         self,
@@ -97,9 +100,10 @@ class InvocationContext(BaseModel):
             update={
                 "agent_name": agent_name,
                 "branch": new_branch,
-                "state": self.state,       # shared reference - intentional
-                "session": self.session,   # shared reference - intentional
+                "state": self.state,              # shared reference - intentional
+                "session": self.session,          # shared reference - intentional
                 "run_config": self.run_config,
                 "langchain_run_config": self.langchain_run_config,
+                "event_emitter": self.event_emitter,  # shared reference - intentional
             }
         )

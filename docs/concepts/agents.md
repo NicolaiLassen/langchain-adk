@@ -44,7 +44,7 @@ sequenceDiagram
     participant T as Tool
 
     C->>A: astream(input, ctx)
-    A-->>C: AgentStartEvent
+    A-->>C: Event(AGENT_START)
 
     loop ReAct loop (max_iterations)
         A->>P: build_planning_instruction(ctx, request)
@@ -53,17 +53,17 @@ sequenceDiagram
         L-->>A: AIMessage
 
         alt tool_calls present
-            A-->>C: ToolCallEvent
+            A-->>C: Event(AGENT_MESSAGE, has_tool_calls=True)
             A->>T: tool._arun(args)
             T-->>A: result
-            A-->>C: ToolResultEvent
+            A-->>C: Event(TOOL_RESPONSE)
         else no tool_calls
-            A-->>C: FinalAnswerEvent
+            A-->>C: Event(AGENT_MESSAGE, final response)
             note over A: loop exits
         end
     end
 
-    A-->>C: AgentEndEvent
+    A-->>C: Event(AGENT_END)
 ```
 
 ```python
@@ -112,4 +112,4 @@ agent = ReActAgent(
 )
 ```
 
-Yields: `ThoughtEvent` → `ActionEvent` → `ObservationEvent` → ... → `FinalAnswerEvent`.
+Yields events with types: `AGENT_START` -> `AGENT_MESSAGE` (thoughts/actions) -> `TOOL_RESPONSE` (observations) -> ... -> `AGENT_MESSAGE` (final answer) -> `AGENT_END`.

@@ -6,7 +6,7 @@ from typing import AsyncIterator
 from langchain_adk.agents.base_agent import BaseAgent
 from langchain_adk.agents.run_config import RunConfig, StreamingMode
 from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import Event, EventType, FinalAnswerEvent
+from langchain_adk.events.event import Event, EventType
 from langchain_adk.models.part import Content
 
 
@@ -18,7 +18,8 @@ class StubAgent(BaseAgent):
         self._answer = answer
 
     async def astream(self, input: str, *, ctx: InvocationContext) -> AsyncIterator[Event]:
-        yield FinalAnswerEvent(
+        yield Event(
+            type=EventType.AGENT_MESSAGE,
             session_id=ctx.session_id,
             agent_name=self.name,
             content=Content.from_text(self._answer),
@@ -26,7 +27,7 @@ class StubAgent(BaseAgent):
 
 
 class NoAnswerAgent(BaseAgent):
-    """Agent that yields no FinalAnswerEvent."""
+    """Agent that yields no final answer event."""
 
     async def astream(self, input: str, *, ctx: InvocationContext) -> AsyncIterator[Event]:
         yield Event(type=EventType.AGENT_START, session_id=ctx.session_id, agent_name=self.name)
@@ -42,8 +43,9 @@ def _ctx(**kwargs) -> InvocationContext:
 async def test_ainvoke_returns_final_answer():
     agent = StubAgent(answer="42")
     result = await agent.ainvoke("question", ctx=_ctx())
-    assert isinstance(result, FinalAnswerEvent)
+    assert isinstance(result, Event)
     assert result.text == "42"
+    assert result.is_final_response()
 
 
 @pytest.mark.asyncio
@@ -58,7 +60,7 @@ async def test_astream_yields_all_events():
     agent = StubAgent(answer="streamed")
     events = [e async for e in agent.astream("q", ctx=_ctx())]
     assert len(events) == 1
-    assert isinstance(events[0], FinalAnswerEvent)
+    assert events[0].is_final_response()
     assert events[0].text == "streamed"
 
 
@@ -137,7 +139,7 @@ async def test_before_after_callbacks():
     events = [e async for e in agent._run_with_callbacks("q", ctx=_ctx())]
     assert "before" in calls
     assert "after" in calls
-    # Should have AGENT_START, FinalAnswer, AGENT_END
+    # Should have AGENT_START, AGENT_MESSAGE, AGENT_END
     types = [e.type for e in events]
     assert EventType.AGENT_START in types
     assert EventType.AGENT_END in types

@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import asyncio
 
-from langchain_adk import LlmAgent, InvocationContext, FinalAnswerEvent, ToolCallEvent
+from langchain_adk import LlmAgent, InvocationContext
+from langchain_adk.events.event import Event, EventType
 from langchain_adk.planners.task_planner import ManageTasksTool
 from langchain_adk.prompts.catalog import build_system_prompt
 from langchain_adk.prompts.context import PromptContext
@@ -66,9 +67,9 @@ async def main() -> None:
         "Set up a 3-step plan to launch a website: design, develop, deploy.",
         ctx=ctx,
     ):
-        if isinstance(event, ToolCallEvent):
+        if event.has_tool_calls:
             print(f"[TOOL] {event.tool_name}")
-        elif isinstance(event, FinalAnswerEvent):
+        elif event.is_final_response():
             print(f"\n[DONE]\n{event.text}")
 
     # Show final task board state

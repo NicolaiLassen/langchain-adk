@@ -32,10 +32,10 @@ flowchart TD
     Tools --> MCP[MCPToolAdapter]:::tool
 
     LlmAgent --> Events:::event
-    Events --> TC[ToolCallEvent]:::event
-    Events --> TR[ToolResultEvent]:::event
-    Events --> FA[FinalAnswerEvent\npartial=True for SSE]:::event
-    Events --> ERR[ErrorEvent]:::event
+    Events --> AM[AGENT_MESSAGE\nfinal answer · tool calls · partial]:::event
+    Events --> TR[TOOL_RESPONSE]:::event
+    Events --> AS[AGENT_START / AGENT_END]:::event
+    Events --> UM[USER_MESSAGE]:::event
 ```
 
 ## Request lifecycle

@@ -23,8 +23,8 @@ class InMemoryMemoryStore(MemoryStore):
     async def add_session_to_memory(self, session: object) -> None:
         """Extract events from a Session and store them as memories.
 
-        Iterates over ``session.events`` and creates a ``Memory`` for each
-        ``FinalAnswerEvent`` or ``ThoughtEvent``.
+        Stores AGENT_MESSAGE events that have text content — this covers
+        final answers and react thoughts.
 
         Parameters
         ----------
@@ -32,7 +32,7 @@ class InMemoryMemoryStore(MemoryStore):
             The session to extract events from. Must be a
             ``sessions.session.Session`` instance.
         """
-        from langchain_adk.events.event import FinalAnswerEvent, ThoughtEvent
+        from langchain_adk.events.event import EventType
         from langchain_adk.sessions.session import Session
 
         if not isinstance(session, Session):
@@ -43,14 +43,12 @@ class InMemoryMemoryStore(MemoryStore):
             self._store[key] = []
 
         for event in session.events:
-            if isinstance(event, FinalAnswerEvent):
-                content = event.text
-                author = event.agent_name or "agent"
-            elif isinstance(event, ThoughtEvent):
-                content = event.text
-                author = event.agent_name or "agent"
-            else:
+            if event.type != EventType.AGENT_MESSAGE:
                 continue
+            if event.partial:
+                continue
+            content = event.text
+            author = event.agent_name or event.author or "agent"
 
             if content:
                 self._store[key].append(

@@ -10,12 +10,7 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 
 from langchain_adk.agents.llm_agent import LlmAgent
 from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import (
-    ErrorEvent,
-    FinalAnswerEvent,
-    ToolCallEvent,
-    ToolResultEvent,
-)
+from langchain_adk.events.event import Event, EventType
 from langchain_adk.tools.exit_loop import EXIT_LOOP_SENTINEL
 from langchain_adk.tools.transfer_tool import TRANSFER_SENTINEL
 
@@ -58,7 +53,7 @@ def _llm(*texts: str) -> FakeChatModel:
 async def test_simple_text_response():
     agent = LlmAgent(name="agent", llm=_llm("Hello world"))
     events = [e async for e in agent.astream("hi", ctx=_ctx())]
-    finals = [e for e in events if isinstance(e, FinalAnswerEvent) and not e.partial]
+    finals = [e for e in events if e.is_final_response()]
     assert len(finals) == 1
     assert finals[0].text == "Hello world"
 
@@ -83,14 +78,14 @@ async def test_tool_call_and_result():
     agent = LlmAgent(name="agent", llm=llm, tools=[add])
     events = [e async for e in agent.astream("add 2+3", ctx=_ctx())]
 
-    tool_calls = [e for e in events if isinstance(e, ToolCallEvent)]
-    tool_results = [e for e in events if isinstance(e, ToolResultEvent)]
-    finals = [e for e in events if isinstance(e, FinalAnswerEvent) and not e.partial]
+    tool_calls = [e for e in events if e.has_tool_calls]
+    tool_results = [e for e in events if e.type == EventType.TOOL_RESPONSE]
+    finals = [e for e in events if e.is_final_response()]
 
     assert len(tool_calls) == 1
-    assert tool_calls[0].tool_name == "add"
+    assert tool_calls[0].tool_calls[0].tool_name == "add"
     assert len(tool_results) == 1
-    assert "5" in tool_results[0].text
+    assert "5" in tool_results[0].content.tool_responses[0].result
     assert len(finals) == 1
     assert "5" in finals[0].text
 
@@ -107,9 +102,9 @@ async def test_tool_not_found():
     agent = LlmAgent(name="agent", llm=llm)
     events = [e async for e in agent.astream("call bad tool", ctx=_ctx())]
 
-    results = [e for e in events if isinstance(e, ToolResultEvent)]
+    results = [e for e in events if e.type == EventType.TOOL_RESPONSE]
     assert len(results) == 1
-    assert "not found" in results[0].error
+    assert "not found" in results[0].content.tool_responses[0].error
 
 
 @pytest.mark.asyncio
@@ -124,9 +119,9 @@ async def test_max_iterations_error():
     agent = LlmAgent(name="agent", llm=llm, max_iterations=2)
     events = [e async for e in agent.astream("loop", ctx=_ctx())]
 
-    errors = [e for e in events if isinstance(e, ErrorEvent)]
+    errors = [e for e in events if e.metadata.get("error")]
     assert len(errors) == 1
-    assert "Max iterations" in errors[0].message
+    assert "Max iterations" in errors[0].text
 
 
 @pytest.mark.asyncio
@@ -148,7 +143,7 @@ async def test_transfer_sentinel():
     agent = LlmAgent(name="agent", llm=llm, tools=[transfer])
     events = [e async for e in agent.astream("transfer", ctx=_ctx())]
 
-    results = [e for e in events if isinstance(e, ToolResultEvent)]
+    results = [e for e in events if e.type == EventType.TOOL_RESPONSE]
     assert len(results) == 1
     assert results[0].actions.transfer_to_agent == "TargetAgent"
 
@@ -172,7 +167,7 @@ async def test_exit_loop_sentinel():
     agent = LlmAgent(name="agent", llm=llm, tools=[exit_loop])
     events = [e async for e in agent.astream("exit", ctx=_ctx())]
 
-    results = [e for e in events if isinstance(e, ToolResultEvent)]
+    results = [e for e in events if e.type == EventType.TOOL_RESPONSE]
     assert len(results) == 1
     assert results[0].actions.escalate is True
 
@@ -206,7 +201,7 @@ async def test_custom_instructions():
         instructions="You are a pirate.",
     )
     events = [e async for e in agent.astream("hi", ctx=_ctx())]
-    finals = [e for e in events if isinstance(e, FinalAnswerEvent)]
+    finals = [e for e in events if e.is_final_response()]
     assert len(finals) == 1
 
 
@@ -221,7 +216,7 @@ async def test_callable_instructions():
         instructions=get_instructions,
     )
     events = [e async for e in agent.astream("hi", ctx=_ctx())]
-    assert any(isinstance(e, FinalAnswerEvent) for e in events)
+    assert any(e.is_final_response() for e in events)
 
 
 @pytest.mark.asyncio
@@ -239,7 +234,8 @@ async def test_multi_turn_history_from_session():
         session_id=session.id,
         content=Content.from_text("My name is Alice"),
     ))
-    session.events.append(FinalAnswerEvent(
+    session.events.append(Event(
+        type=EventType.AGENT_MESSAGE,
         session_id=session.id,
         agent_name="agent",
         content=Content.from_text("Hello Alice!"),
@@ -272,8 +268,8 @@ async def test_multi_turn_history_from_session():
 
 
 @pytest.mark.asyncio
-async def test_tool_call_id_in_metadata():
-    """ToolCallEvent and ToolResultEvent should store tool_call_id in metadata."""
+async def test_tool_call_id_in_parts():
+    """Tool call events should carry tool_call_id in ToolCallPart/ToolResponsePart."""
     from langchain_core.tools import tool
 
     @tool
@@ -291,10 +287,10 @@ async def test_tool_call_id_in_metadata():
     agent = LlmAgent(name="agent", llm=llm, tools=[greet])
     events = [e async for e in agent.astream("greet Bob", ctx=_ctx())]
 
-    tool_calls = [e for e in events if isinstance(e, ToolCallEvent)]
-    tool_results = [e for e in events if isinstance(e, ToolResultEvent)]
+    tool_calls = [e for e in events if e.has_tool_calls]
+    tool_results = [e for e in events if e.type == EventType.TOOL_RESPONSE]
 
     assert len(tool_calls) == 1
-    assert tool_calls[0].metadata["tool_call_id"] == "call_123"
+    assert tool_calls[0].tool_calls[0].tool_call_id == "call_123"
     assert len(tool_results) == 1
-    assert tool_results[0].metadata["tool_call_id"] == "call_123"
+    assert tool_results[0].content.tool_responses[0].tool_call_id == "call_123"

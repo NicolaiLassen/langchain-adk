@@ -2,7 +2,7 @@
 
 Demonstrates:
   - RunConfig with StreamingMode.SSE
-  - Partial FinalAnswerEvent for real-time text streaming
+  - Partial events (partial=True) for real-time text streaming
   - Complete events for tool calls / tool results
 """
 
@@ -22,10 +22,8 @@ from langchain_adk import (
     RunConfig,
     StreamingMode,
     InvocationContext,
-    FinalAnswerEvent,
-    ToolCallEvent,
-    ToolResultEvent,
 )
+from langchain_adk.events.event import Event, EventType
 
 
 @tool
@@ -64,18 +62,17 @@ async def main() -> None:
         "What's the weather in Copenhagen and Berlin?",
         ctx=ctx,
     ):
-        if isinstance(event, ToolCallEvent):
+        if event.has_tool_calls:
             print(f"\n[TOOL CALL] {event.tool_name}({event.tool_input})")
-        elif isinstance(event, ToolResultEvent):
+        elif event.type == EventType.TOOL_RESPONSE:
             print(f"[TOOL RESULT] {event.text or event.error}")
-        elif isinstance(event, FinalAnswerEvent):
-            if event.partial:
-                # Stream tokens as they arrive
-                sys.stdout.write(".")
-                sys.stdout.flush()
-            else:
-                # Final complete answer
-                print(f"\n\n[ANSWER]\n{event.text}")
+        elif event.partial and event.type == EventType.AGENT_MESSAGE:
+            # Stream tokens as they arrive
+            sys.stdout.write(".")
+            sys.stdout.flush()
+        elif event.is_final_response():
+            # Final complete answer
+            print(f"\n\n[ANSWER]\n{event.text}")
 
 
 if __name__ == "__main__":

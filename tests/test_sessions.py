@@ -3,7 +3,8 @@
 import pytest
 from langchain_adk.sessions.session import Session
 from langchain_adk.sessions.in_memory_session_service import InMemorySessionService
-from langchain_adk.events.event import FinalAnswerEvent, EventActions
+from langchain_adk.events.event import Event, EventType
+from langchain_adk.events.event_actions import EventActions
 from langchain_adk.models.part import Content
 
 
@@ -79,7 +80,8 @@ async def test_list_sessions(service):
 @pytest.mark.asyncio
 async def test_append_event_applies_state_delta(service):
     session = await service.create_session(app_name="app", user_id="u1")
-    event = FinalAnswerEvent(
+    event = Event(
+        type=EventType.AGENT_MESSAGE,
         session_id=session.id,
         agent_name="agent",
         content=Content.from_text("done"),
@@ -101,8 +103,6 @@ async def test_update_session_state(service):
 @pytest.mark.asyncio
 async def test_append_user_message_event(service):
     """USER_MESSAGE events should be persisted in session.events."""
-    from langchain_adk.events.event import Event, EventType
-
     session = await service.create_session(app_name="app", user_id="u1")
     user_event = Event(
         type=EventType.USER_MESSAGE,

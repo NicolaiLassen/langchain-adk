@@ -12,12 +12,7 @@ from langchain_adk.a2a.types import (
     TaskStatusUpdateEvent,
     TextPart,
 )
-from langchain_adk.events.event import (
-    Event,
-    FinalAnswerEvent,
-    ToolCallEvent,
-    ToolResultEvent,
-)
+from langchain_adk.events.event import Event, EventType
 
 
 async def events_to_a2a_stream(
@@ -32,10 +27,7 @@ async def events_to_a2a_stream(
     TaskArtifactUpdateEvent for content (final answer, tool results).
     """
     async for event in events:
-        if isinstance(event, FinalAnswerEvent):
-            if event.partial:
-                continue
-            # Emit artifact with the final answer
+        if event.is_final_response():
             artifact = Artifact(
                 parts=[TextPart(text=event.text)],
                 name="answer",
@@ -47,7 +39,8 @@ async def events_to_a2a_stream(
                 last_chunk=True,
             )
 
-        elif isinstance(event, ToolCallEvent):
+        elif event.has_tool_calls:
+            tc = event.tool_calls[0]
             yield TaskStatusUpdateEvent(
                 task_id=task_id,
                 context_id=context_id,
@@ -56,14 +49,20 @@ async def events_to_a2a_stream(
                     message=None,
                 ),
                 final=False,
-                metadata={"tool_name": event.tool_name, "tool_input": event.tool_input},
+                metadata={"tool_name": tc.tool_name, "tool_input": tc.args},
             )
 
-        elif isinstance(event, ToolResultEvent):
-            result_text = event.text or (event.error or "")
+        elif event.type == EventType.TOOL_RESPONSE:
+            responses = event.content.tool_responses
+            if responses:
+                result_text = responses[0].result or (responses[0].error or "")
+                tool_name = responses[0].tool_name
+            else:
+                result_text = event.text
+                tool_name = "unknown"
             artifact = Artifact(
                 parts=[TextPart(text=result_text)],
-                name=f"tool_result:{event.tool_name}",
+                name=f"tool_result:{tool_name}",
             )
             yield TaskArtifactUpdateEvent(
                 task_id=task_id,

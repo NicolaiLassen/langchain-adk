@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import asyncio
 
-from langchain_adk import LlmAgent, LoopAgent, InvocationContext, FinalAnswerEvent
+from langchain_adk import LlmAgent, LoopAgent, InvocationContext
+from langchain_adk.events.event import Event, EventType
 
 
 async def main() -> None:
@@ -66,7 +67,7 @@ async def main() -> None:
         "Write a tagline for: An AI-powered code editor that understands your codebase",
         ctx=ctx,
     ):
-        if isinstance(event, FinalAnswerEvent):
+        if event.is_final_response():
             agent = event.agent_name or "?"
             if agent == "Writer":
                 iteration += 1

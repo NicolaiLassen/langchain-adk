@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 
 from langchain_adk.agents.tracing import open_trace
 from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import Event, EventType, FinalAnswerEvent
+from langchain_adk.events.event import Event, EventType
 
 if TYPE_CHECKING:
     pass
@@ -100,7 +100,7 @@ class BaseAgent(ABC):
         input: str,
         *,
         ctx: InvocationContext,
-    ) -> FinalAnswerEvent:
+    ) -> Event:
         """Call the agent and return the final answer.
 
         Runs the agent to completion, discarding partial and intermediate
@@ -115,17 +115,17 @@ class BaseAgent(ABC):
 
         Returns
         -------
-        FinalAnswerEvent
-            The agent's final answer.
+        Event
+            The agent's final answer event.
 
         Raises
         ------
         RuntimeError
             If the agent finishes without producing a final answer.
         """
-        last_answer: FinalAnswerEvent | None = None
+        last_answer: Event | None = None
         async for event in self.astream(input, ctx=ctx):
-            if isinstance(event, FinalAnswerEvent) and not event.partial:
+            if event.is_final_response():
                 last_answer = event
         if last_answer is None:
             raise RuntimeError(f"Agent {self.name!r} produced no final answer")

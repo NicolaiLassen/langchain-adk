@@ -24,7 +24,7 @@ class StreamingMode(Enum):
         context where incremental output is not needed.
     SSE : str
         Server-Sent Events streaming mode. The runner yields partial
-        ``FinalAnswerEvent`` objects (``partial=True``) as the model
+        ``Event`` objects (``partial=True``) as the model
         generates text, then a final complete event (``partial=False``).
         Suitable for web UIs and chat applications with typewriter effects.
     """

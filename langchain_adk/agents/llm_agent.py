@@ -35,18 +35,17 @@ from langchain_core.tools import BaseTool
 
 from langchain_adk.agents.base_agent import BaseAgent
 from langchain_adk.context.invocation_context import InvocationContext
-from langchain_adk.events.event import (
-    ErrorEvent,
-    Event,
-    EventType,
-    FinalAnswerEvent,
-    ToolCallEvent,
-    ToolResultEvent,
-)
+from langchain_adk.events.event import Event, EventType
 from langchain_adk.events.event_actions import EventActions
 from langchain_adk.models.llm_request import LlmRequest
 from langchain_adk.models.llm_response import LlmResponse
-from langchain_adk.models.part import Content, DataPart, TextPart
+from langchain_adk.models.part import (
+    Content,
+    DataPart,
+    TextPart,
+    ToolCallPart,
+    ToolResponsePart,
+)
 from langchain_adk.tools.exit_loop import EXIT_LOOP_SENTINEL
 from langchain_adk.tools.transfer_tool import TRANSFER_SENTINEL
 
@@ -93,7 +92,7 @@ class LlmAgent(BaseAgent):
     on_model_error_callback : callable, optional
         Called with ``(ctx, request: LlmRequest, exception)`` when an LLM
         call raises. Return a ``LlmResponse`` to recover, or ``None`` to
-        yield an ErrorEvent.
+        yield an error event.
     before_tool_callback : callable, optional
         Called with ``(ctx, tool_name, tool_args)`` before each tool execution.
     after_tool_callback : callable, optional
@@ -169,7 +168,6 @@ class LlmAgent(BaseAgent):
         else:
             prompt = self._instructions
 
-        # Append output schema instructions using LangChain's PydanticOutputParser
         if self._output_schema is not None:
             parser = PydanticOutputParser(pydantic_object=self._output_schema)
             prompt = f"{prompt}\n\n{parser.get_format_instructions()}"
@@ -210,7 +208,6 @@ class LlmAgent(BaseAgent):
         """
         if self._output_schema is None:
             return None
-        # Try json_schema first (OpenAI strict mode), then json_mode, then None
         for method in ("json_schema", "json_mode"):
             try:
                 return self._llm.with_structured_output(
@@ -275,6 +272,7 @@ class LlmAgent(BaseAgent):
         if self._planner is None:
             return base_prompt
         from langchain_adk.agents.readonly_context import ReadonlyContext
+
         readonly = ReadonlyContext(ctx)
         instruction = self._planner.build_planning_instruction(readonly, request)
         if instruction:
@@ -283,33 +281,21 @@ class LlmAgent(BaseAgent):
 
     @staticmethod
     def _events_to_messages(events: list[Event]) -> list[BaseMessage]:
-        """Convert session events to LangChain messages for multi-turn context.
-
-        Reconstructs the conversation history from persisted events so the
-        LLM sees previous turns. Session events *are* the conversation memory.
-        """
+        """Convert session events to LangChain messages for multi-turn context."""
         messages: list[BaseMessage] = []
         for event in events:
-            if event.type == EventType.USER_MESSAGE:
-                messages.append(HumanMessage(content=event.text))
-            elif isinstance(event, FinalAnswerEvent) and not event.partial:
-                messages.append(AIMessage(content=event.text))
-            elif isinstance(event, ToolCallEvent):
-                tool_call_id = event.metadata.get("tool_call_id", "")
-                messages.append(AIMessage(
-                    content="",
-                    tool_calls=[{
-                        "id": tool_call_id,
-                        "name": event.tool_name,
-                        "args": event.tool_input or {},
-                    }],
-                ))
-            elif isinstance(event, ToolResultEvent):
-                tool_call_id = event.metadata.get("tool_call_id", "")
-                messages.append(ToolMessage(
-                    content=event.text or event.error or "",
-                    tool_call_id=tool_call_id,
-                ))
+            if event.partial:
+                continue
+            if event.type in (
+                EventType.USER_MESSAGE,
+                EventType.AGENT_MESSAGE,
+                EventType.TOOL_RESPONSE,
+            ):
+                if event.type == EventType.AGENT_MESSAGE and not (
+                    event.text or event.has_tool_calls
+                ):
+                    continue
+                messages.append(event.to_langchain_message())
         return messages
 
     async def _call_llm(
@@ -317,32 +303,12 @@ class LlmAgent(BaseAgent):
         llm: BaseChatModel,
         messages: list[BaseMessage],
         ctx: InvocationContext,
-    ) -> AsyncIterator[FinalAnswerEvent | AIMessage]:
+    ) -> AsyncIterator[Event | AIMessage]:
         """Call the LLM, yielding partial events live when streaming.
 
-        Mirrors LangChain's ``ainvoke`` / ``astream`` pattern:
-
-        - Not streaming → ``ainvoke``, yields ``AIMessage``
-        - Streaming → ``astream``, yields partial ``FinalAnswerEvent``
-          for each text token, then final ``AIMessage``
-
-        Tool-call responses skip partial events (tool args must be complete).
-
-        Parameters
-        ----------
-        llm : BaseChatModel
-            The bound LLM instance.
-        messages : list[BaseMessage]
-            The current message history.
-        ctx : InvocationContext
-            The invocation context (controls streaming, carries trace config).
-
-        Yields
-        ------
-        FinalAnswerEvent
-            Partial events with accumulated text (``partial=True``).
-        AIMessage
-            The final aggregated message (always last).
+        - Not streaming -> ainvoke, yields AIMessage
+        - Streaming -> astream, yields partial AGENT_MESSAGE events
+          for each text token, then final AIMessage
         """
         rc = ctx.langchain_run_config or {}
 
@@ -376,11 +342,14 @@ class LlmAgent(BaseAgent):
 
             if chunk_text:
                 accumulated_text += chunk_text
-                yield FinalAnswerEvent(
+                yield Event(
+                    type=EventType.AGENT_MESSAGE,
                     session_id=ctx.session_id,
                     agent_name=self.name,
+                    author=self.name,
                     content=Content.from_text(chunk_text),
                     partial=True,
+                    turn_complete=False,
                 )
 
         if not chunks:
@@ -397,19 +366,11 @@ class LlmAgent(BaseAgent):
     ) -> AsyncIterator[Event]:
         """Run the agent with a manual tool-call loop.
 
-        Parameters
-        ----------
-        input : str
-            The user message or task.
-        ctx : InvocationContext
-            The invocation context. ``ctx.run_config`` controls streaming.
-            ``ctx.langchain_run_config`` carries child callbacks from the
-            parent trace (set up by ``_run_with_callbacks``).
-
         Yields
         ------
         Event
-            ToolCallEvent, ToolResultEvent, FinalAnswerEvent, or ErrorEvent.
+            AGENT_MESSAGE (final answers, tool calls, errors, partials),
+            TOOL_RESPONSE, or lifecycle events.
         """
         system_prompt = await self._resolve_instructions(ctx)
         messages: list[BaseMessage] = []
@@ -427,8 +388,10 @@ class LlmAgent(BaseAgent):
         for _ in range(self.max_iterations):
             request = self._build_request(system_prompt, messages)
 
-            # Apply planner instruction - update the system message in place
-            effective_prompt = self._apply_planner_instruction(system_prompt, ctx, request)
+            # Apply planner instruction
+            effective_prompt = self._apply_planner_instruction(
+                system_prompt, ctx, request
+            )
             prompt_changed = effective_prompt != system_prompt
             if prompt_changed and messages and isinstance(messages[0], SystemMessage):
                 messages[0] = SystemMessage(content=effective_prompt)
@@ -440,7 +403,7 @@ class LlmAgent(BaseAgent):
             raw_response: AIMessage | None = None
             try:
                 async for item in self._call_llm(llm, messages, ctx):
-                    if isinstance(item, FinalAnswerEvent):
+                    if isinstance(item, Event):
                         yield item  # live partial
                     else:
                         raw_response = item  # final AIMessage
@@ -450,19 +413,29 @@ class LlmAgent(BaseAgent):
                     if recovery is not None:
                         raw_response = AIMessage(content=recovery.text or "")
                     else:
-                        yield ErrorEvent(
+                        yield Event(
+                            type=EventType.AGENT_MESSAGE,
                             session_id=ctx.session_id,
                             agent_name=self.name,
-                            message=str(exc),
-                            exception_type=type(exc).__name__,
+                            author=self.name,
+                            content=Content.from_text(str(exc)),
+                            metadata={
+                                "error": True,
+                                "exception_type": type(exc).__name__,
+                            },
                         )
                         return
                 else:
-                    yield ErrorEvent(
+                    yield Event(
+                        type=EventType.AGENT_MESSAGE,
                         session_id=ctx.session_id,
                         agent_name=self.name,
-                        message=str(exc),
-                        exception_type=type(exc).__name__,
+                        author=self.name,
+                        content=Content.from_text(str(exc)),
+                        metadata={
+                            "error": True,
+                            "exception_type": type(exc).__name__,
+                        },
                     )
                     return
 
@@ -471,8 +444,11 @@ class LlmAgent(BaseAgent):
             # Let the planner post-process the response
             if self._planner is not None:
                 from langchain_adk.agents.readonly_context import ReadonlyContext
+
                 readonly = ReadonlyContext(ctx)
-                replacement = self._planner.process_planning_response(readonly, llm_response)
+                replacement = self._planner.process_planning_response(
+                    readonly, llm_response
+                )
                 if replacement is not None:
                     llm_response = replacement
 
@@ -492,35 +468,36 @@ class LlmAgent(BaseAgent):
                 if self._output_schema is not None:
                     structured_output = None
                     parser = PydanticOutputParser(pydantic_object=self._output_schema)
-                    # 1) Try parsing the LLM text directly (fast, streaming-safe)
                     if answer_text:
                         try:
                             structured_output = parser.parse(answer_text)
                         except Exception:
                             pass
-                    # 2) Fall back to with_structured_output (API-level enforcement)
                     if structured_output is None:
                         structured_llm = self._build_structured_llm()
                         if structured_llm is not None:
                             try:
                                 structured_output = await structured_llm.ainvoke(
-                                    messages, config=ctx.langchain_run_config or {},
+                                    messages,
+                                    config=ctx.langchain_run_config or {},
                                 )
                             except Exception:
                                 pass
                     if structured_output is not None:
                         parts.append(DataPart(data=structured_output.model_dump()))
 
-                yield FinalAnswerEvent(
+                yield Event(
+                    type=EventType.AGENT_MESSAGE,
                     session_id=ctx.session_id,
                     agent_name=self.name,
+                    author=self.name,
                     content=Content(parts=parts),
-                    llm_response=llm_response,
                     partial=False,
+                    llm_response=llm_response,
                 )
                 return
 
-            # Execute tool calls
+            # Execute tool calls sequentially
             tool_messages: list[ToolMessage] = []
 
             for tool_call in llm_response.tool_calls:
@@ -528,39 +505,55 @@ class LlmAgent(BaseAgent):
                 tool_args: dict = tool_call["args"]
                 tool_call_id: str = tool_call["id"]
 
-                yield ToolCallEvent(
+                yield Event(
+                    type=EventType.AGENT_MESSAGE,
                     session_id=ctx.session_id,
                     agent_name=self.name,
-                    tool_name=tool_name,
-                    tool_input=tool_args,
+                    author=self.name,
+                    content=Content(
+                        parts=[
+                            ToolCallPart(
+                                tool_call_id=tool_call_id,
+                                tool_name=tool_name,
+                                args=tool_args,
+                            )
+                        ]
+                    ),
                     llm_response=llm_response,
-                    metadata={"tool_call_id": tool_call_id},
                 )
 
                 tool = self._tools.get(tool_name)
                 if tool is None:
                     error_msg = f"Tool '{tool_name}' not found. Available: {list(self._tools)}"
-                    yield ToolResultEvent(
+                    yield Event(
+                        type=EventType.TOOL_RESPONSE,
                         session_id=ctx.session_id,
                         agent_name=self.name,
-                        tool_name=tool_name,
-                        error=error_msg,
-                        metadata={"tool_call_id": tool_call_id},
+                        author=self.name,
+                        content=Content(
+                            parts=[
+                                ToolResponsePart(
+                                    tool_call_id=tool_call_id,
+                                    tool_name=tool_name,
+                                    error=error_msg,
+                                )
+                            ]
+                        ),
                     )
                     tool_messages.append(
                         ToolMessage(content=error_msg, tool_call_id=tool_call_id)
                     )
                     continue
 
-                # Inject context into tools that support it (AgentTool, ManageTasksTool)
                 if hasattr(tool, "inject_context"):
                     tool.inject_context(ctx)
-
                 if self.before_tool_callback:
                     await self.before_tool_callback(ctx, tool_name, tool_args)
 
                 try:
-                    result = await tool.ainvoke(tool_args, config=ctx.langchain_run_config or {})
+                    result = await tool.ainvoke(
+                        tool_args, config=ctx.langchain_run_config or {}
+                    )
 
                     if self.after_tool_callback:
                         await self.after_tool_callback(ctx, tool_name, result)
@@ -568,18 +561,29 @@ class LlmAgent(BaseAgent):
                     actions = EventActions()
                     result_str = str(result)
                     if result_str.startswith(TRANSFER_SENTINEL):
-                        target = result_str.removeprefix(TRANSFER_SENTINEL).strip()
-                        actions = EventActions(transfer_to_agent=target)
+                        actions = EventActions(
+                            transfer_to_agent=result_str.removeprefix(
+                                TRANSFER_SENTINEL
+                            ).strip()
+                        )
                     elif result_str == EXIT_LOOP_SENTINEL:
                         actions = EventActions(escalate=True)
 
-                    yield ToolResultEvent(
+                    yield Event(
+                        type=EventType.TOOL_RESPONSE,
                         session_id=ctx.session_id,
                         agent_name=self.name,
-                        tool_name=tool_name,
-                        content=Content.from_text(result_str),
+                        author=self.name,
+                        content=Content(
+                            parts=[
+                                ToolResponsePart(
+                                    tool_call_id=tool_call_id,
+                                    tool_name=tool_name,
+                                    result=result_str,
+                                )
+                            ]
+                        ),
                         actions=actions,
-                        metadata={"tool_call_id": tool_call_id},
                     )
                     tool_messages.append(
                         ToolMessage(content=result_str, tool_call_id=tool_call_id)
@@ -589,12 +593,20 @@ class LlmAgent(BaseAgent):
                     error_msg = str(exc)
                     if self.after_tool_callback:
                         await self.after_tool_callback(ctx, tool_name, None)
-                    yield ToolResultEvent(
+                    yield Event(
+                        type=EventType.TOOL_RESPONSE,
                         session_id=ctx.session_id,
                         agent_name=self.name,
-                        tool_name=tool_name,
-                        error=error_msg,
-                        metadata={"tool_call_id": tool_call_id},
+                        author=self.name,
+                        content=Content(
+                            parts=[
+                                ToolResponsePart(
+                                    tool_call_id=tool_call_id,
+                                    tool_name=tool_name,
+                                    error=error_msg,
+                                )
+                            ]
+                        ),
                     )
                     tool_messages.append(
                         ToolMessage(
@@ -606,8 +618,13 @@ class LlmAgent(BaseAgent):
 
             messages.extend(tool_messages)
 
-        yield ErrorEvent(
+        yield Event(
+            type=EventType.AGENT_MESSAGE,
             session_id=ctx.session_id,
             agent_name=self.name,
-            message=f"Max iterations ({self.max_iterations}) reached without a final answer.",
+            author=self.name,
+            content=Content.from_text(
+                f"Max iterations ({self.max_iterations}) reached without a final answer."
+            ),
+            metadata={"error": True},
         )

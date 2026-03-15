@@ -3,7 +3,7 @@
 Demonstrates:
   - output_schema parameter for type-safe structured responses
   - Pydantic model automatically parsed from LLM output
-  - Combining tools with structured final output via FinalAnswerEvent.data
+  - Combining tools with structured final output via event.data
 """
 
 from __future__ import annotations
@@ -13,7 +13,8 @@ import asyncio
 from pydantic import BaseModel, Field
 from langchain_core.tools import tool
 
-from langchain_adk import LlmAgent, InvocationContext, FinalAnswerEvent, ToolCallEvent, ToolResultEvent
+from langchain_adk import LlmAgent, InvocationContext
+from langchain_adk.events.event import Event, EventType
 
 
 # --- Structured output schema ---
@@ -85,11 +86,11 @@ async def main() -> None:
         print("=" * 50)
 
         async for event in agent.astream(f"Analyze {company}", ctx=ctx):
-            if isinstance(event, ToolCallEvent):
+            if event.has_tool_calls:
                 print(f"  [TOOL] {event.tool_name}({event.tool_input})")
-            elif isinstance(event, ToolResultEvent):
+            elif event.type == EventType.TOOL_RESPONSE:
                 print(f"  [DATA] {(event.text or '')[:60]}...")
-            elif isinstance(event, FinalAnswerEvent):
+            elif event.is_final_response():
                 data = event.data  # dict from DataPart
                 if data:
                     print(f"\n  Company:        {data['name']}")
