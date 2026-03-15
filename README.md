@@ -16,8 +16,6 @@
   <a href="https://nicolailassen.github.io/langchain-adk/"><img src="https://img.shields.io/badge/docs-mkdocs-blue" alt="Docs"></a>
 </p>
 
-> **Beta** — This project is under heavy development and may be subject to breaking changes between minor versions. Pin your dependency version if you need stability.
-
 ---
 
 ## Table of Contents
