@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.svg" width="120" alt="langchain-adk logo">
+  <img src="docs/assets/logo.svg" width="200" alt="langchain-adk logo">
 </p>
 
 <h1 align="center">langchain-adk</h1>
