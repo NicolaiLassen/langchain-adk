@@ -36,6 +36,7 @@ Tools::
 
 from langchain_adk.agents import (
     AgentConfig,
+    BaseAgent,
     CallbackContext,
     Context,
     LlmAgent,
@@ -57,11 +58,13 @@ from langchain_adk.models.part import (
 )
 from langchain_adk.planners import BasePlanner, PlanReActPlanner, TaskPlanner
 from langchain_adk.runner import Runner
+from langchain_adk.sessions.base_session_service import BaseSessionService
 from langchain_adk.sessions.in_memory_session_service import InMemorySessionService
 from langchain_adk.sessions.session import Session
 
 __all__ = [
     # Agents
+    "BaseAgent",
     "LlmAgent",
     "ReActAgent",
     "SequentialAgent",
@@ -90,6 +93,7 @@ __all__ = [
     "ReadonlyContext",
     "CallbackContext",
     # Sessions
+    "BaseSessionService",
     "Session",
     "InMemorySessionService",
 ]

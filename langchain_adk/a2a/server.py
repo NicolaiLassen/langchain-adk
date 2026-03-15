@@ -25,8 +25,13 @@ from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+try:
+    from fastapi import FastAPI, Request
+    from fastapi.responses import JSONResponse, StreamingResponse
+except ImportError as _exc:
+    raise ImportError(
+        "A2AServer requires FastAPI. Install with: pip install langchain-adk[a2a]"
+    ) from _exc
 
 from langchain_adk.a2a.converters import events_to_a2a_stream
 from langchain_adk.a2a.types import (

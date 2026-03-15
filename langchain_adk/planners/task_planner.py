@@ -46,8 +46,8 @@ from langchain_adk.planners.task_board import (
 )
 
 if TYPE_CHECKING:
-    from langchain_adk.agents.readonly_context import ReadonlyContext
     from langchain_adk.agents.context import Context
+    from langchain_adk.agents.readonly_context import ReadonlyContext
     from langchain_adk.models.llm_request import LlmRequest
 
 

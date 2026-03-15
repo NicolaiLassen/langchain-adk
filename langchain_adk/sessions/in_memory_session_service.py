@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from langchain_adk.errors.session_not_found_error import SessionNotFoundError
 from langchain_adk.sessions.base_session_service import BaseSessionService
 from langchain_adk.sessions.session import Session
 
@@ -102,7 +103,9 @@ class InMemorySessionService(BaseSessionService):
         Session
             The updated session.
         """
-        session = self._store[session_id]
+        session = self._store.get(session_id)
+        if session is None:
+            raise SessionNotFoundError(session_id)
         updates: dict[str, Any] = {
             "last_update_time": time.time(),
         }

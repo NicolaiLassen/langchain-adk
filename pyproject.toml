@@ -1,6 +1,6 @@
 [project]
 name = "langchain-adk"
-version = "0.3.3"
+version = "0.3.4"
 description = "A LangChain-powered Agent Development Toolkit"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -11,10 +11,10 @@ authors = [
 dependencies = [
     "langchain>=1.2.12",
     "pydantic>=2.12.5",
-    "fastapi>=0.115.0",
 ]
 
 [project.optional-dependencies]
+a2a = ["fastapi>=0.115.0"]
 openai = ["langchain-openai>=1.1.11"]
 anthropic = ["langchain-anthropic>=0.3.0"]
 google = ["langchain-google-genai>=2.1.0"]

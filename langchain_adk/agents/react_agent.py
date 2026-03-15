@@ -127,7 +127,7 @@ class ReActAgent(BaseAgent):
         last_answer = ""
         step: ReActStep | None = None
 
-        async for partial in self._llm.astream(messages):
+        async for partial in self._llm.astream(messages, config=ctx.run_config):
             if not isinstance(partial, ReActStep):
                 continue
             step = partial
@@ -266,7 +266,7 @@ class ReActAgent(BaseAgent):
                     ),
                 )
                 try:
-                    result = await tool.ainvoke(step.action_input)
+                    result = await tool.ainvoke(step.action_input, config=ctx.run_config)
                     observation = str(result)
                     yield self._emit_event(
                         ctx,

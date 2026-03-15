@@ -1046,15 +1046,17 @@ wheels = [
 
 [[package]]
 name = "langchain-adk"
-version = "0.3.3"
+version = "0.3.4"
 source = { editable = "." }
 dependencies = [
-    { name = "fastapi" },
     { name = "langchain" },
     { name = "pydantic" },
 ]
 
 [package.optional-dependencies]
+a2a = [
+    { name = "fastapi" },
+]
 anthropic = [
     { name = "langchain-anthropic" },
 ]
@@ -1082,7 +1084,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "fastapi", marker = "extra == 'a2a'", specifier = ">=0.115.0" },
     { name = "fastmcp", marker = "extra == 'mcp'", specifier = ">=2.0.0" },
     { name = "langchain", specifier = ">=1.2.12" },
     { name = "langchain-anthropic", marker = "extra == 'anthropic'", specifier = ">=0.3.0" },
