@@ -38,7 +38,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e ".[mcp,a2a]"
-          pip install pytest pytest-asyncio
+          pip install "pytest>=9.0" "pytest-asyncio>=0.25"
 
       - name: Run tests
-        run: pytest
+        timeout-minutes: 5
+        run: pytest -v

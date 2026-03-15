@@ -445,19 +445,35 @@ class LlmAgent(BaseAgent):
                 t_id: str, t_name: str, *, result: str | None = None, error: str | None = None,
             ) -> tuple[Event, ToolMessage]:
                 """Build a tool response event and ToolMessage pair."""
-                part = ToolResponsePart(tool_call_id=t_id, tool_name=t_name, result=result, error=error)
+                part = ToolResponsePart(
+                    tool_call_id=t_id,
+                    tool_name=t_name,
+                    result=result or "",
+                    error=error,
+                )
                 actions = EventActions()
                 content_str = result or error or ""
                 if result and result.startswith(TRANSFER_SENTINEL):
                     actions = EventActions(
-                        transfer_to_agent=result.removeprefix(TRANSFER_SENTINEL).strip()
+                        transfer_to_agent=result.removeprefix(
+                            TRANSFER_SENTINEL
+                        ).strip()
                     )
                 elif result == EXIT_LOOP_SENTINEL:
                     actions = EventActions(escalate=True)
-                return (
-                    self._emit_event(ctx, EventType.TOOL_RESPONSE, content=Content(parts=[part]), actions=actions),
-                    ToolMessage(content=content_str, tool_call_id=t_id, **({"status": "error"} if error else {})),
+                event = self._emit_event(
+                    ctx,
+                    EventType.TOOL_RESPONSE,
+                    content=Content(parts=[part]),
+                    actions=actions,
                 )
+                msg_kwargs = {"status": "error"} if error else {}
+                msg = ToolMessage(
+                    content=content_str,
+                    tool_call_id=t_id,
+                    **msg_kwargs,
+                )
+                return (event, msg)
 
             async def _execute_tool(tool_call: dict) -> tuple[Event, ToolMessage]:
                 """Execute a single tool call and return response event + message."""
@@ -465,7 +481,12 @@ class LlmAgent(BaseAgent):
 
                 tool = self._tools.get(t_name)
                 if tool is None:
-                    return _tool_response(t_id, t_name, error=f"Tool '{t_name}' not found. Available: {list(self._tools)}")
+                    return _tool_response(
+                        t_id,
+                        t_name,
+                        error=f"Tool '{t_name}' not found. "
+                        f"Available: {list(self._tools)}",
+                    )
 
                 if hasattr(tool, "inject_context"):
                     tool.inject_context(tool_ctx)
@@ -495,18 +516,18 @@ class LlmAgent(BaseAgent):
                     llm_response=llm_response,
                 )
 
-            # Run tools in background, yield pushed events in real-time
-            async def _run_all() -> list[tuple[Event, ToolMessage]]:
-                res = await asyncio.gather(*[_execute_tool(tc) for tc in llm_response.tool_calls])
-                event_queue.put_nowait(None)  # sentinel
-                return res
+            # Run all tool calls concurrently.  Tools (e.g. AgentTool)
+            # may push intermediate events via event_queue while running.
+            results = await asyncio.gather(
+                *[_execute_tool(tc) for tc in llm_response.tool_calls]
+            )
 
-            task = asyncio.ensure_future(_run_all())
-            while (item := await event_queue.get()) is not None:
-                yield item
+            # Drain any events pushed by tools during execution
+            while not event_queue.empty():
+                yield event_queue.get_nowait()
 
             # Yield tool response events
-            for response_event, tool_msg in await task:
+            for response_event, tool_msg in results:
                 yield response_event
                 tool_messages.append(tool_msg)
 
