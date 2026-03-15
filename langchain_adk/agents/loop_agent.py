@@ -93,11 +93,9 @@ class LoopAgent(BaseAgent):
 
         while True:
             if self.max_iterations is not None and iteration >= self.max_iterations:
-                yield Event(
-                    type=EventType.AGENT_MESSAGE,
-                    session_id=ctx.session_id,
-                    agent_name=self.name,
-                    author=self.name,
+                yield self._emit_event(
+                    ctx,
+                    EventType.AGENT_MESSAGE,
                     content=Content.from_text(
                         f"LoopAgent '{self.name}' reached max_iterations "
                         f"({self.max_iterations}) without escalating."
@@ -107,7 +105,8 @@ class LoopAgent(BaseAgent):
                 return
 
             for sub_agent in self.sub_agents:
-                async for event in sub_agent.astream(input, ctx=ctx):
+                child_ctx = ctx.derive(agent_name=sub_agent.name)
+                async for event in sub_agent.astream(input, ctx=child_ctx):
                     yield event
                     last_event = event
 

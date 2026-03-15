@@ -97,8 +97,9 @@ class AgentTool(BaseTool):
                 "Call inject_context(ctx) before invoking."
             )
 
+        child_ctx = ctx.derive(agent_name=agent.name)
         final_answer: str | None = None
-        async for event in agent.astream(request, ctx=ctx):
+        async for event in agent.astream(request, ctx=child_ctx):
             if event.is_final_response():
                 final_answer = event.text
 

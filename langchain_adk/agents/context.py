@@ -7,7 +7,6 @@ and how the run is configured.
 
 from __future__ import annotations
 
-import asyncio
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
@@ -21,8 +20,8 @@ class Context(BaseModel):
     """Runtime context propagated through an agent's execution tree.
 
     Each agent invocation receives a context. Child agents (sub-agents,
-    AgentTool) receive a derived context with an updated branch and
-    agent_name - enabling parallel agent isolation and event attribution.
+    AgentTool) receive a derived context via ``derive()`` with an updated
+    branch and agent_name — enabling event attribution across the hierarchy.
 
     Attributes
     ----------
@@ -38,7 +37,9 @@ class Context(BaseModel):
         The name of the currently executing agent.
     branch : str
         Dot-separated path for nested execution (e.g. "root.child").
-        Used to isolate parallel agent event streams.
+        Set automatically by orchestration agents via ``derive()``.
+        Events carry this field so consumers know which sub-agent
+        produced each event as it bubbles up.
     state : dict[str, Any]
         Mutable key-value store for cross-agent state within one run.
         Agents may read/write this freely; changes are not persisted
@@ -48,7 +49,8 @@ class Context(BaseModel):
         conversation history (events) and persisted state for multi-turn.
     run_config : dict[str, Any]
         Per-run configuration (LangChain RunnableConfig / AgentConfig dict).
-        Set by the Runner or auto-created by astream/ainvoke.
+        Set by the Runner or auto-created by astream/ainvoke. Passed to
+        LangChain LLM and tool calls for callbacks/tracing.
     memory_service : Any, optional
         Optional memory service for long-term recall.
     """
@@ -65,9 +67,6 @@ class Context(BaseModel):
     session: Any | None = None  # Session; Any to avoid circular import at runtime
     run_config: dict[str, Any] = Field(default_factory=dict)  # RunnableConfig / AgentConfig
     memory_service: Any | None = None
-    langchain_run_config: dict[str, Any] = Field(default_factory=dict)
-    # Per-agent event queue. Used internally by run_async() for orchestration.
-    events: asyncio.Queue[Any] = Field(default_factory=asyncio.Queue)
 
     def derive(
         self,
@@ -103,7 +102,5 @@ class Context(BaseModel):
                 "state": self.state,              # shared reference - intentional
                 "session": self.session,          # shared reference - intentional
                 "run_config": self.run_config,
-                "langchain_run_config": self.langchain_run_config,
-                # events NOT passed — child gets its own fresh queue
             }
         )

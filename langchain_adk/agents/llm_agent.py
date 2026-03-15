@@ -243,7 +243,7 @@ class LlmAgent(BaseAgent):
         Yields partial AGENT_MESSAGE events for each text token as they
         arrive, then yields the final accumulated AIMessage as the last item.
         """
-        rc = ctx.langchain_run_config or {}
+        rc = ctx.run_config
 
         chunks: list[AIMessageChunk] = []
         has_tool_calls = False
@@ -269,11 +269,9 @@ class LlmAgent(BaseAgent):
                         chunk_text += part.get("text", "")
 
             if chunk_text:
-                yield Event(
-                    type=EventType.AGENT_MESSAGE,
-                    session_id=ctx.session_id,
-                    agent_name=self.name,
-                    author=self.name,
+                yield self._emit_event(
+                    ctx,
+                    EventType.AGENT_MESSAGE,
                     content=Content.from_text(chunk_text),
                     partial=True,
                     turn_complete=False,
@@ -355,11 +353,9 @@ class LlmAgent(BaseAgent):
                     if recovery is not None:
                         raw_response = AIMessage(content=recovery.text or "")
                     else:
-                        yield Event(
-                            type=EventType.AGENT_MESSAGE,
-                            session_id=ctx.session_id,
-                            agent_name=self.name,
-                            author=self.name,
+                        yield self._emit_event(
+                            ctx,
+                            EventType.AGENT_MESSAGE,
                             content=Content.from_text(str(exc)),
                             metadata={
                                 "error": True,
@@ -368,11 +364,9 @@ class LlmAgent(BaseAgent):
                         )
                         return
                 else:
-                    yield Event(
-                        type=EventType.AGENT_MESSAGE,
-                        session_id=ctx.session_id,
-                        agent_name=self.name,
-                        author=self.name,
+                    yield self._emit_event(
+                        ctx,
+                        EventType.AGENT_MESSAGE,
                         content=Content.from_text(str(exc)),
                         metadata={
                             "error": True,
@@ -421,18 +415,16 @@ class LlmAgent(BaseAgent):
                             try:
                                 structured_output = await structured_llm.ainvoke(
                                     messages,
-                                    config=ctx.langchain_run_config or {},
+                                    config=ctx.run_config,
                                 )
                             except Exception:
                                 pass
                     if structured_output is not None:
                         parts.append(DataPart(data=structured_output.model_dump()))
 
-                yield Event(
-                    type=EventType.AGENT_MESSAGE,
-                    session_id=ctx.session_id,
-                    agent_name=self.name,
-                    author=self.name,
+                yield self._emit_event(
+                    ctx,
+                    EventType.AGENT_MESSAGE,
                     content=Content(parts=parts),
                     partial=False,
                     llm_response=llm_response,
@@ -452,11 +444,9 @@ class LlmAgent(BaseAgent):
                 if tool is None:
                     error_msg = f"Tool '{t_name}' not found. Available: {list(self._tools)}"
                     return (
-                        Event(
-                            type=EventType.TOOL_RESPONSE,
-                            session_id=ctx.session_id,
-                            agent_name=self.name,
-                            author=self.name,
+                        self._emit_event(
+                            ctx,
+                            EventType.TOOL_RESPONSE,
                             content=Content(
                                 parts=[
                                     ToolResponsePart(
@@ -477,7 +467,7 @@ class LlmAgent(BaseAgent):
 
                 try:
                     result = await tool.ainvoke(
-                        t_args, config=ctx.langchain_run_config or {}
+                        t_args, config=ctx.run_config
                     )
 
                     if self.after_tool_callback:
@@ -495,11 +485,9 @@ class LlmAgent(BaseAgent):
                         actions = EventActions(escalate=True)
 
                     return (
-                        Event(
-                            type=EventType.TOOL_RESPONSE,
-                            session_id=ctx.session_id,
-                            agent_name=self.name,
-                            author=self.name,
+                        self._emit_event(
+                            ctx,
+                            EventType.TOOL_RESPONSE,
                             content=Content(
                                 parts=[
                                     ToolResponsePart(
@@ -519,11 +507,9 @@ class LlmAgent(BaseAgent):
                     if self.after_tool_callback:
                         await self.after_tool_callback(ctx, t_name, None)
                     return (
-                        Event(
-                            type=EventType.TOOL_RESPONSE,
-                            session_id=ctx.session_id,
-                            agent_name=self.name,
-                            author=self.name,
+                        self._emit_event(
+                            ctx,
+                            EventType.TOOL_RESPONSE,
                             content=Content(
                                 parts=[
                                     ToolResponsePart(
@@ -543,11 +529,9 @@ class LlmAgent(BaseAgent):
 
             # Yield all tool call events
             for tool_call in llm_response.tool_calls:
-                yield Event(
-                    type=EventType.AGENT_MESSAGE,
-                    session_id=ctx.session_id,
-                    agent_name=self.name,
-                    author=self.name,
+                yield self._emit_event(
+                    ctx,
+                    EventType.AGENT_MESSAGE,
                     content=Content(
                         parts=[
                             ToolCallPart(
@@ -572,11 +556,9 @@ class LlmAgent(BaseAgent):
 
             messages.extend(tool_messages)
 
-        yield Event(
-            type=EventType.AGENT_MESSAGE,
-            session_id=ctx.session_id,
-            agent_name=self.name,
-            author=self.name,
+        yield self._emit_event(
+            ctx,
+            EventType.AGENT_MESSAGE,
             content=Content.from_text(
                 f"Max iterations ({self.max_iterations}) reached without a final answer."
             ),

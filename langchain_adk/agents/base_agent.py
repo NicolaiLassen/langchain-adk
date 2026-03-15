@@ -13,13 +13,13 @@ from __future__ import annotations
 
 import asyncio
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
+from collections.abc import AsyncIterator, Iterator
+from typing import Any
 from uuid import uuid4
 
 from langchain_core.runnables import RunnableConfig
 
 from langchain_adk.agents.context import Context
-from langchain_adk.agents.tracing import open_trace
 from langchain_adk.events.event import Event, EventType
 
 
@@ -39,10 +39,6 @@ class BaseAgent(ABC):
         Child agents registered under this agent.
     parent_agent : BaseAgent, optional
         The parent agent (set automatically on registration).
-    before_agent_callback : callable, optional
-        Called before the agent runs.
-    after_agent_callback : callable, optional
-        Called after the agent completes.
     """
 
     def __init__(self, name: str, description: str = "") -> None:
@@ -50,8 +46,6 @@ class BaseAgent(ABC):
         self.description = description
         self.sub_agents: list[BaseAgent] = []
         self.parent_agent: BaseAgent | None = None
-        self.before_agent_callback: Callable[[Context], Awaitable[None]] | None = None
-        self.after_agent_callback: Callable[[Context], Awaitable[None]] | None = None
 
     def _ensure_ctx(
         self,
@@ -65,6 +59,37 @@ class BaseAgent(ABC):
             session_id=str(uuid4()),
             agent_name=self.name,
             run_config=config or {},
+        )
+
+    def _emit_event(
+        self,
+        ctx: Context,
+        type: EventType,
+        **kwargs: Any,
+    ) -> Event:
+        """Create an Event with context attribution (branch, session, agent).
+
+        Parameters
+        ----------
+        ctx : Context
+            The invocation context providing session_id and branch.
+        type : EventType
+            The event type.
+        **kwargs
+            Additional fields passed to the Event constructor.
+
+        Returns
+        -------
+        Event
+            A new Event with branch, session_id, and agent_name set.
+        """
+        kwargs.setdefault("author", self.name)
+        return Event(
+            type=type,
+            session_id=ctx.session_id,
+            agent_name=self.name,
+            branch=ctx.branch,
+            **kwargs,
         )
 
     # ------------------------------------------------------------------
@@ -182,65 +207,6 @@ class BaseAgent(ABC):
             The agent's final answer event.
         """
         return asyncio.run(self.ainvoke(input, config))
-
-    # ------------------------------------------------------------------
-    # Internal: queue-based wrapper for Runner / AgentTool
-    # ------------------------------------------------------------------
-
-    async def run_async(
-        self,
-        input: str,
-        *,
-        ctx: Context,
-    ) -> None:
-        """Drain ``astream()`` into ``ctx.events`` queue.
-
-        Used by Runner, AgentTool, and orchestration internals that need
-        queue-based event consumption. Wraps with AGENT_START/AGENT_END
-        lifecycle events, callbacks, and tracing.
-
-        Parameters
-        ----------
-        input : str
-            The user message or task description.
-        ctx : Context
-            The invocation context for this run.
-        """
-        lc_config = ctx.run_config
-        child_config, run_manager = await open_trace(self.name, lc_config, input)
-        if child_config:
-            ctx.langchain_run_config = child_config
-
-        if self.before_agent_callback:
-            await self.before_agent_callback(ctx)
-
-        await ctx.events.put(Event(
-            type=EventType.AGENT_START,
-            session_id=ctx.session_id,
-            agent_name=self.name,
-        ))
-
-        try:
-            async for event in self.astream(input, ctx=ctx):
-                await ctx.events.put(event)
-        except Exception as exc:
-            if run_manager:
-                await run_manager.on_chain_error(exc)
-            raise
-
-        await ctx.events.put(Event(
-            type=EventType.AGENT_END,
-            session_id=ctx.session_id,
-            agent_name=self.name,
-        ))
-
-        if run_manager:
-            await run_manager.on_chain_end({"output": "completed"})
-
-        if self.after_agent_callback:
-            await self.after_agent_callback(ctx)
-
-        await ctx.events.put(None)  # sentinel: done
 
     # ------------------------------------------------------------------
     # Agent tree management

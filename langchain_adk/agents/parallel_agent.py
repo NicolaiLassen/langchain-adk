@@ -61,7 +61,8 @@ class ParallelAgent(BaseAgent):
         ------
         Event
             Events from all sub-agents, interleaved in the order
-            they are produced.
+            they are produced. Each event carries the sub-agent's
+            branch path for attribution.
         """
         ctx = self._ensure_ctx(config, ctx)
 
@@ -72,7 +73,8 @@ class ParallelAgent(BaseAgent):
         merged: asyncio.Queue[Event | None] = asyncio.Queue()
 
         async def run_and_forward(agent: BaseAgent) -> None:
-            async for event in agent.astream(input, ctx=ctx):
+            child_ctx = ctx.derive(agent_name=agent.name)
+            async for event in agent.astream(input, ctx=child_ctx):
                 await merged.put(event)
             await merged.put(None)  # signal this child is done
 

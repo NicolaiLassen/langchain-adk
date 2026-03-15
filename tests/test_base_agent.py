@@ -1,4 +1,4 @@
-"""Tests for BaseAgent: ainvoke, astream, find_agent, callbacks."""
+"""Tests for BaseAgent: ainvoke, astream, find_agent, _emit_event."""
 
 import pytest
 
@@ -17,23 +17,24 @@ class StubAgent(BaseAgent):
 
     async def astream(self, input, config=None, *, ctx=None):
         ctx = self._ensure_ctx(config, ctx)
-        yield Event(
-            type=EventType.AGENT_MESSAGE,
-            session_id=ctx.session_id,
-            agent_name=self.name,
+        yield self._emit_event(
+            ctx,
+            EventType.AGENT_MESSAGE,
             content=Content.from_text(self._answer),
         )
 
 
 class NoAnswerAgent(BaseAgent):
-    """Agent that yields no final answer event."""
+    """Agent that yields a non-final event (partial)."""
 
     async def astream(self, input, config=None, *, ctx=None):
         ctx = self._ensure_ctx(config, ctx)
-        yield Event(
-            type=EventType.AGENT_START,
-            session_id=ctx.session_id,
-            agent_name=self.name,
+        yield self._emit_event(
+            ctx,
+            EventType.AGENT_MESSAGE,
+            content=Content.from_text("thinking..."),
+            partial=True,
+            turn_complete=False,
         )
 
 
@@ -112,37 +113,13 @@ async def test_astream_with_ctx():
 
 
 @pytest.mark.asyncio
-async def test_before_after_callbacks():
-    """Callbacks are called via run_async (queue-based wrapper)."""
-    agent = StubAgent(answer="cb")
-    calls = []
-
-    async def before(ctx):
-        calls.append("before")
-
-    async def after(ctx):
-        calls.append("after")
-
-    agent.before_agent_callback = before
-    agent.after_agent_callback = after
-
-    # Callbacks are triggered by run_async, not astream directly
-    ctx = Context(session_id="test", agent_name="stub")
-    import asyncio
-    task = asyncio.create_task(agent.run_async("q", ctx=ctx))
-    events = []
-    while True:
-        event = await ctx.events.get()
-        if event is None:
-            break
-        events.append(event)
-    await task
-
-    assert "before" in calls
-    assert "after" in calls
-    types = [e.type for e in events]
-    assert EventType.AGENT_START in types
-    assert EventType.AGENT_END in types
+async def test_emit_event_sets_branch():
+    """_emit_event includes branch from ctx."""
+    agent = StubAgent(answer="branched")
+    ctx = Context(session_id="s1", agent_name="root")
+    child_ctx = ctx.derive(agent_name="stub")
+    events = [e async for e in agent.astream("q", ctx=child_ctx)]
+    assert events[0].branch == "stub"
 
 
 def test_repr():

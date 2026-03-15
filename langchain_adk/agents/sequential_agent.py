@@ -73,7 +73,8 @@ class SequentialAgent(BaseAgent):
         current_input = input
 
         for sub_agent in self.sub_agents:
-            async for event in sub_agent.astream(current_input, ctx=ctx):
+            child_ctx = ctx.derive(agent_name=sub_agent.name)
+            async for event in sub_agent.astream(current_input, ctx=child_ctx):
                 yield event
 
                 if event.actions.escalate:

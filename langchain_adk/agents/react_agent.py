@@ -135,11 +135,9 @@ class ReActAgent(BaseAgent):
             current_thought = partial.thought or ""
             if current_thought != last_thought:
                 last_thought = current_thought
-                yield Event(
-                    type=EventType.AGENT_MESSAGE,
-                    session_id=ctx.session_id,
-                    agent_name=self.name,
-                    author=self.name,
+                yield self._emit_event(
+                    ctx,
+                    EventType.AGENT_MESSAGE,
                     content=Content.from_text(current_thought),
                     metadata={
                         "react_step": "thought",
@@ -152,11 +150,9 @@ class ReActAgent(BaseAgent):
             current_answer = partial.answer or ""
             if current_answer and current_answer != last_answer:
                 last_answer = current_answer
-                yield Event(
-                    type=EventType.AGENT_MESSAGE,
-                    session_id=ctx.session_id,
-                    agent_name=self.name,
-                    author=self.name,
+                yield self._emit_event(
+                    ctx,
+                    EventType.AGENT_MESSAGE,
                     content=Content.from_text(current_answer),
                     metadata={"scratchpad": partial.scratchpad or ""},
                     partial=True,
@@ -167,11 +163,9 @@ class ReActAgent(BaseAgent):
             raise RuntimeError("Streaming produced no output")
 
         # Complete thought event
-        yield Event(
-            type=EventType.AGENT_MESSAGE,
-            session_id=ctx.session_id,
-            agent_name=self.name,
-            author=self.name,
+        yield self._emit_event(
+            ctx,
+            EventType.AGENT_MESSAGE,
             content=Content.from_text(step.thought),
             metadata={
                 "react_step": "thought",
@@ -222,11 +216,9 @@ class ReActAgent(BaseAgent):
                     else:
                         yield item
             except Exception as exc:
-                yield Event(
-                    type=EventType.AGENT_MESSAGE,
-                    session_id=ctx.session_id,
-                    agent_name=self.name,
-                    author=self.name,
+                yield self._emit_event(
+                    ctx,
+                    EventType.AGENT_MESSAGE,
                     content=Content.from_text(str(exc)),
                     metadata={
                         "error": True,
@@ -237,22 +229,18 @@ class ReActAgent(BaseAgent):
 
             # Final answer
             if step.is_final:
-                yield Event(
-                    type=EventType.AGENT_MESSAGE,
-                    session_id=ctx.session_id,
-                    agent_name=self.name,
-                    author=self.name,
+                yield self._emit_event(
+                    ctx,
+                    EventType.AGENT_MESSAGE,
                     content=Content.from_text(step.answer),
                     metadata={"scratchpad": step.scratchpad},
                 )
                 return
 
             # Tool call
-            yield Event(
-                type=EventType.AGENT_MESSAGE,
-                session_id=ctx.session_id,
-                agent_name=self.name,
-                author=self.name,
+            yield self._emit_event(
+                ctx,
+                EventType.AGENT_MESSAGE,
                 metadata={
                     "react_step": "action",
                     "action": step.action,
@@ -264,11 +252,9 @@ class ReActAgent(BaseAgent):
             if tool is None:
                 observation = f"Error: tool '{step.action}' not found."
             else:
-                yield Event(
-                    type=EventType.AGENT_MESSAGE,
-                    session_id=ctx.session_id,
-                    agent_name=self.name,
-                    author=self.name,
+                yield self._emit_event(
+                    ctx,
+                    EventType.AGENT_MESSAGE,
                     content=Content(
                         parts=[
                             ToolCallPart(
@@ -282,11 +268,9 @@ class ReActAgent(BaseAgent):
                 try:
                     result = await tool.ainvoke(step.action_input)
                     observation = str(result)
-                    yield Event(
-                        type=EventType.TOOL_RESPONSE,
-                        session_id=ctx.session_id,
-                        agent_name=self.name,
-                        author=self.name,
+                    yield self._emit_event(
+                        ctx,
+                        EventType.TOOL_RESPONSE,
                         content=Content(
                             parts=[
                                 ToolResponsePart(
@@ -299,11 +283,9 @@ class ReActAgent(BaseAgent):
                     )
                 except Exception as exc:
                     observation = f"Error: {exc}"
-                    yield Event(
-                        type=EventType.TOOL_RESPONSE,
-                        session_id=ctx.session_id,
-                        agent_name=self.name,
-                        author=self.name,
+                    yield self._emit_event(
+                        ctx,
+                        EventType.TOOL_RESPONSE,
                         content=Content(
                             parts=[
                                 ToolResponsePart(
@@ -315,11 +297,9 @@ class ReActAgent(BaseAgent):
                         ),
                     )
 
-            yield Event(
-                type=EventType.AGENT_MESSAGE,
-                session_id=ctx.session_id,
-                agent_name=self.name,
-                author=self.name,
+            yield self._emit_event(
+                ctx,
+                EventType.AGENT_MESSAGE,
                 content=Content.from_text(observation),
                 metadata={"react_step": "observation", "tool_name": step.action},
             )
@@ -327,11 +307,9 @@ class ReActAgent(BaseAgent):
             messages.append(AIMessage(content=str(step.model_dump())))
             messages.append(HumanMessage(content=f"Observation: {observation}"))
 
-        yield Event(
-            type=EventType.AGENT_MESSAGE,
-            session_id=ctx.session_id,
-            agent_name=self.name,
-            author=self.name,
+        yield self._emit_event(
+            ctx,
+            EventType.AGENT_MESSAGE,
             content=Content.from_text(
                 f"Max iterations ({self.max_iterations}) reached without a final answer."
             ),
