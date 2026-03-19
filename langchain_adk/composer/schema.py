@@ -78,11 +78,25 @@ class PlannerDef(BaseModel):
 
 
 class SkillItemDef(BaseModel):
-    """A skill definition for the agent's skill store."""
+    """A skill definition for the agent's skill store.
+
+    Either ``content`` (inline) or ``mcp`` (remote FastMCP server) must be set.
+    """
 
     name: str
     description: str = ""
-    content: str
+    content: str | None = None
+    mcp: MCPConfig | None = None
+
+    @model_validator(mode="after")
+    def _require_content_or_mcp(self) -> SkillItemDef:
+        if not self.content and not self.mcp:
+            msg = "Skill must have either 'content' (inline) or 'mcp' (remote)"
+            raise ValueError(msg)
+        if self.content and self.mcp:
+            msg = "Skill cannot have both 'content' and 'mcp'"
+            raise ValueError(msg)
+        return self
 
 
 class A2ASkillDef(BaseModel):
@@ -97,11 +111,13 @@ class A2ASkillDef(BaseModel):
 class AgentDef(BaseModel):
     """Definition of a single agent in the compose file."""
 
-    type: Literal["llm", "react", "sequential", "parallel", "loop"] = "llm"
+    type: Literal["llm", "react", "sequential", "parallel", "loop", "a2a"] = "llm"
     description: str = ""
+    url: str | None = None
     model: ModelConfig | None = None
     instructions: str | None = None
     tools: list[str | ToolDef] | None = None
+    skills: list[str] = Field(default_factory=list)
     agents: list[str] | None = None
     planner: PlannerDef | None = None
     output_schema: str | None = None
@@ -137,7 +153,7 @@ class ComposeSpec(BaseModel):
 
     defaults: DefaultsConfig = Field(default_factory=DefaultsConfig)
     tools: dict[str, ToolDef] = Field(default_factory=dict)
-    skills: list[SkillItemDef] = Field(default_factory=list)
+    skills: dict[str, SkillItemDef] = Field(default_factory=dict)
     agents: dict[str, AgentDef]
     main_agent: str
     runner: RunnerConfig | None = None

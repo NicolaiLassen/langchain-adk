@@ -1,12 +1,14 @@
 """ReActAgent - structured Reason+Act loop.
 
 Uses with_structured_output() to get a typed ReActStep per iteration.
-Streams token-level partial events.
+Extends LlmAgent, inheriting support for instructions, planners, skills,
+callbacks, and all other LLM-agent features.
 """
 
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from typing import Any
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
@@ -14,8 +16,8 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
-from langchain_adk.agents.base_agent import BaseAgent
 from langchain_adk.agents.context import Context
+from langchain_adk.agents.llm_agent import LlmAgent
 from langchain_adk.events.event import Event, EventType
 from langchain_adk.models.part import Content, ToolCallPart, ToolResponsePart
 
@@ -42,7 +44,7 @@ class ReActStep(BaseModel):
         return self.answer is not None
 
 
-_SYSTEM_PROMPT = """\
+_REACT_SYSTEM_PROMPT = """\
 You are a reasoning agent. You solve problems step by step using the ReAct pattern.
 
 IMPORTANT: Output exactly ONE JSON object per response. Do NOT output multiple JSON objects.
@@ -68,20 +70,29 @@ Rules:
 """
 
 
-class ReActAgent(BaseAgent):
+class ReActAgent(LlmAgent):
     """Agent that uses explicit structured reasoning before each action.
 
-    Uses LangChain ``with_structured_output()`` to enforce a typed
-    ``ReActStep`` at every iteration. Streams token-level partial events.
+    Extends ``LlmAgent``, inheriting support for custom instructions,
+    planners, skills, callbacks, and output schemas. Uses LangChain
+    ``with_structured_output()`` to enforce a typed ``ReActStep`` at
+    every iteration.
 
-    Attributes
+    Parameters
     ----------
+    name : str
+        Unique name identifying this agent.
     llm : BaseChatModel
         The LangChain chat model to use.
-    tools : list[BaseTool]
+    tools : list[BaseTool], optional
         Tools available to the agent.
+    description : str
+        Short description used by LLMs for routing decisions.
     max_iterations : int
         Maximum ReAct loop iterations before yielding an error.
+    **kwargs
+        All other keyword arguments are passed to ``LlmAgent``, including
+        ``instructions``, ``planner``, ``output_schema``, and callbacks.
     """
 
     def __init__(
@@ -92,27 +103,60 @@ class ReActAgent(BaseAgent):
         *,
         description: str = "",
         max_iterations: int = 10,
+        **kwargs: Any,
     ) -> None:
-        super().__init__(name=name, description=description)
-        self._tools = {t.name: t for t in (tools or [])}
-        self.max_iterations = max_iterations
+        # Default to empty instructions — the ReAct prompt is the base
+        kwargs.setdefault("instructions", "")
+        super().__init__(
+            name=name,
+            llm=llm,
+            tools=tools,
+            description=description,
+            max_iterations=max_iterations,
+            **kwargs,
+        )
         try:
-            self._llm = llm.with_structured_output(
+            self._structured_llm = llm.with_structured_output(
                 schema=ReActStep, include_raw=False, method="json_mode",
             )
         except (NotImplementedError, TypeError, ValueError):
-            self._llm = llm.with_structured_output(
+            self._structured_llm = llm.with_structured_output(
                 schema=ReActStep, include_raw=False,
             )
 
-    def _system_message(self) -> SystemMessage:
+    async def _build_react_system_prompt(self, ctx: Context) -> str:
+        """Build the ReAct system prompt, incorporating custom instructions."""
         tool_descriptions = "\n".join(
             f"  - {name}: {tool.description}"
             for name, tool in self._tools.items()
         ) or "  (no tools available)"
-        return SystemMessage(
-            content=_SYSTEM_PROMPT.format(tool_descriptions=tool_descriptions)
-        )
+
+        base = _REACT_SYSTEM_PROMPT.format(tool_descriptions=tool_descriptions)
+
+        # Append custom instructions if provided
+        custom = await self._resolve_instructions(ctx)
+        if custom:
+            base = f"{base}\n\nAdditional instructions:\n{custom}"
+
+        # Append planner instruction if a planner is attached
+        if self._planner is not None:
+            from langchain_adk.agents.readonly_context import ReadonlyContext
+            from langchain_adk.models.llm_request import LlmRequest
+
+            request = LlmRequest(
+                model=getattr(self._llm, "model_name", None)
+                or getattr(self._llm, "model", None),
+                system_instruction=base,
+                messages=[],
+                tools=list(self._tools.values()),
+                tools_dict=dict(self._tools),
+            )
+            readonly = ReadonlyContext(ctx)
+            instruction = self._planner.build_planning_instruction(readonly, request)
+            if instruction:
+                base = f"{base}\n\n{instruction}"
+
+        return base
 
     async def _invoke_step(
         self,
@@ -127,7 +171,7 @@ class ReActAgent(BaseAgent):
         last_answer = ""
         step: ReActStep | None = None
 
-        async for partial in self._llm.astream(messages, config=ctx.run_config):
+        async for partial in self._structured_llm.astream(messages, config=ctx.run_config):
             if not isinstance(partial, ReActStep):
                 continue
             step = partial
@@ -202,8 +246,9 @@ class ReActAgent(BaseAgent):
         """
         ctx = self._ensure_ctx(config, ctx)
 
+        system_prompt = await self._build_react_system_prompt(ctx)
         messages: list[BaseMessage] = [
-            self._system_message(),
+            SystemMessage(content=system_prompt),
             HumanMessage(content=input),
         ]
 

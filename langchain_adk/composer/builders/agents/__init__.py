@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
 from langchain_adk.agents.base_agent import BaseAgent
-from langchain_adk.composer.builders.agents import llm, loop, parallel, react, sequential
+from langchain_adk.composer.builders.agents import a2a, llm, loop, parallel, react, sequential
 from langchain_adk.composer.schema import AgentDef, ComposeSpec, ModelConfig
 
 if TYPE_CHECKING:
@@ -71,3 +71,4 @@ register("react", react.build)
 register("sequential", sequential.build)
 register("parallel", parallel.build)
 register("loop", loop.build)
+register("a2a", a2a.build)

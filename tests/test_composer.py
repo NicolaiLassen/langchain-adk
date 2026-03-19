@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import textwrap
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -20,7 +20,7 @@ from langchain_adk.composer.builders.tools import register_builtin as register_b
 from langchain_adk.composer.builders.tools import resolve_builtin as resolve_builtin_tool
 from langchain_adk.composer.builders.tools import resolve_function as resolve_function_tool
 from langchain_adk.composer.errors import CircularReferenceError, ComposerError
-from langchain_adk.composer.schema import ComposeSpec, ToolDef
+from langchain_adk.composer.schema import ComposeSpec, SkillItemDef, ToolDef
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -86,6 +86,35 @@ class TestSchema:
         td = ToolDef.model_validate({"transfer": {"targets": ["A", "B"]}})
         assert td.transfer is not None
         assert td.transfer.targets == ["A", "B"]
+
+    def test_skill_requires_content_or_mcp(self):
+        with pytest.raises(ValueError, match="content.*or.*mcp"):
+            SkillItemDef.model_validate({"name": "empty"})
+
+    def test_skill_rejects_both_content_and_mcp(self):
+        with pytest.raises(ValueError, match="cannot have both"):
+            SkillItemDef.model_validate({
+                "name": "both",
+                "content": "inline",
+                "mcp": {"url": "http://localhost:8001/mcp"},
+            })
+
+    def test_skill_inline_content(self):
+        s = SkillItemDef.model_validate({
+            "name": "test",
+            "content": "some content",
+        })
+        assert s.content == "some content"
+        assert s.mcp is None
+
+    def test_skill_mcp_source(self):
+        s = SkillItemDef.model_validate({
+            "name": "remote",
+            "mcp": {"url": "http://localhost:8001/mcp"},
+        })
+        assert s.mcp is not None
+        assert s.mcp.url == "http://localhost:8001/mcp"
+        assert s.content is None
 
     def test_full_spec(self):
         spec = ComposeSpec.model_validate(
@@ -567,13 +596,15 @@ class TestComposerBuild:
             tmp_path,
             """\
             skills:
-              - name: summarize
+              summarize:
+                name: summarize
                 description: "Summarize text"
                 content: "Extract 3-5 key points."
             agents:
               bot:
                 type: llm
                 instructions: "You are helpful."
+                skills: [summarize]
             main_agent: bot
             """,
         )
@@ -582,3 +613,152 @@ class TestComposerBuild:
         agent = await Composer.from_yaml_async(yaml_path)
         assert "list_skills" in agent._tools
         assert "load_skill" in agent._tools
+
+    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("langchain_adk.composer.builders.tools.resolve_mcp_skill")
+    async def test_skills_mcp_source(
+        self, mock_mcp_skill, mock_resolve, tmp_path
+    ):
+        from langchain_adk.skills import Skill
+
+        mock_resolve.return_value = lambda **kw: _mock_llm()
+        mock_mcp_skill.return_value = Skill(
+            name="remote-skill",
+            description="A remote skill",
+            content="Remote skill content from MCP.",
+        )
+        yaml_path = _write_yaml(
+            tmp_path,
+            """\
+            skills:
+              remote:
+                name: remote-skill
+                description: "A remote skill"
+                mcp:
+                  url: "http://localhost:9999/mcp"
+            agents:
+              bot:
+                type: llm
+                instructions: "You are helpful."
+                skills: [remote]
+            main_agent: bot
+            """,
+        )
+        from langchain_adk.composer import Composer
+
+        agent = await Composer.from_yaml_async(yaml_path)
+        assert "list_skills" in agent._tools
+        assert "load_skill" in agent._tools
+        mock_mcp_skill.assert_called_once_with(
+            name="remote-skill",
+            description="A remote skill",
+            url="http://localhost:9999/mcp",
+            server_path=None,
+        )
+
+    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    async def test_react_agent_build(self, mock_resolve, tmp_path):
+        mock_resolve.return_value = lambda **kw: _mock_llm()
+        yaml_path = _write_yaml(
+            tmp_path,
+            """\
+            agents:
+              bot:
+                type: react
+                instructions: "Think carefully."
+            main_agent: bot
+            """,
+        )
+        from langchain_adk.agents.react_agent import ReActAgent
+        from langchain_adk.composer import Composer
+
+        agent = await Composer.from_yaml_async(yaml_path)
+        assert isinstance(agent, ReActAgent)
+        assert isinstance(agent, LlmAgent)
+        assert agent.name == "bot"
+        assert agent._instructions == "Think carefully."
+
+    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    async def test_react_agent_with_planner(self, mock_resolve, tmp_path):
+        mock_resolve.return_value = lambda **kw: _mock_llm()
+        yaml_path = _write_yaml(
+            tmp_path,
+            """\
+            agents:
+              bot:
+                type: react
+                planner:
+                  type: plan_react
+            main_agent: bot
+            """,
+        )
+        from langchain_adk.agents.react_agent import ReActAgent
+        from langchain_adk.composer import Composer
+        from langchain_adk.planners.plan_re_act_planner import PlanReActPlanner
+
+        agent = await Composer.from_yaml_async(yaml_path)
+        assert isinstance(agent, ReActAgent)
+        assert isinstance(agent._planner, PlanReActPlanner)
+
+    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    async def test_react_agent_with_skills(self, mock_resolve, tmp_path):
+        mock_resolve.return_value = lambda **kw: _mock_llm()
+        yaml_path = _write_yaml(
+            tmp_path,
+            """\
+            skills:
+              summarize:
+                name: summarize
+                description: "Summarize text"
+                content: "Extract key points."
+            agents:
+              bot:
+                type: react
+                skills: [summarize]
+            main_agent: bot
+            """,
+        )
+        from langchain_adk.agents.react_agent import ReActAgent
+        from langchain_adk.composer import Composer
+
+        agent = await Composer.from_yaml_async(yaml_path)
+        assert isinstance(agent, ReActAgent)
+        assert "list_skills" in agent._tools
+        assert "load_skill" in agent._tools
+
+    async def test_a2a_agent(self, tmp_path):
+        yaml_path = _write_yaml(
+            tmp_path,
+            """\
+            agents:
+              remote:
+                type: a2a
+                url: "http://localhost:9000"
+                description: "Remote research agent."
+            main_agent: remote
+            """,
+        )
+        from langchain_adk.agents.a2a_agent import A2AAgent
+        from langchain_adk.composer import Composer
+
+        agent = await Composer.from_yaml_async(yaml_path)
+        assert isinstance(agent, A2AAgent)
+        assert agent.name == "remote"
+        assert agent.url == "http://localhost:9000"
+        assert agent.description == "Remote research agent."
+
+    async def test_a2a_agent_missing_url(self, tmp_path):
+        yaml_path = _write_yaml(
+            tmp_path,
+            """\
+            agents:
+              remote:
+                type: a2a
+                description: "No URL."
+            main_agent: remote
+            """,
+        )
+        from langchain_adk.composer import Composer
+
+        with pytest.raises(ComposerError, match="must have a 'url'"):
+            await Composer.from_yaml_async(yaml_path)

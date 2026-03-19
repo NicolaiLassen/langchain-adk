@@ -23,7 +23,6 @@ from langchain_adk.composer.builders.tools import (
     resolve_function,
     resolve_mcp,
     resolve_transfer,
-    set_skill_store,
 )
 from langchain_adk.composer.errors import CircularReferenceError, ComposerError
 from langchain_adk.composer.schema import (
@@ -143,22 +142,8 @@ class Composer:
 
     async def _build(self) -> BaseAgent:
         """Build the full agent tree and return the root."""
-        self._setup_skills()
         await self._build_agent(self._spec.main_agent)
         return self._agents[self._spec.main_agent]
-
-    def _setup_skills(self) -> None:
-        """Create an in-memory skill store if skills are defined."""
-        if not self._spec.skills:
-            return
-        from langchain_adk.skills import InMemorySkillStore, Skill
-
-        skills = [
-            Skill(name=s.name, description=s.description, content=s.content)
-            for s in self._spec.skills
-        ]
-        store = InMemorySkillStore(skills)
-        set_skill_store(store)
 
     async def _build_agent(self, name: str) -> BaseAgent:
         """Recursively build an agent via the builder registry."""

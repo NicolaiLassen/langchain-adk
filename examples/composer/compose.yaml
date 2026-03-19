@@ -19,11 +19,15 @@ tools:
   check_billing:
     function: "examples.composer.tools.check_billing"
 
-# Skills available to all LLM agents
+# Named skill definitions (referenced by agents)
 skills:
-  - name: summarize
-    description: "Summarize text into bullet points."
-    content: "Extract 3-5 key points. Use concise bullets."
+  triage_guidelines:
+    name: triage_guidelines
+    description: "Guidelines for routing customer requests."
+    content: |
+      Route order/shipping/returns to sales.
+      Route payments/invoices/subscriptions to billing.
+      Route general questions to researcher.
 
 # Agent definitions
 agents:
@@ -63,6 +67,8 @@ agents:
             - sales
             - billing
             - researcher
+    skills:
+      - triage_guidelines
 
 main_agent: triage
 

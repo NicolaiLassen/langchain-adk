@@ -50,6 +50,7 @@ from langchain_adk.agents import (
     ReadonlyContext,
     SequentialAgent,
 )
+from langchain_adk.agents.a2a_agent import A2AAgent
 from langchain_adk.composer import Composer
 from langchain_adk.events.event import Event, EventType
 from langchain_adk.events.event_actions import EventActions
@@ -75,6 +76,7 @@ __all__ = [
     "SequentialAgent",
     "ParallelAgent",
     "LoopAgent",
+    "A2AAgent",
     # Runner + config
     "Runner",
     "AgentConfig",

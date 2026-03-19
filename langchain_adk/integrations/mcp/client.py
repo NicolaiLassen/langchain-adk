@@ -6,7 +6,10 @@ Uses a fresh session per call. Suitable for request-scoped usage.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from fastmcp import Client
 
 
 class MCPClient:
@@ -27,15 +30,15 @@ class MCPClient:
         """Return the URL if transport is a string, else None."""
         return self._transport if isinstance(self._transport, str) else None
 
-    def _make_client(self) -> Any:
-        from fastmcp import Client
+    def _make_client(self) -> Client:
+        from fastmcp import Client as _Client
 
         if isinstance(self._transport, str):
             from fastmcp.client.transports import StreamableHttpTransport
-            return Client(StreamableHttpTransport(self._transport))
+            return _Client(StreamableHttpTransport(self._transport))
         else:
             # In-memory: pass server object directly
-            return Client(self._transport)
+            return _Client(self._transport)
 
     async def list_tools(self) -> list[Any]:
         """Return the list of tools exposed by the MCP server."""
@@ -46,3 +49,13 @@ class MCPClient:
         """Invoke a tool by name with the given arguments."""
         async with self._make_client() as client:
             return await client.call_tool(name, arguments)
+
+    async def list_resources(self) -> list[Any]:
+        """Return the list of resources exposed by the MCP server."""
+        async with self._make_client() as client:
+            return await client.list_resources()
+
+    async def read_resource(self, uri: str) -> Any:
+        """Read a resource by URI."""
+        async with self._make_client() as client:
+            return await client.read_resource(uri)

@@ -23,6 +23,7 @@
 - [Overview](#overview)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [Composer (YAML)](#composer-yaml)
 - [Core Concepts](#core-concepts)
   - [Agents](#agents)
   - [Events](#events)
@@ -151,6 +152,86 @@ async def main():
 
 asyncio.run(main())
 ```
+
+---
+
+## Composer (YAML)
+
+Define an entire multi-agent setup in a single YAML file — no Python wiring needed.
+
+```bash
+pip install langchain-adk[composer]
+```
+
+```yaml
+# compose.yaml
+defaults:
+  model:
+    provider: openai
+    name: gpt-4o
+
+tools:
+  search:
+    function: "myapp.tools.search_web"
+  weather:
+    mcp:
+      url: "http://localhost:8001/mcp"
+
+skills:
+  # Inline skill
+  triage_guidelines:
+    name: triage_guidelines
+    description: "Guidelines for routing customer requests."
+    content: |
+      Route order/shipping/returns to sales.
+      Route payments/invoices/subscriptions to billing.
+
+  # Remote skill (loaded from FastMCP server at build time)
+  coding_standards:
+    name: coding-standards
+    description: "Team coding standards."
+    mcp:
+      url: "http://localhost:8002/mcp"
+
+agents:
+  researcher:
+    type: llm
+    description: "Researches topics."
+    tools: [search, weather]
+
+  sales:
+    type: llm
+    description: "Handles orders."
+
+  # Remote agent via A2A protocol
+  billing:
+    type: a2a
+    url: "http://localhost:9000"
+    description: "Billing service (remote A2A agent)."
+
+  triage:
+    type: llm
+    instructions: "Route to the right specialist."
+    tools:
+      - transfer:
+          targets: [sales, researcher, billing]
+    skills:
+      - triage_guidelines
+
+main_agent: triage
+```
+
+```python
+from langchain_adk.composer import Composer
+
+# Build root agent from YAML
+agent = Composer.from_yaml("compose.yaml")
+
+# Or get a Runner with sessions
+runner = Composer.runner_from_yaml("compose.yaml")
+```
+
+Supports all agent types (`llm`, `sequential`, `parallel`, `loop`, `a2a`), transfer routing, MCP tools, planners, skills (inline or from FastMCP servers), remote A2A agents, and A2A server generation. See the [Composer docs](docs/composer/overview.md) for the full YAML schema reference.
 
 ---
 
@@ -1237,6 +1318,7 @@ The `examples/` directory contains runnable demos for every major feature. Each 
 | `mcp_agent.py` | MCP tool server integration |
 | `langfuse_tracing.py` | Langfuse tracing integration |
 | `a2a_server.py` | A2A protocol server endpoint |
+| `composer/` | Declarative YAML-based multi-agent composition |
 
 ```bash
 # Run any example (after replacing the NotImplementedError with your LLM)

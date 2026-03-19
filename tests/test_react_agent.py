@@ -1,4 +1,4 @@
-"""Tests for ReActAgent: reasoning loop, tool execution, max iterations."""
+"""Tests for ReActAgent: reasoning loop, tool execution, max iterations, inheritance."""
 
 
 import pytest
@@ -8,6 +8,7 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.tools import tool
 
 from langchain_adk.agents.context import Context
+from langchain_adk.agents.llm_agent import LlmAgent
 from langchain_adk.agents.react_agent import ReActAgent, ReActStep
 from langchain_adk.events.event import EventType
 
@@ -168,3 +169,112 @@ async def test_react_max_iterations():
     errors = [e for e in events if e.metadata.get("error")]
     assert len(errors) == 1
     assert "Max iterations" in errors[0].text
+
+
+# ---------------------------------------------------------------------------
+# Inheritance tests — ReActAgent extends LlmAgent
+# ---------------------------------------------------------------------------
+
+
+def test_react_is_subclass_of_llm_agent():
+    """ReActAgent should be a subclass of LlmAgent."""
+    assert issubclass(ReActAgent, LlmAgent)
+
+
+def test_react_inherits_llm_agent_attributes():
+    """ReActAgent should accept all LlmAgent keyword arguments."""
+    llm = FakeStructuredModel(steps=[])
+    agent = ReActAgent(
+        name="react",
+        llm=llm,
+        instructions="Custom instructions here.",
+        description="A react agent",
+        max_iterations=5,
+    )
+    assert agent.name == "react"
+    assert agent.description == "A react agent"
+    assert agent.max_iterations == 5
+    assert agent._instructions == "Custom instructions here."
+
+
+def test_react_default_instructions_empty():
+    """ReActAgent defaults to empty instructions (ReAct prompt is the base)."""
+    llm = FakeStructuredModel(steps=[])
+    agent = ReActAgent(name="react", llm=llm)
+    assert agent._instructions == ""
+
+
+def test_react_accepts_planner():
+    """ReActAgent should accept a planner kwarg via LlmAgent inheritance."""
+    from unittest.mock import MagicMock
+
+    llm = FakeStructuredModel(steps=[])
+    mock_planner = MagicMock()
+    agent = ReActAgent(name="react", llm=llm, planner=mock_planner)
+    assert agent._planner is mock_planner
+
+
+def test_react_accepts_callbacks():
+    """ReActAgent should accept callback kwargs via LlmAgent inheritance."""
+    from unittest.mock import AsyncMock
+
+    llm = FakeStructuredModel(steps=[])
+    before_cb = AsyncMock()
+    after_cb = AsyncMock()
+    agent = ReActAgent(
+        name="react",
+        llm=llm,
+        before_model_callback=before_cb,
+        after_model_callback=after_cb,
+    )
+    assert agent.before_model_callback is before_cb
+    assert agent.after_model_callback is after_cb
+
+
+@pytest.mark.asyncio
+async def test_react_custom_instructions_in_system_prompt():
+    """Custom instructions should appear in the ReAct system prompt."""
+    llm = FakeStructuredModel(steps=[])
+    agent = ReActAgent(
+        name="react",
+        llm=llm,
+        instructions="Always respond in French.",
+    )
+    ctx = _ctx()
+    prompt = await agent._build_react_system_prompt(ctx)
+    assert "ReAct pattern" in prompt  # base prompt
+    assert "Always respond in French." in prompt  # custom instructions
+
+
+@pytest.mark.asyncio
+async def test_react_no_custom_instructions_clean_prompt():
+    """Without custom instructions, the prompt should not have 'Additional instructions'."""
+    llm = FakeStructuredModel(steps=[])
+    agent = ReActAgent(name="react", llm=llm)
+    ctx = _ctx()
+    prompt = await agent._build_react_system_prompt(ctx)
+    assert "ReAct pattern" in prompt
+    assert "Additional instructions" not in prompt
+
+
+@pytest.mark.asyncio
+async def test_react_with_instructions_and_tools():
+    """Custom instructions + tools should both appear in the system prompt."""
+    @tool
+    def calculator(expression: str) -> str:
+        """Evaluate a math expression."""
+        return str(eval(expression))
+
+    llm = FakeStructuredModel(steps=[
+        ReActStep(scratchpad="", thought="I know", answer="done"),
+    ])
+    agent = ReActAgent(
+        name="react",
+        llm=llm,
+        tools=[calculator],
+        instructions="Show your work step by step.",
+    )
+    ctx = _ctx()
+    prompt = await agent._build_react_system_prompt(ctx)
+    assert "calculator" in prompt
+    assert "Show your work step by step." in prompt

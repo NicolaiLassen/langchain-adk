@@ -16,7 +16,6 @@ from langchain_adk.composer.errors import ComposerError
 
 if TYPE_CHECKING:
     from langchain_adk.agents.base_agent import BaseAgent
-    from langchain_adk.skills.skill_store import BaseSkillStore
 
 # ---------------------------------------------------------------------------
 # Generic import helper
@@ -42,7 +41,6 @@ def import_object(dotted_path: str) -> Any:
 # ---------------------------------------------------------------------------
 
 _BUILTIN_REGISTRY: dict[str, Callable[[], BaseTool]] = {}
-_SKILL_STORE: BaseSkillStore | None = None
 
 
 def register_builtin(name: str, factory: Callable[[], BaseTool]) -> None:
@@ -55,33 +53,6 @@ def register_builtin(name: str, factory: Callable[[], BaseTool]) -> None:
     _BUILTIN_REGISTRY[name] = factory
 
 
-def set_skill_store(store: BaseSkillStore) -> None:
-    """Set the skill store for ``list_skills`` / ``load_skill`` builtins."""
-    global _SKILL_STORE
-    _SKILL_STORE = store
-    _register_skill_builtins()
-
-
-def _register_skill_builtins() -> None:
-    """Register list_skills and load_skill using the current skill store."""
-    if _SKILL_STORE is None:
-        return
-    store = _SKILL_STORE
-
-    def _list_skills() -> BaseTool:
-        from langchain_adk.skills import make_list_skills_tool
-
-        return make_list_skills_tool(store)
-
-    def _load_skill() -> BaseTool:
-        from langchain_adk.skills import make_load_skill_tool
-
-        return make_load_skill_tool(store)
-
-    _BUILTIN_REGISTRY["list_skills"] = _list_skills
-    _BUILTIN_REGISTRY["load_skill"] = _load_skill
-
-
 def _register_defaults() -> None:
     """Register the SDK's built-in tools (called once on first access)."""
     if "exit_loop" not in _BUILTIN_REGISTRY:
@@ -92,7 +63,6 @@ def _register_defaults() -> None:
             return exit_loop_tool
 
         _BUILTIN_REGISTRY["exit_loop"] = _exit_loop
-    _register_skill_builtins()
 
 
 # ---------------------------------------------------------------------------
@@ -162,3 +132,41 @@ def resolve_transfer(target_agents: list[BaseAgent]) -> BaseTool:
     from langchain_adk.tools.transfer_tool import make_transfer_tool
 
     return make_transfer_tool(target_agents)
+
+
+async def resolve_mcp_skill(
+    name: str,
+    description: str,
+    url: str | None = None,
+    server_path: str | None = None,
+) -> Any:
+    """Fetch a skill's content from a FastMCP server.
+
+    Reads the ``skill://{name}/SKILL.md`` resource and returns a ``Skill``
+    object populated with the remote content.
+    """
+    from langchain_adk.integrations.mcp import MCPClient
+    from langchain_adk.skills import Skill
+
+    if url:
+        client = MCPClient(url)
+    elif server_path:
+        server_obj = import_object(server_path)
+        client = MCPClient(server_obj)
+    else:
+        msg = "MCP skill config must have 'url' or 'server'"
+        raise ComposerError(msg)
+
+    resource = await client.read_resource(f"skill://{name}/SKILL.md")
+    # FastMCP read_resource returns content; extract text
+    if hasattr(resource, "content"):
+        content = resource.content
+    elif isinstance(resource, list):
+        content = "\n".join(
+            item.text if hasattr(item, "text") else str(item)
+            for item in resource
+        )
+    else:
+        content = str(resource)
+
+    return Skill(name=name, description=description, content=content)

@@ -105,13 +105,43 @@ tools:
 
 ### `skills`
 
-Skills are auto-loaded into an in-memory skill store. All LLM agents automatically get `list_skills` and `load_skill` tools.
+Named skill definitions, referenced by agents. Each agent that lists skills gets its own in-memory skill store with `list_skills` and `load_skill` tools.
+
+Skills can be defined inline or loaded from a [FastMCP](https://gofastmcp.com/servers/providers/skills) server.
 
 ```yaml
 skills:
-  - name: summarize
+  # Inline skill (content defined directly)
+  summarize:
+    name: summarize
     description: "Summarize text into bullet points."
     content: "Extract 3-5 key points. Be concise."
+
+  # Remote skill (loaded from FastMCP server at build time)
+  pdf_processing:
+    name: pdf-processing
+    description: "Process and extract data from PDFs."
+    mcp:
+      url: "http://localhost:8001/mcp"
+
+  # Remote skill (in-memory FastMCP server)
+  coding_standards:
+    name: coding-standards
+    description: "Team coding standards."
+    mcp:
+      server: "myapp.skills.server"  # dotted import path
+```
+
+Agents reference skills by name:
+
+```yaml
+agents:
+  triage:
+    type: llm
+    instructions: "Route to the right specialist."
+    skills:
+      - summarize
+      - pdf_processing
 ```
 
 ### `agents`
@@ -134,6 +164,8 @@ agents:
       - agent: OtherAgent  # inline AgentTool
       - transfer:          # transfer routing
           targets: [A, B]
+    skills:
+      - summarize          # named reference to skills section
     planner:
       type: task            # plan_react | task
       tasks:
@@ -150,6 +182,7 @@ agents:
 | `sequential` | Run sub-agents in order | `agents` |
 | `parallel` | Run sub-agents concurrently | `agents` |
 | `loop` | Repeat sub-agents until done | `agents`, `max_iterations` |
+| `a2a` | Remote agent via A2A protocol | `url` |
 
 ### `main_agent`
 
