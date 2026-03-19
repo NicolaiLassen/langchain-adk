@@ -11,6 +11,7 @@ stream as the child is still running.
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 from langchain_core.callbacks import AsyncCallbackManagerForToolRun
@@ -20,6 +21,7 @@ from pydantic import BaseModel, Field
 if TYPE_CHECKING:
     from langchain_adk.agents.base_agent import BaseAgent
     from langchain_adk.agents.context import Context
+    from langchain_adk.events.event import Event
 
 
 class AgentToolInput(BaseModel):
@@ -35,15 +37,22 @@ class AgentTool(BaseTool):
     are pushed via ``ctx.event_callback`` so the parent can yield them
     in real-time.
 
-    Attributes
+    Parameters
     ----------
     agent : BaseAgent
         The agent to wrap.
     skip_summarization : bool
         If True, signals the parent to skip LLM summarization of this
         tool's result.
-    _ctx : Context, optional
-        The parent Context, injected at call time.
+    before_agent_callback : callable, optional
+        Called with ``(event, child_ctx)`` for each child event before
+        it is processed. Return a string to short-circuit and use it
+        as the tool result, or ``None`` to continue. Supports both
+        sync and async callables.
+    after_agent_callback : callable, optional
+        Called with ``(event, child_ctx)`` after the child agent
+        finishes streaming all events. Supports both sync and async
+        callables.
     """
 
     name: str
@@ -54,14 +63,26 @@ class AgentTool(BaseTool):
     # Injected at runtime by LlmAgent before tool execution
     _ctx: Any | None = None
 
-    def __init__(self, agent: BaseAgent, *, skip_summarization: bool = False) -> None:
+    def __init__(
+        self,
+        agent: BaseAgent,
+        *,
+        skip_summarization: bool = False,
+        before_agent_callback: (
+            Callable[["Event", "Context"], str | None | Awaitable[str | None]] | None
+        ) = None,
+        after_agent_callback: (
+            Callable[["Event", "Context"], Awaitable[None] | None] | None
+        ) = None,
+    ) -> None:
         super().__init__(
             name=agent.name,
             description=agent.description or f"Delegate work to the {agent.name} agent.",
         )
-        # Store agent as private attribute to avoid Pydantic field conflicts
         object.__setattr__(self, "_agent", agent)
         object.__setattr__(self, "skip_summarization", skip_summarization)
+        object.__setattr__(self, "_before_agent_callback", before_agent_callback)
+        object.__setattr__(self, "_after_agent_callback", after_agent_callback)
         object.__setattr__(self, "_ctx", None)
 
     def inject_context(self, ctx: Context) -> None:
@@ -96,8 +117,12 @@ class AgentTool(BaseTool):
             The wrapped agent's final answer text, or an error message
             if no final answer was produced.
         """
+        import asyncio
+
         agent: BaseAgent = object.__getattribute__(self, "_agent")  # type: ignore[assignment]
         ctx: Context | None = object.__getattribute__(self, "_ctx")
+        before_cb = object.__getattribute__(self, "_before_agent_callback")
+        after_cb = object.__getattribute__(self, "_after_agent_callback")
 
         if ctx is None:
             raise RuntimeError(
@@ -105,13 +130,23 @@ class AgentTool(BaseTool):
                 "Call inject_context(ctx) before invoking."
             )
 
-        child_ctx = ctx.derive(agent_name=agent.name)
+        child_ctx = ctx.derive(agent_name=agent.name).clear_session()
         final_answer: str | None = None
         async for event in agent.astream(request, ctx=child_ctx):
-            # Push event to parent in real-time
             if ctx.event_callback is not None:
                 ctx.event_callback(event)
+            if before_cb is not None:
+                result = before_cb(event, child_ctx)
+                if asyncio.iscoroutine(result):
+                    result = await result
+                if result is not None:
+                    return result
             if event.is_final_response():
                 final_answer = event.text
+
+        if after_cb is not None:
+            result = after_cb(final_answer, child_ctx)
+            if asyncio.iscoroutine(result):
+                await result
 
         return final_answer or f"Agent '{agent.name}' produced no final answer."

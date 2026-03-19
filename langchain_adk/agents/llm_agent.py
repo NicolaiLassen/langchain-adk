@@ -35,6 +35,7 @@ from langchain_core.tools import BaseTool
 
 from langchain_adk.agents.base_agent import BaseAgent
 from langchain_adk.agents.context import Context
+from langchain_adk.concurrency import gather_with_event_queue
 from langchain_adk.events.event import Event, EventType
 from langchain_adk.events.event_actions import EventActions
 from langchain_adk.models.llm_request import LlmRequest
@@ -516,20 +517,18 @@ class LlmAgent(BaseAgent):
                     llm_response=llm_response,
                 )
 
-            # Run all tool calls concurrently.  Tools (e.g. AgentTool)
-            # may push intermediate events via event_queue while running.
-            results = await asyncio.gather(
-                *[_execute_tool(tc) for tc in llm_response.tool_calls]
-            )
-
-            # Drain any events pushed by tools during execution
-            while not event_queue.empty():
-                yield event_queue.get_nowait()
-
-            # Yield tool response events
-            for response_event, tool_msg in results:
-                yield response_event
-                tool_messages.append(tool_msg)
+            # Run all tool calls concurrently, streaming intermediate
+            # events (e.g. from AgentTool) in real time via the queue.
+            async for item in gather_with_event_queue(
+                [_execute_tool(tc) for tc in llm_response.tool_calls],
+                event_queue,
+            ):
+                if isinstance(item, Event):
+                    yield item  # intermediate event from child agent
+                else:
+                    response_event, tool_msg = item
+                    yield response_event
+                    tool_messages.append(tool_msg)
 
             messages.extend(tool_messages)
 

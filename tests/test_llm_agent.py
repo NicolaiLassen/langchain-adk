@@ -1,5 +1,6 @@
 """Tests for LlmAgent: tool loop, streaming, sentinels."""
 
+import asyncio
 import pytest
 from typing import Any, List, Optional
 from unittest.mock import AsyncMock
@@ -7,10 +8,13 @@ from unittest.mock import AsyncMock
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
+from langchain_core.tools import BaseTool
+from pydantic import PrivateAttr
 
 from langchain_adk.agents.llm_agent import LlmAgent
 from langchain_adk.agents.context import Context
 from langchain_adk.events.event import Event, EventType
+from langchain_adk.models.part import Content
 from langchain_adk.tools.exit_loop import EXIT_LOOP_SENTINEL
 from langchain_adk.tools.transfer_tool import TRANSFER_SENTINEL
 
@@ -294,3 +298,149 @@ async def test_tool_call_id_in_parts():
     assert tool_calls[0].tool_calls[0].tool_call_id == "call_123"
     assert len(tool_results) == 1
     assert tool_results[0].content.tool_responses[0].tool_call_id == "call_123"
+
+
+@pytest.mark.asyncio
+async def test_tool_callback_events_stream_before_tool_completion():
+    tool_msg = AIMessage(
+        content="",
+        tool_calls=[{"id": "tc1", "name": "streamer", "args": {"request": "go"}}],
+    )
+    final_msg = AIMessage(content="done")
+    llm = FakeChatModel(responses=[tool_msg, final_msg])
+
+    finished = asyncio.Event()
+
+    class StreamingTool(BaseTool):
+        name: str = "streamer"
+        description: str = "Stream an intermediate event before finishing."
+
+        _ctx: Context | None = PrivateAttr(default=None)
+        _finished: asyncio.Event = PrivateAttr()
+
+        def __init__(self, *, finished_event: asyncio.Event) -> None:
+            super().__init__()
+            self._finished = finished_event
+
+        def inject_context(self, ctx: Context) -> None:
+            self._ctx = ctx
+
+        def _run(self, request: str) -> str:
+            raise NotImplementedError("Use async execution for this test tool.")
+
+        async def _arun(self, request: str) -> str:
+            if self._ctx is None:
+                raise RuntimeError("Context was not injected.")
+
+            if self._ctx.event_callback is not None:
+                self._ctx.event_callback(Event(
+                    type=EventType.AGENT_MESSAGE,
+                    session_id=self._ctx.session_id,
+                    agent_name="ChildAgent",
+                    branch="ChildAgent",
+                    partial=True,
+                    turn_complete=False,
+                    content=Content.from_text(f"working:{request}"),
+                ))
+
+            await asyncio.sleep(0.05)
+            self._finished.set()
+            return "tool done"
+
+    agent = LlmAgent(
+        name="agent",
+        llm=llm,
+        tools=[StreamingTool(finished_event=finished)],
+    )
+
+    child_event_before_finish = False
+    async for event in agent.astream("stream", ctx=_ctx()):
+        if event.agent_name == "ChildAgent":
+            child_event_before_finish = not finished.is_set()
+
+    assert child_event_before_finish is True
+
+
+@pytest.mark.asyncio
+async def test_concurrent_tools_stream_events_interleaved():
+    """Two tools run concurrently, each pushing events. Verify events
+    from both arrive before both tools finish, and tool responses
+    are in original call order."""
+
+    tool_msg = AIMessage(
+        content="",
+        tool_calls=[
+            {"id": "tc_a", "name": "worker_a", "args": {"request": "a"}},
+            {"id": "tc_b", "name": "worker_b", "args": {"request": "b"}},
+        ],
+    )
+    final_msg = AIMessage(content="all done")
+    llm = FakeChatModel(responses=[tool_msg, final_msg])
+
+    class ConcurrentWorker(BaseTool):
+        name: str
+        description: str = "Worker that emits an event then finishes."
+        _ctx: Context | None = PrivateAttr(default=None)
+        _delay: float = PrivateAttr(default=0.0)
+
+        def __init__(self, *, name: str, delay: float = 0.0) -> None:
+            super().__init__(name=name)
+            self._delay = delay
+
+        def inject_context(self, ctx: Context) -> None:
+            self._ctx = ctx
+
+        def _run(self, request: str) -> str:
+            raise NotImplementedError
+
+        async def _arun(self, request: str) -> str:
+            if self._ctx and self._ctx.event_callback:
+                self._ctx.event_callback(Event(
+                    type=EventType.AGENT_MESSAGE,
+                    session_id=self._ctx.session_id,
+                    agent_name=f"child_{self.name}",
+                    branch=f"child_{self.name}",
+                    partial=True,
+                    turn_complete=False,
+                    content=Content.from_text(f"progress:{self.name}"),
+                ))
+            await asyncio.sleep(self._delay)
+            return f"result_{self.name}"
+
+    agent = LlmAgent(
+        name="agent",
+        llm=llm,
+        tools=[
+            ConcurrentWorker(name="worker_a", delay=0.05),
+            ConcurrentWorker(name="worker_b", delay=0.02),
+        ],
+    )
+
+    events: list[Event] = []
+    async for event in agent.astream("go", ctx=_ctx()):
+        events.append(event)
+
+    # Intermediate events from both children should be present
+    child_events = [e for e in events if e.agent_name and e.agent_name.startswith("child_")]
+    assert len(child_events) == 2
+    child_names = {e.agent_name for e in child_events}
+    assert child_names == {"child_worker_a", "child_worker_b"}
+
+    # Tool response events should be in original call order (a before b)
+    tool_responses = [e for e in events if e.type == EventType.TOOL_RESPONSE]
+    assert len(tool_responses) == 2
+    assert tool_responses[0].content.tool_responses[0].tool_name == "worker_a"
+    assert tool_responses[1].content.tool_responses[0].tool_name == "worker_b"
+
+    # Intermediate events should appear before their tool's response
+    event_types = [(e.agent_name or "", e.type) for e in events]
+    for child_name, tool_name in [("child_worker_a", "worker_a"), ("child_worker_b", "worker_b")]:
+        child_idx = next(i for i, (n, _) in enumerate(event_types) if n == child_name)
+        response_idx = next(
+            i for i, e in enumerate(events)
+            if e.type == EventType.TOOL_RESPONSE
+            and e.content.tool_responses[0].tool_name == tool_name
+        )
+        assert child_idx < response_idx, (
+            f"Child event for {tool_name} should appear before its tool response"
+        )

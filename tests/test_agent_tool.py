@@ -101,6 +101,53 @@ async def test_agent_tool_derives_context():
     assert branches == ["child"]
 
 
+@pytest.mark.asyncio
+async def test_agent_tool_before_callback_short_circuits():
+    """before_agent_callback can short-circuit execution by returning a string."""
+    class MultiStepAgent(BaseAgent):
+        async def astream(self, input, config=None, *, ctx=None):
+            ctx = self._ensure_ctx(config, ctx)
+            yield self._emit_event(
+                ctx, EventType.AGENT_MESSAGE,
+                content=Content.from_text("step 1"), partial=True, turn_complete=False,
+            )
+            yield self._emit_event(
+                ctx, EventType.AGENT_MESSAGE, content=Content.from_text("step 2"),
+            )
+
+    def before_cb(event, child_ctx):
+        if event.text == "step 1":
+            return "interrupted at step 1"
+        return None
+
+    agent = MultiStepAgent(name="worker")
+    tool = AgentTool(agent, before_agent_callback=before_cb)
+    ctx = Context(session_id="s1", agent_name="parent")
+    tool.inject_context(ctx)
+
+    result = await tool.ainvoke({"request": "go"})
+    assert result == "interrupted at step 1"
+
+
+@pytest.mark.asyncio
+async def test_agent_tool_before_callback_async():
+    """before_agent_callback supports async callables."""
+    agent = EchoAgent(name="echo")
+    events_seen = []
+
+    async def before_cb(event, child_ctx):
+        events_seen.append(event.text)
+        return None
+
+    tool = AgentTool(agent, before_agent_callback=before_cb)
+    ctx = Context(session_id="s1", agent_name="parent")
+    tool.inject_context(ctx)
+
+    result = await tool.ainvoke({"request": "hello"})
+    assert result == "echo:hello"
+    assert "echo:hello" in events_seen
+
+
 def test_sync_run_raises():
     agent = EchoAgent(name="echo")
     tool = AgentTool(agent)

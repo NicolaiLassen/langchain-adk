@@ -60,5 +60,4 @@ class StateKey:
     """Keys used in InvocationContext.state."""
 
     TASK_BOARD = "task_board"
-    PENDING_QUESTION = "pending_question"
     ACTIVE_AGENT = "active_agent"

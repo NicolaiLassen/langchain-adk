@@ -104,3 +104,29 @@ class Context(BaseModel):
                 "event_callback": self.event_callback,
             }
         )
+
+    def clear_session(self) -> Context:
+        """Return a copy with an empty session (no conversation history).
+
+        The new session keeps the same IDs (session_id, app_name,
+        user_id) but has no events or prior state — giving the
+        consumer a clean slate.
+
+        Returns
+        -------
+        Context
+            A new Context with an empty session.
+        """
+        if self.session is None:
+            return self.model_copy()
+
+        from langchain_adk.sessions.session import Session
+        return self.model_copy(
+            update={
+                "session": Session(
+                    id=self.session_id,
+                    app_name=self.app_name,
+                    user_id=self.user_id,
+                ),
+            }
+        )
