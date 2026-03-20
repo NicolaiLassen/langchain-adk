@@ -1,4 +1,4 @@
-"""Converters between SDK Events and A2A streaming events."""
+"""Converters between SDK Events and A2A v1.0 streaming events."""
 
 from __future__ import annotations
 
@@ -6,11 +6,11 @@ from collections.abc import AsyncIterator
 
 from langchain_adk.a2a.types import (
     Artifact,
+    Part,
     TaskArtifactUpdateEvent,
     TaskState,
     TaskStatus,
     TaskStatusUpdateEvent,
-    TextPart,
 )
 from langchain_adk.events.event import Event, EventType
 
@@ -21,7 +21,7 @@ async def events_to_a2a_stream(
     task_id: str,
     context_id: str,
 ) -> AsyncIterator[TaskStatusUpdateEvent | TaskArtifactUpdateEvent]:
-    """Convert SDK event stream into A2A-compliant streaming events.
+    """Convert SDK event stream into A2A v1.0 streaming events.
 
     Yields TaskStatusUpdateEvent for status changes and
     TaskArtifactUpdateEvent for content (final answer, tool results).
@@ -29,7 +29,7 @@ async def events_to_a2a_stream(
     async for event in events:
         if event.is_final_response():
             artifact = Artifact(
-                parts=[TextPart(text=event.text)],
+                parts=[Part(text=event.text, media_type="text/plain")],
                 name="answer",
             )
             yield TaskArtifactUpdateEvent(
@@ -45,7 +45,7 @@ async def events_to_a2a_stream(
                 task_id=task_id,
                 context_id=context_id,
                 status=TaskStatus(
-                    state=TaskState.working,
+                    state=TaskState.WORKING,
                     message=None,
                 ),
                 final=False,
@@ -61,7 +61,7 @@ async def events_to_a2a_stream(
                 result_text = event.text
                 tool_name = "unknown"
             artifact = Artifact(
-                parts=[TextPart(text=result_text)],
+                parts=[Part(text=result_text, media_type="text/plain")],
                 name=f"tool_result:{tool_name}",
             )
             yield TaskArtifactUpdateEvent(

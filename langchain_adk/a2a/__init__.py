@@ -1,4 +1,4 @@
-"""A2A (Agent-to-Agent) protocol support.
+"""A2A (Agent-to-Agent) protocol v1.0 support.
 
 Requires the ``a2a`` extra: ``pip install langchain-adk[a2a]``
 """
@@ -7,11 +7,10 @@ from langchain_adk.a2a.types import (
     A2AModel,
     AgentCapabilities,
     AgentCard,
+    AgentInterface,
     AgentProvider,
     AgentSkill,
     Artifact,
-    DataPart,
-    FilePart,
     JSONRPCError,
     JSONRPCRequest,
     JSONRPCResponse,
@@ -19,12 +18,15 @@ from langchain_adk.a2a.types import (
     MessageSendParams,
     Part,
     Role,
+    SendMessageConfiguration,
     Task,
     TaskArtifactUpdateEvent,
     TaskState,
     TaskStatus,
     TaskStatusUpdateEvent,
-    TextPart,
+    data_part,
+    file_part,
+    text_part,
 )
 
 
@@ -42,25 +44,27 @@ def __getattr__(name: str):
 __all__ = [
     "A2AModel",
     "A2AServer",
-    "AgentCard",
     "AgentCapabilities",
-    "AgentSkill",
+    "AgentCard",
+    "AgentInterface",
     "AgentProvider",
+    "AgentSkill",
     "Artifact",
+    "JSONRPCError",
     "JSONRPCRequest",
     "JSONRPCResponse",
-    "JSONRPCError",
     "Message",
     "MessageSendParams",
     "Part",
     "Role",
+    "SendMessageConfiguration",
     "Task",
+    "TaskArtifactUpdateEvent",
     "TaskState",
     "TaskStatus",
     "TaskStatusUpdateEvent",
-    "TaskArtifactUpdateEvent",
-    "TextPart",
-    "FilePart",
-    "DataPart",
+    "data_part",
     "events_to_a2a_stream",
+    "file_part",
+    "text_part",
 ]

@@ -1,25 +1,16 @@
-"""A2AServer — spec-compliant A2A server over JSON-RPC 2.0.
+"""A2AServer — spec-compliant A2A v1.0 server over JSON-RPC 2.0.
 
 Exposes any BaseAgent as an A2A endpoint with:
-  - POST / — JSON-RPC 2.0 dispatch (message/send, message/stream, etc.)
-  - GET  /.well-known/agent.json  — Agent Card discovery
+  - POST / — JSON-RPC 2.0 dispatch (SendMessage, SendStreamingMessage, etc.)
+  - GET  /.well-known/agent-card.json  — Agent Card discovery
 
 Run with:
     uvicorn my_module:app
-
-Examples
---------
->>> from langchain_adk.agents.llm_agent import LlmAgent
->>> from langchain_adk.a2a.server import A2AServer
->>> from langchain_adk.sessions.in_memory_session_service import InMemorySessionService
->>>
->>> agent = LlmAgent("my_agent", llm=llm)
->>> server = A2AServer(agent, session_service=InMemorySessionService())
->>> app = server.as_fastapi_app()
 """
 
 from __future__ import annotations
 
+import json
 import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
@@ -39,6 +30,7 @@ from langchain_adk.a2a.types import (
     A2AErrorCode,
     AgentCapabilities,
     AgentCard,
+    AgentInterface,
     AgentSkill,
     Artifact,
     JSONRPCError,
@@ -46,6 +38,7 @@ from langchain_adk.a2a.types import (
     JSONRPCResponse,
     Message,
     MessageSendParams,
+    Part,
     Role,
     Task,
     TaskIdParams,
@@ -53,7 +46,6 @@ from langchain_adk.a2a.types import (
     TaskState,
     TaskStatus,
     TaskStatusUpdateEvent,
-    TextPart,
 )
 from langchain_adk.agents.base_agent import BaseAgent
 from langchain_adk.agents.context import Context
@@ -65,14 +57,14 @@ def _now_iso() -> str:
 
 
 class A2AServer:
-    """Spec-compliant A2A server that adapts a BaseAgent.
+    """Spec-compliant A2A v1.0 server that adapts a BaseAgent.
 
     Implements:
-      - ``message/send``    — run agent, return completed Task
-      - ``message/stream``  — run agent, stream SSE events
-      - ``tasks/get``       — retrieve task by ID
-      - ``tasks/cancel``    — cancel a running task (stub)
-      - Agent Card at ``/.well-known/agent.json``
+      - ``SendMessage``            — run agent, return completed Task
+      - ``SendStreamingMessage``   — run agent, stream SSE events
+      - ``GetTask``                — retrieve task by ID
+      - ``CancelTask``             — cancel a running task
+      - Agent Card at ``/.well-known/agent-card.json``
     """
 
     def __init__(
@@ -103,7 +95,13 @@ class A2AServer:
         return AgentCard(
             name=self.agent.name,
             description=self.agent.description or "An AI agent exposed via A2A.",
-            url=self.url,
+            supported_interfaces=[
+                AgentInterface(
+                    url=self.url,
+                    protocol_binding="JSONRPC",
+                    protocol_version="1.0",
+                ),
+            ],
             version=self.version,
             capabilities=AgentCapabilities(
                 streaming=True,
@@ -120,7 +118,7 @@ class A2AServer:
         task = Task(
             id=str(uuid.uuid4()),
             context_id=context_id or str(uuid.uuid4()),
-            status=TaskStatus(state=TaskState.submitted, timestamp=_now_iso()),
+            status=TaskStatus(state=TaskState.SUBMITTED, timestamp=_now_iso()),
             history=[message],
         )
         self._tasks[task.id] = task
@@ -157,7 +155,7 @@ class A2AServer:
             session=session,
         )
 
-        self._update_task_status(task, TaskState.working)
+        self._update_task_status(task, TaskState.WORKING)
 
         final_answer = ""
         async for event in self.agent.astream(user_message, ctx=ctx):
@@ -166,26 +164,26 @@ class A2AServer:
 
         # Build agent response message
         agent_msg = Message(
-            role=Role.agent,
-            parts=[TextPart(text=final_answer)],
+            role=Role.AGENT,
+            parts=[Part(text=final_answer, media_type="text/plain")],
             task_id=task.id,
             context_id=task.context_id,
         )
 
         # Add artifact
-        artifact = Artifact(parts=[TextPart(text=final_answer)])
+        artifact = Artifact(parts=[Part(text=final_answer, media_type="text/plain")])
         task.artifacts = [artifact]
 
         if task.history is not None:
             task.history.append(agent_msg)
 
-        self._update_task_status(task, TaskState.completed, agent_message=agent_msg)
+        self._update_task_status(task, TaskState.COMPLETED, agent_message=agent_msg)
 
     # ------------------------------------------------------------------
     # JSON-RPC handlers
     # ------------------------------------------------------------------
 
-    async def _handle_message_send(
+    async def _handle_send_message(
         self, params: dict[str, Any], request_id: Any,
     ) -> JSONResponse:
         send_params = MessageSendParams.model_validate(params)
@@ -199,7 +197,7 @@ class A2AServer:
 
         return _jsonrpc_success(request_id, task)
 
-    async def _handle_message_stream(
+    async def _handle_send_streaming_message(
         self, params: dict[str, Any], request_id: Any,
     ) -> StreamingResponse:
         send_params = MessageSendParams.model_validate(params)
@@ -232,13 +230,13 @@ class A2AServer:
             session=session,
         )
 
-        self._update_task_status(task, TaskState.working)
+        self._update_task_status(task, TaskState.WORKING)
 
         # Emit initial "working" status
         working_event = TaskStatusUpdateEvent(
             task_id=task.id,
             context_id=task.context_id,
-            status=TaskStatus(state=TaskState.working, timestamp=_now_iso()),
+            status=TaskStatus(state=TaskState.WORKING, timestamp=_now_iso()),
             final=False,
         )
         yield _sse_line(request_id, working_event)
@@ -251,20 +249,18 @@ class A2AServer:
         ):
             yield _sse_line(request_id, a2a_event)
 
-        # Collect final answer from task updates
-        # The converter already yielded artifact-update events.
-        # Now emit final "completed" status.
-        self._update_task_status(task, TaskState.completed)
+        # Emit final "completed" status
+        self._update_task_status(task, TaskState.COMPLETED)
 
         completed_event = TaskStatusUpdateEvent(
             task_id=task.id,
             context_id=task.context_id,
-            status=TaskStatus(state=TaskState.completed, timestamp=_now_iso()),
+            status=TaskStatus(state=TaskState.COMPLETED, timestamp=_now_iso()),
             final=True,
         )
         yield _sse_line(request_id, completed_event)
 
-    async def _handle_tasks_get(
+    async def _handle_get_task(
         self, params: dict[str, Any], request_id: Any,
     ) -> JSONResponse:
         query = TaskQueryParams.model_validate(params)
@@ -277,7 +273,7 @@ class A2AServer:
             )
         return _jsonrpc_success(request_id, task)
 
-    async def _handle_tasks_cancel(
+    async def _handle_cancel_task(
         self, params: dict[str, Any], request_id: Any,
     ) -> JSONResponse:
         task_params = TaskIdParams.model_validate(params)
@@ -294,12 +290,24 @@ class A2AServer:
                 A2AErrorCode.TASK_NOT_CANCELABLE,
                 f"Task {task_params.id} is in terminal state {task.status.state.value}",
             )
-        self._update_task_status(task, TaskState.canceled)
+        self._update_task_status(task, TaskState.CANCELED)
         return _jsonrpc_success(request_id, task)
 
     # ------------------------------------------------------------------
-    # JSON-RPC dispatch
+    # JSON-RPC dispatch — v1.0 PascalCase methods
     # ------------------------------------------------------------------
+
+    _METHOD_MAP = {
+        "SendMessage": "_handle_send_message",
+        "SendStreamingMessage": "_handle_send_streaming_message",
+        "GetTask": "_handle_get_task",
+        "CancelTask": "_handle_cancel_task",
+        # Backwards compatibility with v0.x method names
+        "message/send": "_handle_send_message",
+        "message/stream": "_handle_send_streaming_message",
+        "tasks/get": "_handle_get_task",
+        "tasks/cancel": "_handle_cancel_task",
+    }
 
     async def _dispatch(self, request: Request) -> Any:
         try:
@@ -314,28 +322,21 @@ class A2AServer:
                 body.get("id"), A2AErrorCode.INVALID_REQUEST, "Invalid JSON-RPC request",
             )
 
-        method = rpc.method
-        params = rpc.params or {}
-
-        if method == "message/send":
-            return await self._handle_message_send(params, rpc.id)
-        elif method == "message/stream":
-            return await self._handle_message_stream(params, rpc.id)
-        elif method == "tasks/get":
-            return await self._handle_tasks_get(params, rpc.id)
-        elif method == "tasks/cancel":
-            return await self._handle_tasks_cancel(params, rpc.id)
-        else:
+        handler_name = self._METHOD_MAP.get(rpc.method)
+        if handler_name is None:
             return _jsonrpc_error(
-                rpc.id, A2AErrorCode.METHOD_NOT_FOUND, f"Method {method!r} not found",
+                rpc.id, A2AErrorCode.METHOD_NOT_FOUND, f"Method {rpc.method!r} not found",
             )
+
+        handler = getattr(self, handler_name)
+        return await handler(rpc.params or {}, rpc.id)
 
     # ------------------------------------------------------------------
     # FastAPI app
     # ------------------------------------------------------------------
 
     def as_fastapi_app(self) -> FastAPI:
-        """Build and return a FastAPI application with A2A-compliant routes."""
+        """Build and return a FastAPI application with A2A v1.0 routes."""
         app = FastAPI(title=f"{self.agent.name} A2A Server")
         server = self
 
@@ -363,9 +364,9 @@ class A2AServer:
 
 def _extract_text(message: Message) -> str:
     """Extract plain text from a Message's parts."""
-    texts = []
+    texts: list[str] = []
     for part in message.parts:
-        if isinstance(part, TextPart):
+        if part.text is not None:
             texts.append(part.text)
     return " ".join(texts) if texts else ""
 
@@ -394,5 +395,4 @@ def _sse_line(request_id: Any, event: Any) -> str:
     else:
         result_data = event
     resp = JSONRPCResponse(id=request_id, result=result_data)
-    import json
     return f"data: {json.dumps(resp.model_dump(by_alias=True, exclude_none=True))}\n\n"

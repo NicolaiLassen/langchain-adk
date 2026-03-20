@@ -79,7 +79,7 @@ class A2AAgent(BaseAgent):
 
         message: A2AMessage = {
             "messageId": str(uuid4()),
-            "role": "user",
+            "role": "ROLE_USER",
             "parts": [{"text": text, "mediaType": "text/plain"}],
         }
 
@@ -122,8 +122,13 @@ class A2AAgent(BaseAgent):
             if text:
                 return text
 
-        # Task response.
-        task: A2ATask | None = result.get("task")
+        # Task response — check if result itself is a task (has "id" and "status").
+        task: A2ATask | None = None
+        if "id" in result and "status" in result:
+            task = result
+        elif "task" in result:
+            task = result["task"]
+
         if task is None:
             return ""
 
@@ -145,7 +150,7 @@ class A2AAgent(BaseAgent):
         # 3. History — last agent message.
         history: list[A2AMessage] = task.get("history", [])
         for msg in reversed(history):
-            if msg.get("role") == "agent":
+            if msg.get("role") in ("ROLE_AGENT", "agent"):
                 text = _extract_text_from_parts(msg.get("parts", []))
                 if text:
                     return text
@@ -154,7 +159,7 @@ class A2AAgent(BaseAgent):
 
 
 def _extract_text_from_parts(parts: list[A2APart]) -> str:
-    """Return the first text value from a list of A2A parts."""
+    """Return the first text value from a list of A2A v1.0 parts."""
     for part in parts:
         text: str | None = part.get("text")
         if text:
