@@ -1,0 +1,41 @@
+# Loop agent: drafts and reviews until approved.
+#
+# Run: python examples/composer/loop/run.py
+
+defaults:
+  model:
+    provider: openai
+    name: gpt-4o
+
+tools:
+  exit:
+    builtin: "exit_loop"
+
+agents:
+  drafter:
+    type: llm
+    description: "Writes or revises a draft based on feedback."
+    instructions: |
+      You are a copywriter. Write or revise the draft based on
+      any feedback from the reviewer. Keep it under 200 words.
+
+  reviewer:
+    type: llm
+    description: "Reviews the draft and approves or requests changes."
+    instructions: |
+      You are an editor. Review the draft for clarity and tone.
+      If it's good, call the exit_loop tool to finish.
+      Otherwise, provide specific feedback for revision.
+    tools:
+      - exit
+
+  review_loop:
+    type: loop
+    agents: [drafter, reviewer]
+    max_iterations: 3
+
+main_agent: review_loop
+
+runner:
+  app_name: loop-demo
+  session_service: memory

@@ -1,0 +1,17 @@
+# Simplest possible composer example — a single agent.
+#
+# Run: python examples/composer/simple/run.py
+
+defaults:
+  model:
+    provider: openai
+    name: gpt-5.4
+    api_key: ${OPENAI_API_KEY}
+
+agents:
+  assistant:
+    type: llm
+    instructions: |
+      You are a helpful assistant. Answer questions concisely.
+
+main_agent: assistant

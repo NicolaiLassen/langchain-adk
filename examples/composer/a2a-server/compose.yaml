@@ -1,0 +1,47 @@
+# A2A server: expose an agent as an A2A-compliant endpoint.
+#
+# Run locally:  python examples/composer/a2a-server/run.py
+# Run Docker:   docker build -t a2a-agent examples/composer/a2a-server && docker run -p 8080:8080 -e OPENAI_API_KEY=$OPENAI_API_KEY a2a-agent
+
+defaults:
+  model:
+    provider: openai
+    name: gpt-5.4
+    api_key: ${OPENAI_API_KEY}
+
+tools:
+  search:
+    function: "tools.search_web"
+  weather:
+    function: "tools.get_weather"
+
+agents:
+  assistant:
+    type: llm
+    description: "A general-purpose assistant with search and weather tools."
+    instructions: |
+      You are a helpful assistant. Use the available tools to answer
+      questions about the world, weather, and general knowledge.
+    tools:
+      - search
+      - weather
+
+main_agent: assistant
+
+runner:
+  app_name: a2a-agent
+  session_service: memory
+
+server:
+  app_name: a2a-agent
+  version: "1.0.0"
+  url: "http://localhost:8080"
+  skills:
+    - id: general-qa
+      name: General Q&A
+      description: "Answers general knowledge questions using web search."
+      tags: [general, search]
+    - id: weather
+      name: Weather
+      description: "Provides current weather information for any city."
+      tags: [weather]

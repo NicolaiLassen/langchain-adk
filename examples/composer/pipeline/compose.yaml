@@ -1,0 +1,40 @@
+# Sequential pipeline: researcher → writer.
+#
+# Run: python examples/composer/pipeline/run.py
+
+defaults:
+  model:
+    provider: openai
+    name: gpt-5.4
+    api_key: ${OPENAI_API_KEY}
+
+tools:
+  search:
+    function: "examples.composer.pipeline.tools.search_web"
+
+agents:
+  researcher:
+    type: llm
+    description: "Researches a topic and produces findings."
+    instructions: |
+      You are a research assistant. Use the search tool to gather
+      information. Output structured bullet-point findings.
+    tools:
+      - search
+
+  writer:
+    type: llm
+    description: "Writes a polished article from research findings."
+    instructions: |
+      You are a technical writer. Take the research findings from
+      the previous step and write a clear, well-structured article.
+
+  pipeline:
+    type: sequential
+    agents: [researcher, writer]
+
+main_agent: pipeline
+
+runner:
+  app_name: pipeline-demo
+  session_service: memory
