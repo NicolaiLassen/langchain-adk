@@ -1,9 +1,9 @@
 ---
 title: "Agent-to-Agent (A2A) Server"
-description: "Expose any agent as a spec-compliant A2A protocol endpoint with discovery, messaging, and streaming."
+description: "Expose any agent as a spec-compliant A2A v1.0 protocol endpoint with discovery, messaging, and streaming."
 ---
 
-Expose any agent as a spec-compliant [A2A protocol](https://a2a-protocol.org/) endpoint (v0.3.0).
+Expose any agent as a spec-compliant [A2A protocol](https://a2a-protocol.org/) endpoint (v1.0).
 
 ```mermaid
 sequenceDiagram
@@ -11,24 +11,24 @@ sequenceDiagram
     participant S as A2AServer
     participant A as BaseAgent
 
-    Note over S: GET /.well-known/agent.json
+    Note over S: GET /.well-known/agent-card.json
     C->>S: Agent Card discovery
-    S-->>C: AgentCard (name, skills, capabilities)
+    S-->>C: AgentCard (name, skills, supportedInterfaces)
 
     Note over S: POST / (JSON-RPC 2.0)
-    C->>S: message/send {message: {role, parts}}
+    C->>S: SendMessage {message: {role, parts}}
     S->>A: agent.astream(text, ctx)
     A-->>S: SDK Events
-    S-->>C: Task {status: completed, artifacts, history}
+    S-->>C: Task {status: TASK_STATE_COMPLETED, artifacts, history}
 
-    C->>S: message/stream {message: {role, parts}}
+    C->>S: SendStreamingMessage {message: {role, parts}}
     S->>A: agent.astream(text, ctx)
     loop SSE stream
         A-->>S: SDK Event
         S-->>C: data: TaskStatusUpdateEvent
         S-->>C: data: TaskArtifactUpdateEvent
     end
-    S-->>C: data: {status: completed, final: true}
+    S-->>C: data: {status: TASK_STATE_COMPLETED, final: true}
 ```
 
 ## Setup
@@ -60,17 +60,21 @@ app = server.as_fastapi_app()
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/.well-known/agent.json` | Agent Card discovery |
+| `GET` | `/.well-known/agent-card.json` | Agent Card discovery |
 | `POST` | `/` | JSON-RPC 2.0 dispatch |
 
-## JSON-RPC methods
+## JSON-RPC methods (v1.0)
 
 | Method | Description |
 |---|---|
-| `message/send` | Send message, receive completed Task |
-| `message/stream` | Send message, receive SSE stream |
-| `tasks/get` | Retrieve task by ID |
-| `tasks/cancel` | Cancel a running task |
+| `SendMessage` | Send message, receive completed Task |
+| `SendStreamingMessage` | Send message, receive SSE stream |
+| `GetTask` | Retrieve task by ID |
+| `CancelTask` | Cancel a running task |
+
+<Note>
+The server also accepts the legacy v0.x method names (`message/send`, `message/stream`, `tasks/get`, `tasks/cancel`) for backwards compatibility.
+</Note>
 
 ## Example requests
 
@@ -84,13 +88,14 @@ app = server.as_fastapi_app()
     ```bash
     curl -X POST http://localhost:8000/ \
       -H "Content-Type: application/json" \
+      -H "A2A-Version: 1.0" \
       -d '{
         "jsonrpc": "2.0", "id": "1",
-        "method": "message/send",
+        "method": "SendMessage",
         "params": {
           "message": {
-            "role": "user",
-            "parts": [{"kind": "text", "text": "What is 2+2?"}]
+            "role": "ROLE_USER",
+            "parts": [{"text": "What is 2+2?", "mediaType": "text/plain"}]
           }
         }
       }'
@@ -100,16 +105,44 @@ app = server.as_fastapi_app()
     ```bash
     curl -N -X POST http://localhost:8000/ \
       -H "Content-Type: application/json" \
+      -H "A2A-Version: 1.0" \
       -d '{
         "jsonrpc": "2.0", "id": "2",
-        "method": "message/stream",
+        "method": "SendStreamingMessage",
         "params": {
           "message": {
-            "role": "user",
-            "parts": [{"kind": "text", "text": "Tell me a story"}]
+            "role": "ROLE_USER",
+            "parts": [{"text": "Tell me a story", "mediaType": "text/plain"}]
           }
         }
       }'
     ```
   </Tab>
 </Tabs>
+
+## A2A Client (A2AAgent)
+
+Use `A2AAgent` to call a remote A2A server from within your agent tree:
+
+```python
+from langchain_adk.agents.a2a_agent import A2AAgent
+
+remote = A2AAgent(
+    name="RemoteAgent",
+    url="http://localhost:8000",
+    description="A remote agent via A2A protocol.",
+)
+
+# Use as a sub-agent or wrap with AgentTool
+async for event in remote.astream("What is the weather?"):
+    if event.is_final_response():
+        print(event.text)
+```
+
+## v1.0 Protocol Details
+
+A2A v1.0 uses:
+- **PascalCase** JSON-RPC method names (`SendMessage`, not `message/send`)
+- **SCREAMING_SNAKE_CASE** enum values (`ROLE_USER`, `TASK_STATE_COMPLETED`)
+- **Unified Part type** with oneof content fields (`text`, `raw`, `url`, `data`) plus `mediaType`
+- **`supportedInterfaces`** on AgentCard (replaces top-level `url`)

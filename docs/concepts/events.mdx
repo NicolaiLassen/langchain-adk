@@ -19,8 +19,8 @@ Every agent yields a stream of unified `Event` objects. All events share the sam
 
 | Property | Type | Description |
 |---|---|---|
-| `event.text` | `str` | Concatenated text from all TextParts in the event's content |
-| `event.data` | `dict \| None` | First DataPart's data dict, or `None` |
+| `event.text` | `str` | Concatenated text from all text parts in the event's content |
+| `event.data` | `dict \| None` | First data part's dict, or `None` |
 | `event.tool_name` | `str \| None` | Name of the tool (for `TOOL_RESPONSE` events) |
 | `event.tool_input` | `dict \| None` | Input arguments passed to the tool |
 | `event.tool_calls` | `list[dict]` | List of tool call requests from the LLM response |

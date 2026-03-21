@@ -122,8 +122,7 @@ agents:
     model:
       provider: openai
       name: gpt-4o
-      kwargs:
-        max_tokens: 4096
+      max_tokens: 4096
 ```
 
 ### `tools`
@@ -205,7 +204,7 @@ agents:
     model: smart            # reference to models section, or inline:
     # model:
     #   provider: anthropic
-    #   name: claude-sonnet-4-20250514
+    #   name: claude-sonnet-4-6
     #   max_tokens: 4096
     tools:
       - search             # named reference

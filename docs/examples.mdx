@@ -5,14 +5,16 @@ description: "Runnable demos for every major feature of the LangChain Agent Fram
 
 The `examples/` directory contains runnable demos for every major feature. Each example includes a `NotImplementedError` placeholder — replace it with your LLM of choice.
 
+## Core Examples
+
 | Example | What it demonstrates |
 |---|---|
 | `basic_agent.py` | Minimal agent with a single tool |
 | `streaming_agent.py` | AgentTool sub-agent streaming with real-time event bubbling |
-| `multi_agent.py` | SequentialAgent pipeline (researcher → writer) |
+| `multi_agent.py` | SequentialAgent pipeline (researcher -> writer) |
 | `parallel_agent.py` | ParallelAgent running 3 research agents concurrently |
 | `loop_agent.py` | LoopAgent with writer/reviewer iterative refinement |
-| `transfer_agent.py` | Agent handoff via `make_transfer_tool` (triage → specialists) |
+| `transfer_agent.py` | Agent handoff via `make_transfer_tool` (triage -> specialists) |
 | `planner_agent.py` | PlanReActPlanner with structured chain-of-thought |
 | `memory_agent.py` | Persistent memory with `InMemoryMemoryStore` |
 | `structured_output.py` | Typed Pydantic output via `output_schema` |
@@ -25,4 +27,24 @@ The `examples/` directory contains runnable demos for every major feature. Each 
 ```bash
 # Run any example (after replacing the NotImplementedError with your LLM)
 uv run python examples/basic_agent.py
+```
+
+## Composer Examples
+
+YAML-based agent composition examples in `examples/composer/`:
+
+| Example | What it demonstrates |
+|---|---|
+| `composer/simple/` | Single agent, minimal YAML config |
+| `composer/pipeline/` | Sequential researcher -> writer pipeline with tools |
+| `composer/loop/` | Draft/review loop with `exit_loop` termination |
+| `composer/transfer/` | Triage agent with transfer routing to specialists |
+| `composer/a2a-server/` | A2A endpoint with Dockerfile for deployment |
+
+```bash
+# Run a composer example
+uv run python examples/composer/simple/run.py
+
+# Run the A2A server example
+uv run python examples/composer/a2a-server/run.py
 ```
