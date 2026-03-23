@@ -8,12 +8,12 @@ from __future__ import annotations
 import pytest
 
 fastmcp = pytest.importorskip(
-    "fastmcp", reason="fastmcp not installed (install with: pip install langchain-adk[mcp])"
+    "fastmcp", reason="fastmcp not installed (install with: pip install orxhestra[mcp])"
 )
 FastMCP = fastmcp.FastMCP
 
-from langchain_adk.integrations.mcp.adapter import MCPToolAdapter  # noqa: E402
-from langchain_adk.integrations.mcp.client import MCPClient  # noqa: E402
+from orxhestra.integrations.mcp.adapter import MCPToolAdapter  # noqa: E402
+from orxhestra.integrations.mcp.client import MCPClient  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Fixture: a simple MCP server with two tools

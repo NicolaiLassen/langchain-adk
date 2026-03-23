@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "name": "langchain-adk",
+  "name": "orxhestra",
   "theme": "mint",
   "colors": {
     "primary": "#3B82F6",
@@ -68,12 +68,12 @@
     ]
   },
   "topbarLinks": [
-    { "name": "GitHub", "url": "https://github.com/NicolaiLassen/langchain-adk" },
-    { "name": "PyPI", "url": "https://pypi.org/project/langchain-adk/" }
+    { "name": "GitHub", "url": "https://github.com/NicolaiLassen/orxhestra" },
+    { "name": "PyPI", "url": "https://pypi.org/project/orxhestra/" }
   ],
   "seo": {
     "metatags": {
-      "og:site_name": "langchain-adk",
+      "og:site_name": "orxhestra",
       "og:image": "https://agent-development-kit.com/assets/logo.svg",
       "twitter:card": "summary_large_image"
     },

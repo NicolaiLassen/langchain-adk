@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-RUN uv pip install --system --no-cache langchain-adk[composer,openai,a2a] uvicorn
+RUN uv pip install --system --no-cache orxhestra[composer,openai,a2a] uvicorn
 
 COPY compose.yaml tools.py run.py ./
 

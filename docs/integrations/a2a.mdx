@@ -35,8 +35,8 @@ sequenceDiagram
 ## Setup
 
 ```python
-from langchain_adk import LlmAgent, InMemorySessionService
-from langchain_adk.a2a import A2AServer, AgentSkill
+from orxhestra import LlmAgent, InMemorySessionService
+from orxhestra.a2a import A2AServer, AgentSkill
 
 agent = LlmAgent(name="MyAgent", llm=llm, tools=[...])
 
@@ -126,7 +126,7 @@ The server also accepts the legacy v0.x method names (`message/send`, `message/s
 Use `A2AAgent` to call a remote A2A server from within your agent tree:
 
 ```python
-from langchain_adk.agents.a2a_agent import A2AAgent
+from orxhestra.agents.a2a_agent import A2AAgent
 
 remote = A2AAgent(
     name="RemoteAgent",

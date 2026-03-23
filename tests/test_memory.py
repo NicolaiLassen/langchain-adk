@@ -2,12 +2,12 @@
 
 import pytest
 
-from langchain_adk.events.event import Event, EventType
-from langchain_adk.memory.in_memory_store import InMemoryMemoryStore
-from langchain_adk.memory.memory import Memory
-from langchain_adk.memory.memory_store import SearchMemoryResponse
-from langchain_adk.models.part import Content
-from langchain_adk.sessions.session import Session
+from orxhestra.events.event import Event, EventType
+from orxhestra.memory.in_memory_store import InMemoryMemoryStore
+from orxhestra.memory.memory import Memory
+from orxhestra.memory.memory_store import SearchMemoryResponse
+from orxhestra.models.part import Content
+from orxhestra.sessions.session import Session
 
 
 def _make_session_with_events():

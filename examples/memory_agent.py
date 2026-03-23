@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import asyncio
 
-from langchain_adk import LlmAgent
-from langchain_adk.events.event import Event, EventType
-from langchain_adk.memory.in_memory_store import InMemoryMemoryStore
-from langchain_adk.memory.memory import Memory
+from orxhestra import LlmAgent
+from orxhestra.events.event import Event, EventType
+from orxhestra.memory.in_memory_store import InMemoryMemoryStore
+from orxhestra.memory.memory import Memory
 
 
 async def main() -> None:

@@ -1,6 +1,6 @@
 """Tests for Context."""
 
-from langchain_adk.agents.context import Context
+from orxhestra.agents.context import Context
 
 
 def test_context_defaults():

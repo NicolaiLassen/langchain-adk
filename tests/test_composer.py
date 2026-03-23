@@ -8,19 +8,19 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from langchain_adk.agents.llm_agent import LlmAgent
-from langchain_adk.agents.loop_agent import LoopAgent
-from langchain_adk.agents.parallel_agent import ParallelAgent
-from langchain_adk.agents.sequential_agent import SequentialAgent
-from langchain_adk.composer.builders.models import _REGISTRY as _PROVIDER_REGISTRY
-from langchain_adk.composer.builders.models import create as create_model
-from langchain_adk.composer.builders.models import register as register_provider
-from langchain_adk.composer.builders.tools import import_object
-from langchain_adk.composer.builders.tools import register_builtin as register_builtin_tool
-from langchain_adk.composer.builders.tools import resolve_builtin as resolve_builtin_tool
-from langchain_adk.composer.builders.tools import resolve_function as resolve_function_tool
-from langchain_adk.composer.errors import CircularReferenceError, ComposerError
-from langchain_adk.composer.schema import ComposeSpec, SkillItemDef, ToolDef
+from orxhestra.agents.llm_agent import LlmAgent
+from orxhestra.agents.loop_agent import LoopAgent
+from orxhestra.agents.parallel_agent import ParallelAgent
+from orxhestra.agents.sequential_agent import SequentialAgent
+from orxhestra.composer.builders.models import _REGISTRY as _PROVIDER_REGISTRY
+from orxhestra.composer.builders.models import create as create_model
+from orxhestra.composer.builders.models import register as register_provider
+from orxhestra.composer.builders.tools import import_object
+from orxhestra.composer.builders.tools import register_builtin as register_builtin_tool
+from orxhestra.composer.builders.tools import resolve_builtin as resolve_builtin_tool
+from orxhestra.composer.builders.tools import resolve_function as resolve_function_tool
+from orxhestra.composer.errors import CircularReferenceError, ComposerError
+from orxhestra.composer.schema import ComposeSpec, SkillItemDef, ToolDef
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -226,7 +226,7 @@ class TestToolResolver:
 class TestComposerBuild:
     """Tests for full YAML -> agent tree builds."""
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_simple_agent(self, mock_resolve, tmp_path):
         mock_resolve.return_value = lambda **kw: _mock_llm()
         yaml_path = _write_yaml(
@@ -239,13 +239,13 @@ class TestComposerBuild:
             main_agent: bot
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         agent = await Composer.from_yaml_async(yaml_path)
         assert isinstance(agent, LlmAgent)
         assert agent.name == "bot"
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_sequential_agent(self, mock_resolve, tmp_path):
         mock_resolve.return_value = lambda **kw: _mock_llm()
         yaml_path = _write_yaml(
@@ -264,13 +264,13 @@ class TestComposerBuild:
             main_agent: pipeline
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         agent = await Composer.from_yaml_async(yaml_path)
         assert isinstance(agent, SequentialAgent)
         assert len(agent.sub_agents) == 2
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_parallel_agent(self, mock_resolve, tmp_path):
         mock_resolve.return_value = lambda **kw: _mock_llm()
         yaml_path = _write_yaml(
@@ -287,12 +287,12 @@ class TestComposerBuild:
             main_agent: both
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         agent = await Composer.from_yaml_async(yaml_path)
         assert isinstance(agent, ParallelAgent)
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_loop_agent(self, mock_resolve, tmp_path):
         mock_resolve.return_value = lambda **kw: _mock_llm()
         yaml_path = _write_yaml(
@@ -308,13 +308,13 @@ class TestComposerBuild:
             main_agent: loop
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         agent = await Composer.from_yaml_async(yaml_path)
         assert isinstance(agent, LoopAgent)
         assert agent.max_iterations == 3
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_agent_tool_reference(self, mock_resolve, tmp_path):
         mock_resolve.return_value = lambda **kw: _mock_llm()
         yaml_path = _write_yaml(
@@ -335,7 +335,7 @@ class TestComposerBuild:
             main_agent: writer
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         agent = await Composer.from_yaml_async(yaml_path)
         assert isinstance(agent, LlmAgent)
@@ -343,7 +343,7 @@ class TestComposerBuild:
         tool = list(agent._tools.values())[0]
         assert tool.name == "research"
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_transfer_tool(self, mock_resolve, tmp_path):
         mock_resolve.return_value = lambda **kw: _mock_llm()
         yaml_path = _write_yaml(
@@ -365,7 +365,7 @@ class TestComposerBuild:
             main_agent: triage
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         agent = await Composer.from_yaml_async(yaml_path)
         assert isinstance(agent, LlmAgent)
@@ -375,7 +375,7 @@ class TestComposerBuild:
         sub_names = {a.name for a in agent.sub_agents}
         assert sub_names == {"sales", "support"}
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_builtin_exit_loop_tool(self, mock_resolve, tmp_path):
         mock_resolve.return_value = lambda **kw: _mock_llm()
         yaml_path = _write_yaml(
@@ -389,12 +389,12 @@ class TestComposerBuild:
             main_agent: worker
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         agent = await Composer.from_yaml_async(yaml_path)
         assert "exit_loop" in agent._tools
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_model_override_per_agent(self, mock_resolve, tmp_path):
         calls = []
 
@@ -419,14 +419,14 @@ class TestComposerBuild:
             main_agent: bot
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         await Composer.from_yaml_async(yaml_path)
         # The model should have been created with anthropic overrides
         assert len(calls) == 1
         assert calls[0]["model"] == "claude-sonnet-4-20250514"
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_named_model_reference(self, mock_resolve, tmp_path):
         calls = []
 
@@ -454,14 +454,14 @@ class TestComposerBuild:
             main_agent: bot
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         await Composer.from_yaml_async(yaml_path)
         assert len(calls) == 1
         assert calls[0]["model"] == "claude-opus-4-6"
         assert calls[0]["max_tokens"] == 8192
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_named_model_not_found(self, mock_resolve, tmp_path):
         mock_resolve.return_value = lambda **kw: _mock_llm()
         yaml_path = _write_yaml(
@@ -474,12 +474,12 @@ class TestComposerBuild:
             main_agent: bot
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         with pytest.raises(ComposerError, match="not found in models"):
             await Composer.from_yaml_async(yaml_path)
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_model_kwargs_forwarded(self, mock_resolve, tmp_path):
         calls = []
 
@@ -502,13 +502,13 @@ class TestComposerBuild:
             main_agent: bot
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         await Composer.from_yaml_async(yaml_path)
         assert calls[0]["max_tokens"] == 4096
         assert calls[0]["top_p"] == 0.9
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_two_agents_different_models(self, mock_resolve, tmp_path):
         calls = []
 
@@ -540,14 +540,14 @@ class TestComposerBuild:
             main_agent: pipeline
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         await Composer.from_yaml_async(yaml_path)
         models_used = {c["model"] for c in calls}
         assert "gpt-4o-mini" in models_used
         assert "claude-opus-4-6" in models_used
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_circular_reference_detected(self, mock_resolve, tmp_path):
         mock_resolve.return_value = lambda **kw: _mock_llm()
         yaml_path = _write_yaml(
@@ -565,7 +565,7 @@ class TestComposerBuild:
             main_agent: a
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         with pytest.raises(CircularReferenceError, match="Circular"):
             await Composer.from_yaml_async(yaml_path)
@@ -581,13 +581,13 @@ class TestComposerBuild:
             main_agent: pipeline
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         with pytest.raises(ComposerError, match="not defined"):
             await Composer.from_yaml_async(yaml_path)
 
     async def test_file_not_found(self):
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         with pytest.raises(ComposerError, match="File not found"):
             await Composer.from_yaml_async("/nonexistent/compose.yaml")
@@ -602,12 +602,12 @@ class TestComposerBuild:
             main_agent: bot
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         with pytest.raises(ComposerError, match="No 'runner' section"):
             await Composer.runner_from_yaml_async(yaml_path)
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_runner_build(self, mock_resolve, tmp_path):
         mock_resolve.return_value = lambda **kw: _mock_llm()
         yaml_path = _write_yaml(
@@ -622,13 +622,13 @@ class TestComposerBuild:
               session_service: memory
             """,
         )
-        from langchain_adk.composer import Composer
-        from langchain_adk.runner import Runner
+        from orxhestra.composer import Composer
+        from orxhestra.runner import Runner
 
         runner = await Composer.runner_from_yaml_async(yaml_path)
         assert isinstance(runner, Runner)
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_orchestrator_missing_agents_list(self, mock_resolve, tmp_path):
         mock_resolve.return_value = lambda **kw: _mock_llm()
         yaml_path = _write_yaml(
@@ -640,12 +640,12 @@ class TestComposerBuild:
             main_agent: pipeline
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         with pytest.raises(ComposerError, match="must have an 'agents' list"):
             await Composer.from_yaml_async(yaml_path)
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_inline_tool_def(self, mock_resolve, tmp_path):
         mock_resolve.return_value = lambda **kw: _mock_llm()
         yaml_path = _write_yaml(
@@ -659,13 +659,13 @@ class TestComposerBuild:
             main_agent: bot
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         agent = await Composer.from_yaml_async(yaml_path)
         assert isinstance(agent, LlmAgent)
         assert len(agent._tools) == 1
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_planner_plan_react(self, mock_resolve, tmp_path):
         mock_resolve.return_value = lambda **kw: _mock_llm()
         yaml_path = _write_yaml(
@@ -679,13 +679,13 @@ class TestComposerBuild:
             main_agent: bot
             """,
         )
-        from langchain_adk.composer import Composer
-        from langchain_adk.planners.plan_re_act_planner import PlanReActPlanner
+        from orxhestra.composer import Composer
+        from orxhestra.planners.plan_re_act_planner import PlanReActPlanner
 
         agent = await Composer.from_yaml_async(yaml_path)
         assert isinstance(agent._planner, PlanReActPlanner)
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_planner_task(self, mock_resolve, tmp_path):
         mock_resolve.return_value = lambda **kw: _mock_llm()
         yaml_path = _write_yaml(
@@ -702,15 +702,15 @@ class TestComposerBuild:
             main_agent: bot
             """,
         )
-        from langchain_adk.composer import Composer
-        from langchain_adk.planners.task_planner import TaskPlanner
+        from orxhestra.composer import Composer
+        from orxhestra.planners.task_planner import TaskPlanner
 
         agent = await Composer.from_yaml_async(yaml_path)
         assert isinstance(agent._planner, TaskPlanner)
         # Task planner should auto-add manage_tasks tool
         assert "manage_tasks" in agent._tools
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_skills_auto_inject_tools(self, mock_resolve, tmp_path):
         mock_resolve.return_value = lambda **kw: _mock_llm()
         yaml_path = _write_yaml(
@@ -729,18 +729,18 @@ class TestComposerBuild:
             main_agent: bot
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         agent = await Composer.from_yaml_async(yaml_path)
         assert "list_skills" in agent._tools
         assert "load_skill" in agent._tools
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
-    @patch("langchain_adk.composer.builders.tools.resolve_mcp_skill")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.tools.resolve_mcp_skill")
     async def test_skills_mcp_source(
         self, mock_mcp_skill, mock_resolve, tmp_path
     ):
-        from langchain_adk.skills import Skill
+        from orxhestra.skills import Skill
 
         mock_resolve.return_value = lambda **kw: _mock_llm()
         mock_mcp_skill.return_value = Skill(
@@ -765,7 +765,7 @@ class TestComposerBuild:
             main_agent: bot
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         agent = await Composer.from_yaml_async(yaml_path)
         assert "list_skills" in agent._tools
@@ -777,7 +777,7 @@ class TestComposerBuild:
             server_path=None,
         )
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_react_agent_build(self, mock_resolve, tmp_path):
         mock_resolve.return_value = lambda **kw: _mock_llm()
         yaml_path = _write_yaml(
@@ -790,8 +790,8 @@ class TestComposerBuild:
             main_agent: bot
             """,
         )
-        from langchain_adk.agents.react_agent import ReActAgent
-        from langchain_adk.composer import Composer
+        from orxhestra.agents.react_agent import ReActAgent
+        from orxhestra.composer import Composer
 
         agent = await Composer.from_yaml_async(yaml_path)
         assert isinstance(agent, ReActAgent)
@@ -799,7 +799,7 @@ class TestComposerBuild:
         assert agent.name == "bot"
         assert agent._instructions == "Think carefully."
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_react_agent_with_planner(self, mock_resolve, tmp_path):
         mock_resolve.return_value = lambda **kw: _mock_llm()
         yaml_path = _write_yaml(
@@ -813,15 +813,15 @@ class TestComposerBuild:
             main_agent: bot
             """,
         )
-        from langchain_adk.agents.react_agent import ReActAgent
-        from langchain_adk.composer import Composer
-        from langchain_adk.planners.plan_re_act_planner import PlanReActPlanner
+        from orxhestra.agents.react_agent import ReActAgent
+        from orxhestra.composer import Composer
+        from orxhestra.planners.plan_re_act_planner import PlanReActPlanner
 
         agent = await Composer.from_yaml_async(yaml_path)
         assert isinstance(agent, ReActAgent)
         assert isinstance(agent._planner, PlanReActPlanner)
 
-    @patch("langchain_adk.composer.builders.models._resolve_provider")
+    @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_react_agent_with_skills(self, mock_resolve, tmp_path):
         mock_resolve.return_value = lambda **kw: _mock_llm()
         yaml_path = _write_yaml(
@@ -839,8 +839,8 @@ class TestComposerBuild:
             main_agent: bot
             """,
         )
-        from langchain_adk.agents.react_agent import ReActAgent
-        from langchain_adk.composer import Composer
+        from orxhestra.agents.react_agent import ReActAgent
+        from orxhestra.composer import Composer
 
         agent = await Composer.from_yaml_async(yaml_path)
         assert isinstance(agent, ReActAgent)
@@ -859,8 +859,8 @@ class TestComposerBuild:
             main_agent: remote
             """,
         )
-        from langchain_adk.agents.a2a_agent import A2AAgent
-        from langchain_adk.composer import Composer
+        from orxhestra.agents.a2a_agent import A2AAgent
+        from orxhestra.composer import Composer
 
         agent = await Composer.from_yaml_async(yaml_path)
         assert isinstance(agent, A2AAgent)
@@ -879,7 +879,7 @@ class TestComposerBuild:
             main_agent: remote
             """,
         )
-        from langchain_adk.composer import Composer
+        from orxhestra.composer import Composer
 
         with pytest.raises(ComposerError, match="must have a 'url'"):
             await Composer.from_yaml_async(yaml_path)

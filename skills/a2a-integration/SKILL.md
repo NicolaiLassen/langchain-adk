@@ -1,6 +1,6 @@
 ---
 name: a2a-integration
-description: Expose langchain-adk agents as A2A protocol endpoints or connect to remote A2A agents.
+description: Expose orxhestra agents as A2A protocol endpoints or connect to remote A2A agents.
 ---
 
 # A2A Integration
@@ -8,8 +8,8 @@ description: Expose langchain-adk agents as A2A protocol endpoints or connect to
 ## A2A Server — expose an agent
 
 ```python
-from langchain_adk import LlmAgent, InMemorySessionService
-from langchain_adk.a2a import A2AServer, AgentSkill
+from orxhestra import LlmAgent, InMemorySessionService
+from orxhestra.a2a import A2AServer, AgentSkill
 
 agent = LlmAgent(name="MyAgent", llm=llm, tools=[...])
 
@@ -49,7 +49,7 @@ app = server.as_fastapi_app()
 ## A2A Agent — connect to a remote agent
 
 ```python
-from langchain_adk.agents.a2a_agent import A2AAgent
+from orxhestra.agents.a2a_agent import A2AAgent
 
 remote = A2AAgent(
     name="RemoteAgent",

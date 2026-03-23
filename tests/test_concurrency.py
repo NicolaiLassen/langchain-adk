@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from langchain_adk.concurrency import gather_with_event_queue
+from orxhestra.concurrency import gather_with_event_queue
 
 
 @pytest.mark.asyncio

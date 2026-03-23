@@ -33,7 +33,7 @@ flowchart LR
 Wrap any async function as a LangChain `BaseTool`:
 
 ```python
-from langchain_adk import function_tool
+from orxhestra import function_tool
 
 async def search_web(query: str) -> str:
     """Search the web and return results."""
@@ -50,8 +50,8 @@ Or use LangChain's `@tool` decorator directly - both work with `LlmAgent`.
 Wrap a `BaseAgent` so it can be called as a tool by a parent agent:
 
 ```python
-from langchain_adk import LlmAgent
-from langchain_adk.tools.agent_tool import AgentTool
+from orxhestra import LlmAgent
+from orxhestra.tools.agent_tool import AgentTool
 
 research_agent = LlmAgent(name="ResearchAgent", llm=llm, tools=[search_tool])
 
@@ -88,7 +88,7 @@ if ctx.event_callback is not None:
 ## Transfer tool - explicit agent handoff
 
 ```python
-from langchain_adk import make_transfer_tool
+from orxhestra import make_transfer_tool
 
 transfer = make_transfer_tool([billing_agent, support_agent, tech_agent])
 # The LLM can call "transfer_to_agent" with the target agent name.
@@ -100,7 +100,7 @@ transfer = make_transfer_tool([billing_agent, support_agent, tech_agent])
 Signal a `LoopAgent` to stop iterating:
 
 ```python
-from langchain_adk import exit_loop_tool
+from orxhestra import exit_loop_tool
 
 loop_agent = LoopAgent(
     name="RefineLoop",
@@ -114,7 +114,7 @@ loop_agent = LoopAgent(
 Inside a tool's `_arun()`, use `ToolContext` to read/write agent state:
 
 ```python
-from langchain_adk import ToolContext
+from orxhestra import ToolContext
 
 class MyStatefulTool(BaseTool):
     _ctx: ToolContext | None = None

@@ -1,7 +1,7 @@
 """Tests for task board and ManageTasksTool."""
 
-from langchain_adk.planners.constants import TaskStatus
-from langchain_adk.planners.task_board import (
+from orxhestra.planners.constants import TaskStatus
+from orxhestra.planners.task_board import (
     apply_task_action,
     has_unresolved_tasks,
     initialize_task_board,

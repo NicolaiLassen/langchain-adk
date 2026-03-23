@@ -1,6 +1,6 @@
 ---
 name: agent-callbacks
-description: Add callbacks to langchain-adk agents for logging, monitoring, and error handling. Covers model and tool callbacks.
+description: Add callbacks to orxhestra agents for logging, monitoring, and error handling. Covers model and tool callbacks.
 ---
 
 # Agent Callbacks
@@ -10,9 +10,9 @@ LlmAgent supports before/after hooks at the model and tool level.
 ## Model callbacks
 
 ```python
-from langchain_adk import LlmAgent, Context
-from langchain_adk.models.llm_request import LlmRequest
-from langchain_adk.models.llm_response import LlmResponse
+from orxhestra import LlmAgent, Context
+from orxhestra.models.llm_request import LlmRequest
+from orxhestra.models.llm_response import LlmResponse
 
 async def log_before_model(ctx: Context, request: LlmRequest) -> None:
     print(f"Calling LLM with {len(request.messages)} messages")
@@ -63,7 +63,7 @@ agent = LlmAgent(
 Intercept events from child agents when using AgentTool.
 
 ```python
-from langchain_adk.tools import AgentTool
+from orxhestra.tools import AgentTool
 
 def before_agent(ctx, agent):
     print(f"Delegating to sub-agent: {agent.name}")
@@ -82,7 +82,7 @@ tool = AgentTool(
 
 ```python
 from langfuse.callback import CallbackHandler
-from langchain_adk import AgentConfig
+from orxhestra import AgentConfig
 
 handler = CallbackHandler(public_key="...", secret_key="...", host="...")
 

@@ -7,8 +7,8 @@ keywords: ["skills", "InMemorySkillStore", "dynamic instructions", "skill store"
 Skills are reusable instruction blocks that an agent can load dynamically at runtime.
 
 ```python
-from langchain_adk import Skill, InMemorySkillStore
-from langchain_adk.skills.load_skill_tool import make_load_skill_tool, make_list_skills_tool
+from orxhestra import Skill, InMemorySkillStore
+from orxhestra.skills.load_skill_tool import make_load_skill_tool, make_list_skills_tool
 
 store = InMemorySkillStore([
     Skill(

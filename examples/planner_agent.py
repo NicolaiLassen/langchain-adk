@@ -12,8 +12,8 @@ import asyncio
 
 from langchain_core.tools import tool
 
-from langchain_adk import LlmAgent, PlanReActPlanner
-from langchain_adk.events.event import Event, EventType
+from orxhestra import LlmAgent, PlanReActPlanner
+from orxhestra.events.event import Event, EventType
 
 
 # --- Research tools ---

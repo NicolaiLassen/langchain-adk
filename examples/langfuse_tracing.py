@@ -15,13 +15,13 @@ import asyncio
 from langchain_core.tools import tool
 from langfuse.langchain import CallbackHandler
 
-from langchain_adk import (
+from orxhestra import (
     LlmAgent,
     AgentConfig,
     Runner,
     InMemorySessionService,
 )
-from langchain_adk.events.event import Event, EventType
+from orxhestra.events.event import Event, EventType
 
 
 @tool

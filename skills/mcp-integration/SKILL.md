@@ -1,6 +1,6 @@
 ---
 name: mcp-integration
-description: Connect langchain-adk agents to MCP tool servers using MCPClient and MCPToolAdapter.
+description: Connect orxhestra agents to MCP tool servers using MCPClient and MCPToolAdapter.
 ---
 
 # MCP Integration
@@ -8,13 +8,13 @@ description: Connect langchain-adk agents to MCP tool servers using MCPClient an
 Connect to any MCP-compatible tool server.
 
 ```bash
-pip install langchain-adk[mcp]
+pip install orxhestra[mcp]
 ```
 
 ## Usage
 
 ```python
-from langchain_adk.integrations.mcp import MCPClient, MCPToolAdapter
+from orxhestra.integrations.mcp import MCPClient, MCPToolAdapter
 
 client = MCPClient("http://localhost:8001/mcp")
 adapter = MCPToolAdapter(client)

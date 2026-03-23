@@ -12,9 +12,9 @@ import asyncio
 
 from langchain_core.tools import tool
 
-from langchain_adk import LlmAgent
-from langchain_adk.events.event import Event, EventType
-from langchain_adk.tools.transfer_tool import make_transfer_tool
+from orxhestra import LlmAgent
+from orxhestra.events.event import Event, EventType
+from orxhestra.tools.transfer_tool import make_transfer_tool
 
 
 # --- Specialist tools ---

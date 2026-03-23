@@ -14,14 +14,14 @@ import asyncio
 
 from langchain_core.tools import tool
 
-from langchain_adk import LlmAgent, SequentialAgent
-from langchain_adk.events.event import Event, EventType
-from langchain_adk.prompts.catalog import build_system_prompt
-from langchain_adk.prompts.context import PromptContext
-from langchain_adk.skills.skill import Skill
-from langchain_adk.skills.skill_store import InMemorySkillStore
-from langchain_adk.skills.load_skill_tool import make_load_skill_tool, make_list_skills_tool
-from langchain_adk.tools.agent_tool import AgentTool
+from orxhestra import LlmAgent, SequentialAgent
+from orxhestra.events.event import Event, EventType
+from orxhestra.prompts.catalog import build_system_prompt
+from orxhestra.prompts.context import PromptContext
+from orxhestra.skills.skill import Skill
+from orxhestra.skills.skill_store import InMemorySkillStore
+from orxhestra.skills.load_skill_tool import make_load_skill_tool, make_list_skills_tool
+from orxhestra.tools.agent_tool import AgentTool
 
 
 async def main() -> None:

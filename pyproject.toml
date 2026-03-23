@@ -1,7 +1,7 @@
 [project]
-name = "langchain-adk"
-version = "0.3.14"
-description = "A LangChain-powered Agent Development Toolkit"
+name = "orxhestra"
+version = "0.0.1"
+description = "Multi-Agent AI Framework for Python"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -31,13 +31,13 @@ mcp = ["fastmcp>=2.0.0"]
 composer = ["pyyaml>=6.0"]
 
 [project.urls]
-Homepage = "https://github.com/NicolaiLassen/langchain-adk"
-Repository = "https://github.com/NicolaiLassen/langchain-adk"
-Issues = "https://github.com/NicolaiLassen/langchain-adk/issues"
+Homepage = "https://github.com/NicolaiLassen/orxhestra"
+Repository = "https://github.com/NicolaiLassen/orxhestra"
+Issues = "https://github.com/NicolaiLassen/orxhestra/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["langchain_adk*"]
+include = ["orxhestra*"]
 
 [build-system]
 requires = ["setuptools>=70"]

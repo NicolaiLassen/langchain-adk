@@ -1,6 +1,6 @@
 ---
 name: structured-output
-description: Force langchain-adk agents to return typed Pydantic objects instead of free-form text using output_schema.
+description: Force orxhestra agents to return typed Pydantic objects instead of free-form text using output_schema.
 ---
 
 # Structured Output
@@ -9,8 +9,8 @@ Pass `output_schema` to `LlmAgent` to get a typed Pydantic object back.
 
 ```python
 from pydantic import BaseModel, Field
-from langchain_adk import LlmAgent
-from langchain_adk.events.event import Event, EventType
+from orxhestra import LlmAgent
+from orxhestra.events.event import Event, EventType
 
 class CompanyAnalysis(BaseModel):
     name: str = Field(description="Company name")

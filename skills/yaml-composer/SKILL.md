@@ -1,6 +1,6 @@
 ---
 name: yaml-composer
-description: Build langchain-adk agent trees from declarative YAML compose files. Covers full schema, models, tools, agents, runner, and server.
+description: Build orxhestra agent trees from declarative YAML compose files. Covers full schema, models, tools, agents, runner, and server.
 ---
 
 # YAML Composer
@@ -8,7 +8,7 @@ description: Build langchain-adk agent trees from declarative YAML compose files
 Build an entire multi-agent setup from a single YAML file.
 
 ```bash
-pip install langchain-adk[composer]
+pip install orxhestra[composer]
 ```
 
 ## Minimal example
@@ -28,7 +28,7 @@ main_agent: assistant
 ```
 
 ```python
-from langchain_adk.composer import Composer
+from orxhestra.composer import Composer
 
 agent = Composer.from_yaml("compose.yaml")
 async for event in agent.astream("Hello"):

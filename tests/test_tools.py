@@ -2,11 +2,11 @@
 
 import pytest
 
-from langchain_adk.agents.context import Context
-from langchain_adk.tools.exit_loop import EXIT_LOOP_SENTINEL, exit_loop_tool
-from langchain_adk.tools.function_tool import function_tool
-from langchain_adk.tools.tool_context import ToolContext
-from langchain_adk.tools.tool_registry import ToolRegistry
+from orxhestra.agents.context import Context
+from orxhestra.tools.exit_loop import EXIT_LOOP_SENTINEL, exit_loop_tool
+from orxhestra.tools.function_tool import function_tool
+from orxhestra.tools.tool_context import ToolContext
+from orxhestra.tools.tool_registry import ToolRegistry
 
 
 def _make_ctx():

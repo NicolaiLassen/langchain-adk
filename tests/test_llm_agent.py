@@ -9,12 +9,12 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.tools import BaseTool
 from pydantic import PrivateAttr
 
-from langchain_adk.agents.context import Context
-from langchain_adk.agents.llm_agent import LlmAgent
-from langchain_adk.events.event import Event, EventType
-from langchain_adk.models.part import Content
-from langchain_adk.tools.exit_loop import EXIT_LOOP_SENTINEL
-from langchain_adk.tools.transfer_tool import TRANSFER_SENTINEL
+from orxhestra.agents.context import Context
+from orxhestra.agents.llm_agent import LlmAgent
+from orxhestra.events.event import Event, EventType
+from orxhestra.models.part import Content
+from orxhestra.tools.exit_loop import EXIT_LOOP_SENTINEL
+from orxhestra.tools.transfer_tool import TRANSFER_SENTINEL
 
 
 class FakeChatModel(BaseChatModel):
@@ -228,9 +228,9 @@ async def test_callable_instructions():
 @pytest.mark.asyncio
 async def test_multi_turn_history_from_session():
     """LlmAgent should rebuild conversation history from session events."""
-    from langchain_adk.events.event import Event, EventType
-    from langchain_adk.models.part import Content
-    from langchain_adk.sessions.session import Session
+    from orxhestra.events.event import Event, EventType
+    from orxhestra.models.part import Content
+    from orxhestra.sessions.session import Session
 
     # Create a session with previous conversation events
     session = Session(app_name="test", user_id="user1")

@@ -20,7 +20,7 @@ jobs:
         run: pip install ruff
 
       - name: Lint
-        run: ruff check langchain_adk/
+        run: ruff check orxhestra/
 
   test:
     runs-on: ubuntu-latest

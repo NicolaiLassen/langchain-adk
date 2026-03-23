@@ -1,8 +1,8 @@
 """Tests for unified event model."""
 
-from langchain_adk.events.event import Event, EventType
-from langchain_adk.events.event_actions import EventActions
-from langchain_adk.models.part import Content, ToolCallPart, ToolResponsePart
+from orxhestra.events.event import Event, EventType
+from orxhestra.events.event_actions import EventActions
+from orxhestra.models.part import Content, ToolCallPart, ToolResponsePart
 
 
 def test_event_actions_defaults():

@@ -28,11 +28,11 @@ import sys
 from pathlib import Path
 
 # In Docker, tools.py is in the same directory as compose.yaml.
-# Locally, we also need the repo root for langchain_adk.
+# Locally, we also need the repo root for orxhestra.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from langchain_adk.composer import Composer
+from orxhestra.composer import Composer
 
 yaml_path = Path(__file__).parent / "compose.yaml"
 app = Composer.server_from_yaml(yaml_path)

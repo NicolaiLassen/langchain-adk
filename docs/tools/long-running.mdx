@@ -7,7 +7,7 @@ keywords: ["long-running tools", "LongRunningFunctionTool", "async tools", "depl
 For tools that take significant time (deployments, data processing), use `LongRunningFunctionTool`. It instructs the LLM not to re-invoke the tool while pending:
 
 ```python
-from langchain_adk.tools import LongRunningFunctionTool
+from orxhestra.tools import LongRunningFunctionTool
 
 async def deploy_service(env: str) -> str:
     """Deploy the service to the given environment."""

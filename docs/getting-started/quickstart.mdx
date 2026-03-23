@@ -9,8 +9,8 @@ import asyncio
 from langchain_anthropic import ChatAnthropic
 from langchain_core.tools import tool
 
-from langchain_adk import LlmAgent, Runner, InMemorySessionService
-from langchain_adk.events.event import Event, EventType
+from orxhestra import LlmAgent, Runner, InMemorySessionService
+from orxhestra.events.event import Event, EventType
 
 @tool
 def get_weather(city: str) -> str:

@@ -7,7 +7,7 @@ keywords: ["Context", "invocation context", "agent state", "ReadonlyContext", "C
 `Context` is the runtime state passed through every agent in the call tree. It carries the session binding, a mutable shared state dict, run config, and an optional event callback for real-time event pushing.
 
 ```python
-from langchain_adk import Context
+from orxhestra import Context
 
 ctx = Context(
     session_id="session-1",
@@ -73,7 +73,7 @@ The callback propagates through `derive()`, so nested sub-agents also push event
 ## ReadonlyContext & CallbackContext
 
 ```python
-from langchain_adk import ReadonlyContext, CallbackContext
+from orxhestra import ReadonlyContext, CallbackContext
 
 # Planners and instruction providers receive ReadonlyContext
 # state is exposed as MappingProxyType - no accidental mutations

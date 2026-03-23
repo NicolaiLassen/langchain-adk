@@ -11,8 +11,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from langchain_adk.composer import Composer
-from langchain_adk.events.event import EventType
+from orxhestra.composer import Composer
+from orxhestra.events.event import EventType
 
 
 async def main() -> None:

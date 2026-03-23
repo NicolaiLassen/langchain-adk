@@ -1,19 +1,19 @@
 <p align="center">
-  <img src="docs/assets/logo.svg" width="200" alt="langchain-adk logo">
+  <img src="docs/assets/logo.svg" width="200" alt="orxhestra logo">
 </p>
 
-<h1 align="center">langchain-adk</h1>
+<h1 align="center">orxhestra</h1>
 
 <p align="center">
-  <strong>A LangChain-powered Agent Development Kit</strong><br>
+  <strong>Multi-Agent AI Framework for Python</strong><br>
   Async event-streaming agents, composable hierarchies, session management, planners, skills, MCP and A2A integration.
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/langchain-adk/"><img src="https://img.shields.io/pypi/v/langchain-adk" alt="PyPI"></a>
-  <a href="https://pypi.org/project/langchain-adk/"><img src="https://img.shields.io/pypi/pyversions/langchain-adk" alt="Python"></a>
-  <a href="https://github.com/NicolaiLassen/langchain-adk/blob/main/LICENSE"><img src="https://img.shields.io/github/license/NicolaiLassen/langchain-adk" alt="License"></a>
-  <a href="https://nicolailassen.github.io/langchain-adk/"><img src="https://img.shields.io/badge/docs-mkdocs-blue" alt="Docs"></a>
+  <a href="https://pypi.org/project/orxhestra/"><img src="https://img.shields.io/pypi/v/orxhestra" alt="PyPI"></a>
+  <a href="https://pypi.org/project/orxhestra/"><img src="https://img.shields.io/pypi/pyversions/orxhestra" alt="Python"></a>
+  <a href="https://github.com/NicolaiLassen/orxhestra/blob/main/LICENSE"><img src="https://img.shields.io/github/license/NicolaiLassen/orxhestra" alt="License"></a>
+  <a href="https://nicolailassen.github.io/orxhestra/"><img src="https://img.shields.io/badge/docs-mkdocs-blue" alt="Docs"></a>
 </p>
 
 ---
@@ -57,7 +57,7 @@
 
 ## Overview
 
-`langchain-adk` gives you a structured way to build production-quality agents on top of any LangChain-compatible LLM. The core ideas:
+`orxhestra` gives you a structured way to build production-quality agents on top of any LangChain-compatible LLM. The core ideas:
 
 - **Async event stream**: every agent is an `async def astream()` that yields typed `Event` objects — thoughts, tool calls, results, final answers.
 - **Multi-turn sessions**: events ARE the conversation history (event-sourced). The `Runner` persists user messages and agent responses as events, and `LlmAgent` rebuilds LangChain message history from `session.events` on each turn.
@@ -94,19 +94,19 @@ flowchart LR
 ## Installation
 
 ```bash
-pip install langchain-adk
+pip install orxhestra
 
 # or with uv
-uv add langchain-adk
+uv add orxhestra
 ```
 
 Install with an LLM provider:
 
 ```bash
-pip install langchain-adk[openai]      # ChatOpenAI
-pip install langchain-adk[anthropic]   # ChatAnthropic
-pip install langchain-adk[google]      # ChatGoogleGenerativeAI
-pip install langchain-adk[mcp]         # MCP integration (fastMCP)
+pip install orxhestra[openai]      # ChatOpenAI
+pip install orxhestra[anthropic]   # ChatAnthropic
+pip install orxhestra[google]      # ChatGoogleGenerativeAI
+pip install orxhestra[mcp]         # MCP integration (fastMCP)
 ```
 
 **Python >= 3.10 required.**
@@ -120,8 +120,8 @@ import asyncio
 from langchain_anthropic import ChatAnthropic
 from langchain_core.tools import tool
 
-from langchain_adk import LlmAgent, Runner, InMemorySessionService
-from langchain_adk.events.event import Event, EventType
+from orxhestra import LlmAgent, Runner, InMemorySessionService
+from orxhestra.events.event import Event, EventType
 
 @tool
 def get_weather(city: str) -> str:
@@ -160,7 +160,7 @@ asyncio.run(main())
 Define an entire multi-agent setup in a single YAML file — no Python wiring needed.
 
 ```bash
-pip install langchain-adk[composer]
+pip install orxhestra[composer]
 ```
 
 ```yaml
@@ -222,7 +222,7 @@ main_agent: triage
 ```
 
 ```python
-from langchain_adk.composer import Composer
+from orxhestra.composer import Composer
 
 # Build root agent from YAML
 agent = Composer.from_yaml("compose.yaml")
@@ -284,7 +284,7 @@ sequenceDiagram
 ```
 
 ```python
-from langchain_adk import LlmAgent
+from orxhestra import LlmAgent
 
 agent = LlmAgent(
     name="MyAgent",
@@ -317,7 +317,7 @@ agent = LlmAgent(name="Agent", llm=llm, instructions=my_instructions)
 A structured-reasoning variant that forces the LLM to emit explicit thought steps via `with_structured_output()` before acting.
 
 ```python
-from langchain_adk import ReActAgent
+from orxhestra import ReActAgent
 
 agent = ReActAgent(
     name="ThinkingAgent",
@@ -363,7 +363,7 @@ Every agent yields a stream of unified `Event` objects. All events share the sam
 **Content/Parts model:**
 
 ```python
-from langchain_adk import Content, TextPart, DataPart, FilePart
+from orxhestra import Content, TextPart, DataPart, FilePart
 
 # Events use Content with typed parts
 event.content          # Content object with .parts list
@@ -379,7 +379,7 @@ Content(parts=[TextPart(text="hi"), DataPart(data={"k": "v"})])  # Multiple part
 **Checking event types:**
 
 ```python
-from langchain_adk.events.event import Event, EventType
+from orxhestra.events.event import Event, EventType
 
 # Check for final response
 if event.is_final_response():
@@ -422,7 +422,7 @@ event.llm_response.model_version
 `Runner` is the main entry point for session-managed execution. It wires an agent, a session service, and the invocation context together.
 
 ```python
-from langchain_adk import Runner, InMemorySessionService
+from orxhestra import Runner, InMemorySessionService
 
 runner = Runner(
     agent=agent,
@@ -454,7 +454,7 @@ async for event in runner.astream(
 #### Sessions directly
 
 ```python
-from langchain_adk import InMemorySessionService
+from orxhestra import InMemorySessionService
 
 svc = InMemorySessionService()
 session = await svc.create_session(app_name="demo", user_id="user-1")
@@ -475,7 +475,7 @@ Implement `BaseSessionService` to back sessions with any database.
 `Context` is the runtime state passed through every agent in the call tree. It carries the session binding, a mutable shared state dict, and run config.
 
 ```python
-from langchain_adk import Context
+from orxhestra import Context
 
 ctx = Context(
     session_id="session-1",
@@ -501,7 +501,7 @@ child_ctx = ctx.derive(agent_name="ChildAgent", branch_suffix="child")
 Read-only and callback views:
 
 ```python
-from langchain_adk import ReadonlyContext, CallbackContext
+from orxhestra import ReadonlyContext, CallbackContext
 
 # Planners and instruction providers receive ReadonlyContext
 # state is exposed as MappingProxyType — no accidental mutations
@@ -547,7 +547,7 @@ flowchart LR
 Wrap any async function as a LangChain `BaseTool`:
 
 ```python
-from langchain_adk import function_tool
+from orxhestra import function_tool
 
 async def search_web(query: str) -> str:
     """Search the web and return results."""
@@ -564,8 +564,8 @@ Or use LangChain's `@tool` decorator directly — both work with `LlmAgent`.
 Wrap a `BaseAgent` so it can be called as a tool by a parent agent:
 
 ```python
-from langchain_adk import LlmAgent
-from langchain_adk.tools.agent_tool import AgentTool
+from orxhestra import LlmAgent
+from orxhestra.tools.agent_tool import AgentTool
 
 research_agent = LlmAgent(name="ResearchAgent", llm=llm, tools=[search_tool])
 writer_agent = LlmAgent(name="WriterAgent", llm=llm, tools=[edit_tool])
@@ -591,7 +591,7 @@ async for event in parent.astream("Write an article about AI"):
 ### Transfer tool — explicit agent handoff
 
 ```python
-from langchain_adk import make_transfer_tool
+from orxhestra import make_transfer_tool
 
 transfer = make_transfer_tool([billing_agent, support_agent, tech_agent])
 # The LLM can call "transfer_to_agent" with the target agent name.
@@ -603,7 +603,7 @@ transfer = make_transfer_tool([billing_agent, support_agent, tech_agent])
 Signal a `LoopAgent` to stop iterating:
 
 ```python
-from langchain_adk import exit_loop_tool
+from orxhestra import exit_loop_tool
 
 loop_agent = LoopAgent(
     name="RefineLoop",
@@ -617,7 +617,7 @@ loop_agent = LoopAgent(
 Inside a tool's `_arun()`, use `ToolContext` to read/write agent state:
 
 ```python
-from langchain_adk import ToolContext
+from orxhestra import ToolContext
 
 class MyStatefulTool(BaseTool):
     _ctx: ToolContext | None = None
@@ -637,7 +637,7 @@ class MyStatefulTool(BaseTool):
 For tools that take significant time (deployments, data processing), use `LongRunningFunctionTool`. It instructs the LLM not to re-invoke the tool while pending:
 
 ```python
-from langchain_adk.tools import LongRunningFunctionTool
+from orxhestra.tools import LongRunningFunctionTool
 
 async def deploy_service(env: str) -> str:
     """Deploy the service to the given environment."""
@@ -653,7 +653,7 @@ agent = LlmAgent(name="deployer", llm=llm, tools=[tool.as_tool()])
 Gate dangerous tool executions with `ToolContext.request_confirmation()`:
 
 ```python
-from langchain_adk.tools import ToolContext
+from orxhestra.tools import ToolContext
 
 async def confirm_dangerous(ctx, tool_name: str, tool_args: dict) -> None:
     if tool_name in ("delete_file", "drop_table"):
@@ -670,7 +670,7 @@ async def confirm_dangerous(ctx, tool_name: str, tool_args: dict) -> None:
 Planners inject planning instructions into the system prompt before each LLM call and can post-process the response.
 
 ```python
-from langchain_adk import BasePlanner, ReadonlyContext, LlmRequest, LlmResponse
+from orxhestra import BasePlanner, ReadonlyContext, LlmRequest, LlmResponse
 
 class MyPlanner(BasePlanner):
     def build_planning_instruction(
@@ -689,7 +689,7 @@ class MyPlanner(BasePlanner):
 A built-in planner that enforces structured planning tags — the agent must emit a `/*PLANNING*/` block before reasoning and a `/*FINAL_ANSWER*/` block to conclude.
 
 ```python
-from langchain_adk import PlanReActPlanner, LlmAgent
+from orxhestra import PlanReActPlanner, LlmAgent
 
 agent = LlmAgent(
     name="PlanningAgent",
@@ -704,7 +704,7 @@ agent = LlmAgent(
 Maintains a task board in `ctx.state` and injects its current status into the system prompt. Pairs with `ManageTasksTool` so the agent can create, update, complete, and list tasks.
 
 ```python
-from langchain_adk import TaskPlanner, LlmAgent
+from orxhestra import TaskPlanner, LlmAgent
 
 planner = TaskPlanner()
 
@@ -729,8 +729,8 @@ The agent can call `manage_tasks` with actions: `initialize`, `list`, `create`, 
 Skills are reusable instruction blocks that an agent can load dynamically at runtime.
 
 ```python
-from langchain_adk import Skill, InMemorySkillStore
-from langchain_adk.skills.load_skill_tool import make_load_skill_tool, make_list_skills_tool
+from orxhestra import Skill, InMemorySkillStore
+from orxhestra.skills.load_skill_tool import make_load_skill_tool, make_list_skills_tool
 
 store = InMemorySkillStore([
     Skill(
@@ -764,7 +764,7 @@ The agent calls `list_skills` to discover what's available, then `load_skill("su
 The prompt catalog builds structured system prompts from a `PromptContext`:
 
 ```python
-from langchain_adk import PromptContext, build_system_prompt
+from orxhestra import PromptContext, build_system_prompt
 
 prompt = build_system_prompt(PromptContext(
     agent_name="WriterAgent",
@@ -839,9 +839,9 @@ async for event in runner.astream(
 Attach hooks at the agent, model, and tool level:
 
 ```python
-from langchain_adk import Context, LlmAgent
-from langchain_adk.models.llm_request import LlmRequest
-from langchain_adk.models.llm_response import LlmResponse
+from orxhestra import Context, LlmAgent
+from orxhestra.models.llm_request import LlmRequest
+from orxhestra.models.llm_response import LlmResponse
 
 async def log_llm_call(ctx: Context, request: LlmRequest) -> None:
     print(f"[{ctx.agent_name}] LLM call with {len(request.messages)} messages")
@@ -882,7 +882,7 @@ agent.before_agent_callback = on_start
 
 ```python
 from langfuse.langchain import CallbackHandler
-from langchain_adk import AgentConfig
+from orxhestra import AgentConfig
 
 run_config = AgentConfig(
     callbacks=[CallbackHandler()],  # Langfuse, LangSmith, or any BaseCallbackHandler
@@ -937,8 +937,8 @@ Force an agent to return a typed Pydantic object instead of free-form text. Pass
 
 ```python
 from pydantic import BaseModel, Field
-from langchain_adk import LlmAgent
-from langchain_adk.events.event import Event, EventType
+from orxhestra import LlmAgent
+from orxhestra.events.event import Event, EventType
 
 class CompanyAnalysis(BaseModel):
     name: str = Field(description="Company name")
@@ -1021,7 +1021,7 @@ flowchart LR
 ```
 
 ```python
-from langchain_adk import SequentialAgent
+from orxhestra import SequentialAgent
 
 pipeline = SequentialAgent(
     name="ResearchWriterPipeline",
@@ -1054,7 +1054,7 @@ flowchart LR
 ```
 
 ```python
-from langchain_adk import ParallelAgent
+from orxhestra import ParallelAgent
 
 parallel = ParallelAgent(
     name="MultiSourceResearch",
@@ -1085,7 +1085,7 @@ flowchart LR
 ```
 
 ```python
-from langchain_adk import LoopAgent, exit_loop_tool
+from orxhestra import LoopAgent, exit_loop_tool
 
 refine_agent = LlmAgent(
     name="RefineAgent",
@@ -1153,8 +1153,8 @@ sequenceDiagram
 ```
 
 ```python
-from langchain_adk import LlmAgent, InMemorySessionService
-from langchain_adk.a2a import A2AServer, AgentSkill
+from orxhestra import LlmAgent, InMemorySessionService
+from orxhestra.a2a import A2AServer, AgentSkill
 
 agent = LlmAgent(name="MyAgent", llm=llm, tools=[...])
 
@@ -1233,7 +1233,7 @@ curl -N -X POST http://localhost:8000/ \
 Install with MCP support:
 
 ```bash
-pip install langchain-adk[mcp]
+pip install orxhestra[mcp]
 ```
 
 Connect to any MCP-compatible tool server and use its tools inside any agent.
@@ -1260,7 +1260,7 @@ sequenceDiagram
 ```
 
 ```python
-from langchain_adk.integrations.mcp import MCPClient, MCPToolAdapter
+from orxhestra.integrations.mcp import MCPClient, MCPToolAdapter
 
 # Connect to an MCP server (HTTP or in-memory)
 client = MCPClient("http://localhost:8001/mcp")
@@ -1419,7 +1419,7 @@ uv run python examples/basic_agent.py
 **Adding a custom session backend:**
 
 ```python
-from langchain_adk.sessions import BaseSessionService, Session
+from orxhestra.sessions import BaseSessionService, Session
 
 class RedisSessionService(BaseSessionService):
     async def create_session(self, *, app_name, user_id, state=None, session_id=None) -> Session: ...
@@ -1432,7 +1432,7 @@ class RedisSessionService(BaseSessionService):
 **Adding a custom planner:**
 
 ```python
-from langchain_adk import BasePlanner, ReadonlyContext, LlmRequest
+from orxhestra import BasePlanner, ReadonlyContext, LlmRequest
 
 class MyPlanner(BasePlanner):
     def build_planning_instruction(self, ctx: ReadonlyContext, request: LlmRequest) -> str | None:

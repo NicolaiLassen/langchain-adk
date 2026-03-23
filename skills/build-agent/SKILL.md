@@ -1,16 +1,16 @@
 ---
 name: build-agent
-description: Build an LLM agent with langchain-adk. Use when creating a new agent, setting up LlmAgent or ReActAgent, or wiring tools to an agent.
+description: Build an LLM agent with orxhestra. Use when creating a new agent, setting up LlmAgent or ReActAgent, or wiring tools to an agent.
 ---
 
-# Building Agents with langchain-adk
+# Building Agents with orxhestra
 
 All agents extend `BaseAgent` and implement `astream(input, *, ctx)` returning `AsyncIterator[Event]`.
 
 ## LlmAgent — Standard tool-calling agent
 
 ```python
-from langchain_adk import LlmAgent
+from orxhestra import LlmAgent
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 
@@ -67,7 +67,7 @@ agent = LlmAgent(
 Uses `with_structured_output()` to enforce a typed `ReActStep` at every iteration. Extends LlmAgent so it inherits instructions, planners, skills, and callbacks.
 
 ```python
-from langchain_adk import ReActAgent
+from orxhestra import ReActAgent
 
 agent = ReActAgent(
     name="reasoner",
@@ -81,7 +81,7 @@ agent = ReActAgent(
 ## Running with sessions (Runner)
 
 ```python
-from langchain_adk import Runner, InMemorySessionService
+from orxhestra import Runner, InMemorySessionService
 
 runner = Runner(
     agent=agent,

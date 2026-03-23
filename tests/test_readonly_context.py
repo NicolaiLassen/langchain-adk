@@ -4,8 +4,8 @@ from types import MappingProxyType
 
 import pytest
 
-from langchain_adk.agents.context import Context
-from langchain_adk.agents.readonly_context import CallbackContext, ReadonlyContext
+from orxhestra.agents.context import Context
+from orxhestra.agents.readonly_context import CallbackContext, ReadonlyContext
 
 
 def test_readonly_context_exposes_properties():

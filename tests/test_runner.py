@@ -2,12 +2,12 @@
 
 import pytest
 
-from langchain_adk.agents.base_agent import BaseAgent
-from langchain_adk.events.event import EventType
-from langchain_adk.events.event_actions import EventActions
-from langchain_adk.models.part import Content
-from langchain_adk.runner import Runner
-from langchain_adk.sessions.in_memory_session_service import InMemorySessionService
+from orxhestra.agents.base_agent import BaseAgent
+from orxhestra.events.event import EventType
+from orxhestra.events.event_actions import EventActions
+from orxhestra.models.part import Content
+from orxhestra.runner import Runner
+from orxhestra.sessions.in_memory_session_service import InMemorySessionService
 
 
 class StubAgent(BaseAgent):

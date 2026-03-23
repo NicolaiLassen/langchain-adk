@@ -1,4 +1,4 @@
-"""Generic entrypoint for the langchain-adk Docker image.
+"""Generic entrypoint for the orxhestra Docker image.
 
 Loads compose.yaml from /app and starts either:
   - An A2A server (if `server:` section exists in YAML) on port 8080
@@ -7,13 +7,13 @@ Loads compose.yaml from /app and starts either:
 
 Usage:
   # A2A server mode (default when server: is defined)
-  docker run -v ./compose.yaml:/app/compose.yaml -p 8080:8080 nicolaimtlassen/langchain-adk
+  docker run -v ./compose.yaml:/app/compose.yaml -p 8080:8080 nicolaimtlassen/orxhestra
 
   # With custom tools
-  docker run -v ./compose.yaml:/app/compose.yaml -v ./tools.py:/app/tools.py -p 8080:8080 nicolaimtlassen/langchain-adk
+  docker run -v ./compose.yaml:/app/compose.yaml -v ./tools.py:/app/tools.py -p 8080:8080 nicolaimtlassen/orxhestra
 
   # Override port
-  docker run -e PORT=9000 -p 9000:9000 -v ./compose.yaml:/app/compose.yaml nicolaimtlassen/langchain-adk
+  docker run -e PORT=9000 -p 9000:9000 -v ./compose.yaml:/app/compose.yaml nicolaimtlassen/orxhestra
 """
 
 import asyncio
@@ -32,7 +32,7 @@ def main() -> None:
         print("Mount your config: docker run -v ./compose.yaml:/app/compose.yaml ...")
         sys.exit(1)
 
-    from langchain_adk.composer import Composer
+    from orxhestra.composer import Composer
 
     # Read YAML to check which mode to use
     import yaml

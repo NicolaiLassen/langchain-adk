@@ -20,9 +20,9 @@ import sys
 
 from langchain_core.tools import tool
 
-from langchain_adk import LlmAgent
-from langchain_adk.events.event import EventType
-from langchain_adk.tools.agent_tool import AgentTool
+from orxhestra import LlmAgent
+from orxhestra.events.event import EventType
+from orxhestra.tools.agent_tool import AgentTool
 
 
 @tool

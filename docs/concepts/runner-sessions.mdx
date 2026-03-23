@@ -7,7 +7,7 @@ keywords: ["Runner", "sessions", "session management", "multi-turn", "InMemorySe
 `Runner` is the main entry point for session-managed execution. It wires an agent, a session service, and the invocation context together.
 
 ```python
-from langchain_adk import Runner, InMemorySessionService
+from orxhestra import Runner, InMemorySessionService
 
 runner = Runner(
     agent=agent,
@@ -40,7 +40,7 @@ async for event in runner.astream(
 ## Using sessions directly
 
 ```python
-from langchain_adk import InMemorySessionService
+from orxhestra import InMemorySessionService
 
 svc = InMemorySessionService()
 session = await svc.create_session(app_name="demo", user_id="user-1")

@@ -41,7 +41,7 @@ Every agent yields a stream of unified `Event` objects. All events share the sam
 Use the `EventType` enum and convenience methods instead of `isinstance` checks:
 
 ```python
-from langchain_adk.events.event import Event, EventType
+from orxhestra.events.event import Event, EventType
 
 # Check for final response (replaces isinstance(event, FinalAnswerEvent))
 if event.is_final_response():

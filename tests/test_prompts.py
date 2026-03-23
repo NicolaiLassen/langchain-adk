@@ -1,7 +1,7 @@
 """Tests for PromptContext and build_system_prompt."""
 
-from langchain_adk.prompts.catalog import build_system_prompt
-from langchain_adk.prompts.context import PromptContext
+from orxhestra.prompts.catalog import build_system_prompt
+from orxhestra.prompts.context import PromptContext
 
 
 def test_prompt_includes_agent_name():

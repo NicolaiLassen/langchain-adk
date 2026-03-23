@@ -1,6 +1,6 @@
 ---
 name: agent-tools
-description: Create and use tools with langchain-adk agents. Covers function_tool, AgentTool, transfer tools, exit_loop, MCP tools, and ToolContext.
+description: Create and use tools with orxhestra agents. Covers function_tool, AgentTool, transfer tools, exit_loop, MCP tools, and ToolContext.
 ---
 
 # Agent Tools
@@ -8,7 +8,7 @@ description: Create and use tools with langchain-adk agents. Covers function_too
 ## function_tool — Wrap Python functions
 
 ```python
-from langchain_adk.tools import function_tool
+from orxhestra.tools import function_tool
 
 @function_tool
 async def search_web(query: str) -> str:
@@ -26,7 +26,7 @@ async def search(query: str) -> str:
 Make any agent callable as a tool by a parent agent.
 
 ```python
-from langchain_adk.tools import AgentTool
+from orxhestra.tools import AgentTool
 
 researcher = LlmAgent(name="researcher", llm=llm, description="Research topics.", instructions="...")
 
@@ -42,7 +42,7 @@ manager = LlmAgent(
 ## make_transfer_tool — Agent handoff
 
 ```python
-from langchain_adk.tools import make_transfer_tool
+from orxhestra.tools import make_transfer_tool
 
 transfer = make_transfer_tool([sales_agent, support_agent])
 triage = LlmAgent(name="triage", llm=llm, tools=[transfer], instructions="Route requests.")
@@ -51,7 +51,7 @@ triage = LlmAgent(name="triage", llm=llm, tools=[transfer], instructions="Route 
 ## exit_loop_tool — Break out of LoopAgent
 
 ```python
-from langchain_adk.tools import exit_loop_tool
+from orxhestra.tools import exit_loop_tool
 
 reviewer = LlmAgent(
     name="reviewer",
@@ -64,7 +64,7 @@ reviewer = LlmAgent(
 ## ToolContext — Access state inside tools
 
 ```python
-from langchain_adk.tools import ToolContext
+from orxhestra.tools import ToolContext
 
 class MyTool(BaseTool):
     name = "my_tool"
@@ -81,7 +81,7 @@ class MyTool(BaseTool):
 ## MCPToolAdapter — Connect MCP servers
 
 ```python
-from langchain_adk.integrations.mcp import MCPClient, MCPToolAdapter
+from orxhestra.integrations.mcp import MCPClient, MCPToolAdapter
 
 # HTTP MCP server
 client = MCPClient("http://localhost:8001/mcp")
@@ -99,7 +99,7 @@ tools = await MCPToolAdapter(client).load_tools()
 ## LongRunningFunctionTool — Long operations
 
 ```python
-from langchain_adk.tools import LongRunningFunctionTool
+from orxhestra.tools import LongRunningFunctionTool
 
 async def deploy(env: str) -> str:
     """Deploy to environment."""

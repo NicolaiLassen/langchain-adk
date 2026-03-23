@@ -2,11 +2,11 @@
 
 import pytest
 
-from langchain_adk.agents.base_agent import BaseAgent
-from langchain_adk.agents.context import Context
-from langchain_adk.events.event import EventType
-from langchain_adk.models.part import Content
-from langchain_adk.tools.agent_tool import AgentTool
+from orxhestra.agents.base_agent import BaseAgent
+from orxhestra.agents.context import Context
+from orxhestra.events.event import EventType
+from orxhestra.models.part import Content
+from orxhestra.tools.agent_tool import AgentTool
 
 
 class EchoAgent(BaseAgent):

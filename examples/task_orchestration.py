@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import asyncio
 
-from langchain_adk import LlmAgent
-from langchain_adk.events.event import Event, EventType
-from langchain_adk.planners.task_planner import ManageTasksTool
-from langchain_adk.prompts.catalog import build_system_prompt
-from langchain_adk.prompts.context import PromptContext
+from orxhestra import LlmAgent
+from orxhestra.events.event import Event, EventType
+from orxhestra.planners.task_planner import ManageTasksTool
+from orxhestra.prompts.catalog import build_system_prompt
+from orxhestra.prompts.context import PromptContext
 
 
 async def main() -> None:

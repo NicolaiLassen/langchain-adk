@@ -1,6 +1,6 @@
 ---
 name: agent-skills
-description: Add dynamic skills to langchain-adk agents. Covers Skill, InMemorySkillStore, and skill discovery/loading tools.
+description: Add dynamic skills to orxhestra agents. Covers Skill, InMemorySkillStore, and skill discovery/loading tools.
 ---
 
 # Agent Skills
@@ -10,8 +10,8 @@ Skills are reusable instruction blocks that an agent can load dynamically at run
 ## Setup
 
 ```python
-from langchain_adk import Skill, InMemorySkillStore
-from langchain_adk.skills.load_skill_tool import make_load_skill_tool, make_list_skills_tool
+from orxhestra import Skill, InMemorySkillStore
+from orxhestra.skills.load_skill_tool import make_load_skill_tool, make_list_skills_tool
 
 store = InMemorySkillStore([
     Skill(

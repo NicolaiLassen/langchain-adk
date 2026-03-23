@@ -7,7 +7,7 @@ keywords: ["MCP", "Model Context Protocol", "MCPClient", "MCPToolAdapter", "tool
 Install with MCP support:
 
 ```bash
-pip install langchain-adk[mcp]
+pip install orxhestra[mcp]
 ```
 
 Connect to any MCP-compatible tool server and use its tools inside any agent.
@@ -36,7 +36,7 @@ sequenceDiagram
 ## Usage
 
 ```python
-from langchain_adk.integrations.mcp import MCPClient, MCPToolAdapter
+from orxhestra.integrations.mcp import MCPClient, MCPToolAdapter
 
 # Connect to an MCP server (HTTP or in-memory)
 client = MCPClient("http://localhost:8001/mcp")

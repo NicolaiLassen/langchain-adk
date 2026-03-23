@@ -12,7 +12,7 @@ Three orchestration primitives for combining agents.
 Each agent's final answer becomes the next agent's input.
 
 ```python
-from langchain_adk import SequentialAgent, LlmAgent
+from orxhestra import SequentialAgent, LlmAgent
 
 researcher = LlmAgent(name="researcher", llm=llm, instructions="Research the topic.")
 writer = LlmAgent(name="writer", llm=llm, instructions="Write an article from the research.")
@@ -32,7 +32,7 @@ async for event in pipeline.astream("AI trends 2025"):
 All agents run simultaneously. Each gets a derived context with branch isolation.
 
 ```python
-from langchain_adk import ParallelAgent, LlmAgent
+from orxhestra import ParallelAgent, LlmAgent
 
 analyst_a = LlmAgent(name="market", llm=llm, instructions="Analyze market trends.")
 analyst_b = LlmAgent(name="tech", llm=llm, instructions="Analyze tech trends.")
@@ -48,8 +48,8 @@ parallel = ParallelAgent(
 Repeats sub-agents until `escalate=True` (via `exit_loop_tool`) or `max_iterations` reached.
 
 ```python
-from langchain_adk import LoopAgent, LlmAgent
-from langchain_adk.tools import exit_loop_tool
+from orxhestra import LoopAgent, LlmAgent
+from orxhestra.tools import exit_loop_tool
 
 writer = LlmAgent(name="writer", llm=llm, instructions="Write a draft.")
 reviewer = LlmAgent(
@@ -98,8 +98,8 @@ full_pipeline = SequentialAgent(
 ## Transfer routing — Agent handoff
 
 ```python
-from langchain_adk import LlmAgent
-from langchain_adk.tools import make_transfer_tool
+from orxhestra import LlmAgent
+from orxhestra.tools import make_transfer_tool
 
 sales = LlmAgent(name="sales", llm=llm, description="Handles orders.", instructions="...")
 support = LlmAgent(name="support", llm=llm, description="Technical help.", instructions="...")

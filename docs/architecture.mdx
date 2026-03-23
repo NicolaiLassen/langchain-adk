@@ -1,6 +1,6 @@
 ---
 title: "Architecture"
-description: "High-level architecture of langchain-adk: request lifecycle, design decisions, custom session backends, custom planners, and extension points."
+description: "High-level architecture of orxhestra: request lifecycle, design decisions, custom session backends, custom planners, and extension points."
 keywords: ["architecture", "design", "extension points", "custom session", "custom planner", "request lifecycle"]
 ---
 
@@ -79,7 +79,7 @@ sequenceDiagram
 ## Custom session backend
 
 ```python
-from langchain_adk.sessions import BaseSessionService, Session
+from orxhestra.sessions import BaseSessionService, Session
 
 class RedisSessionService(BaseSessionService):
     async def create_session(self, *, app_name, user_id, state=None, session_id=None) -> Session: ...
@@ -92,7 +92,7 @@ class RedisSessionService(BaseSessionService):
 ## Custom planner
 
 ```python
-from langchain_adk import BasePlanner, ReadonlyContext, LlmRequest
+from orxhestra import BasePlanner, ReadonlyContext, LlmRequest
 
 class MyPlanner(BasePlanner):
     def build_planning_instruction(self, ctx: ReadonlyContext, request: LlmRequest) -> str | None:

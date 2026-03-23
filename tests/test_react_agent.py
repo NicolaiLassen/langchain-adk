@@ -7,10 +7,10 @@ from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.tools import tool
 
-from langchain_adk.agents.context import Context
-from langchain_adk.agents.llm_agent import LlmAgent
-from langchain_adk.agents.react_agent import ReActAgent, ReActStep
-from langchain_adk.events.event import EventType
+from orxhestra.agents.context import Context
+from orxhestra.agents.llm_agent import LlmAgent
+from orxhestra.agents.react_agent import ReActAgent, ReActStep
+from orxhestra.events.event import EventType
 
 
 class FakeStructuredModel(BaseChatModel):

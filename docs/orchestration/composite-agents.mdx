@@ -21,7 +21,7 @@ flowchart LR
 ```
 
 ```python
-from langchain_adk import SequentialAgent
+from orxhestra import SequentialAgent
 
 pipeline = SequentialAgent(
     name="ResearchWriterPipeline",
@@ -54,7 +54,7 @@ flowchart LR
 ```
 
 ```python
-from langchain_adk import ParallelAgent
+from orxhestra import ParallelAgent
 
 parallel = ParallelAgent(
     name="MultiSourceResearch",
@@ -84,7 +84,7 @@ flowchart LR
 ```
 
 ```python
-from langchain_adk import LoopAgent, exit_loop_tool
+from orxhestra import LoopAgent, exit_loop_tool
 
 refine_agent = LlmAgent(
     name="RefineAgent",

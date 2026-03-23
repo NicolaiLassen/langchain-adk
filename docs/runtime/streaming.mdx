@@ -7,7 +7,7 @@ keywords: ["streaming", "real-time", "async streaming", "token streaming", "Agen
 All agents stream by default - `astream()` yields `Event` objects as they occur:
 
 ```python
-from langchain_adk.events.event import Event, EventType
+from orxhestra.events.event import Event, EventType
 
 async for event in agent.astream("Write about distributed systems"):
     if event.type == EventType.AGENT_MESSAGE and event.partial:
@@ -24,8 +24,8 @@ Partial events are suppressed automatically if the LLM decides to call a tool in
 When using `AgentTool`, sub-agent events stream through the parent in real-time via `ctx.event_callback`. Events carry `branch` and `agent_name` fields so you can distinguish which sub-agent is producing output:
 
 ```python
-from langchain_adk import LlmAgent
-from langchain_adk.tools.agent_tool import AgentTool
+from orxhestra import LlmAgent
+from orxhestra.tools.agent_tool import AgentTool
 
 weather_agent = LlmAgent(name="WeatherAgent", llm=llm, tools=[get_weather])
 travel_agent = LlmAgent(name="TravelAgent", llm=llm, tools=[get_attractions])

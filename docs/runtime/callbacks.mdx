@@ -7,9 +7,9 @@ keywords: ["callbacks", "hooks", "before_model_callback", "after_model_callback"
 Attach hooks at the agent, model, and tool level:
 
 ```python
-from langchain_adk import Context, LlmAgent
-from langchain_adk.models.llm_request import LlmRequest
-from langchain_adk.models.llm_response import LlmResponse
+from orxhestra import Context, LlmAgent
+from orxhestra.models.llm_request import LlmRequest
+from orxhestra.models.llm_response import LlmResponse
 
 async def log_llm_call(ctx: Context, request: LlmRequest) -> None:
     print(f"[{ctx.agent_name}] LLM call with {len(request.messages)} messages")
@@ -42,7 +42,7 @@ agent = LlmAgent(
 `AgentTool` supports `before_agent_callback` and `after_agent_callback` to intercept child agent events:
 
 ```python
-from langchain_adk.tools.agent_tool import AgentTool
+from orxhestra.tools.agent_tool import AgentTool
 
 def on_child_event(event, child_ctx):
     if event.is_final_response():

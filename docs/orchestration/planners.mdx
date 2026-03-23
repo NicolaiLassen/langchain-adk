@@ -7,7 +7,7 @@ keywords: ["planner", "PlanReActPlanner", "TaskPlanner", "chain of thought", "pl
 Planners inject planning instructions into the system prompt before each LLM call and can post-process the response.
 
 ```python
-from langchain_adk import BasePlanner, ReadonlyContext, LlmRequest, LlmResponse
+from orxhestra import BasePlanner, ReadonlyContext, LlmRequest, LlmResponse
 
 class MyPlanner(BasePlanner):
     def build_planning_instruction(
@@ -26,7 +26,7 @@ class MyPlanner(BasePlanner):
 A built-in planner that enforces structured planning tags - the agent must emit a `/*PLANNING*/` block before reasoning and a `/*FINAL_ANSWER*/` block to conclude.
 
 ```python
-from langchain_adk import PlanReActPlanner, LlmAgent
+from orxhestra import PlanReActPlanner, LlmAgent
 
 agent = LlmAgent(
     name="PlanningAgent",
@@ -41,7 +41,7 @@ agent = LlmAgent(
 Maintains a task board in `ctx.state` and injects its current status into the system prompt. Pairs with `ManageTasksTool` so the agent can create, update, complete, and list tasks.
 
 ```python
-from langchain_adk import TaskPlanner, LlmAgent
+from orxhestra import TaskPlanner, LlmAgent
 
 planner = TaskPlanner()
 

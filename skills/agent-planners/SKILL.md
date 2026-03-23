@@ -1,6 +1,6 @@
 ---
 name: agent-planners
-description: Add planners to langchain-adk agents for structured reasoning. Covers BasePlanner, PlanReActPlanner, and TaskPlanner.
+description: Add planners to orxhestra agents for structured reasoning. Covers BasePlanner, PlanReActPlanner, and TaskPlanner.
 ---
 
 # Agent Planners
@@ -10,7 +10,7 @@ Planners inject planning instructions into the system prompt before each LLM cal
 ## Custom planner
 
 ```python
-from langchain_adk import BasePlanner, ReadonlyContext, LlmRequest, LlmResponse
+from orxhestra import BasePlanner, ReadonlyContext, LlmRequest, LlmResponse
 
 class MyPlanner(BasePlanner):
     def build_planning_instruction(
@@ -29,7 +29,7 @@ class MyPlanner(BasePlanner):
 Enforces structured planning tags — the agent must emit `/*PLANNING*/` and `/*FINAL_ANSWER*/` blocks.
 
 ```python
-from langchain_adk import PlanReActPlanner, LlmAgent
+from orxhestra import PlanReActPlanner, LlmAgent
 
 agent = LlmAgent(
     name="PlanningAgent",
@@ -44,7 +44,7 @@ agent = LlmAgent(
 Maintains a task board in `ctx.state` and injects status into the system prompt. Pairs with `ManageTasksTool`.
 
 ```python
-from langchain_adk import TaskPlanner, LlmAgent
+from orxhestra import TaskPlanner, LlmAgent
 
 planner = TaskPlanner()
 

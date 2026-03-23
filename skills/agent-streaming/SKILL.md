@@ -1,6 +1,6 @@
 ---
 name: agent-streaming
-description: Stream events from langchain-adk agents including token-by-token output, sub-agent events via AgentTool, and Runner streaming.
+description: Stream events from orxhestra agents including token-by-token output, sub-agent events via AgentTool, and Runner streaming.
 ---
 
 # Agent Streaming
@@ -10,7 +10,7 @@ All agents stream via `astream()`, yielding `Event` objects.
 ## Basic streaming
 
 ```python
-from langchain_adk.events.event import Event, EventType
+from orxhestra.events.event import Event, EventType
 
 async for event in agent.astream("Write about distributed systems"):
     if event.type == EventType.AGENT_MESSAGE and event.partial:
@@ -24,8 +24,8 @@ async for event in agent.astream("Write about distributed systems"):
 Sub-agent events stream through the parent in real-time. Events carry `branch` and `agent_name` fields.
 
 ```python
-from langchain_adk import LlmAgent
-from langchain_adk.tools.agent_tool import AgentTool
+from orxhestra import LlmAgent
+from orxhestra.tools.agent_tool import AgentTool
 
 weather_agent = LlmAgent(name="WeatherAgent", llm=llm, tools=[get_weather])
 travel_agent = LlmAgent(name="TravelAgent", llm=llm, tools=[get_attractions])

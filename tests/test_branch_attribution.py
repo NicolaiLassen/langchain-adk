@@ -2,13 +2,13 @@
 
 import pytest
 
-from langchain_adk.agents.base_agent import BaseAgent
-from langchain_adk.agents.loop_agent import LoopAgent
-from langchain_adk.agents.parallel_agent import ParallelAgent
-from langchain_adk.agents.sequential_agent import SequentialAgent
-from langchain_adk.events.event import EventType
-from langchain_adk.events.event_actions import EventActions
-from langchain_adk.models.part import Content
+from orxhestra.agents.base_agent import BaseAgent
+from orxhestra.agents.loop_agent import LoopAgent
+from orxhestra.agents.parallel_agent import ParallelAgent
+from orxhestra.agents.sequential_agent import SequentialAgent
+from orxhestra.events.event import EventType
+from orxhestra.events.event_actions import EventActions
+from orxhestra.models.part import Content
 
 
 class EchoAgent(BaseAgent):

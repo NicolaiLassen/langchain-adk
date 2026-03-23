@@ -7,7 +7,7 @@ keywords: ["composer", "YAML", "agent composition", "declarative agents", "no-co
 Define your entire agent team in a single YAML file. The Composer parses the spec and builds a live agent tree - no Python wiring needed.
 
 ```bash
-pip install langchain-adk[composer]
+pip install orxhestra[composer]
 ```
 
 ## Quick Start
@@ -27,7 +27,7 @@ main_agent: assistant
 ```
 
 ```python
-from langchain_adk.composer import Composer
+from orxhestra.composer import Composer
 
 agent = Composer.from_yaml("compose.yaml")
 
@@ -333,7 +333,7 @@ main_agent: loop
 ### Custom Agent Types
 
 ```python
-from langchain_adk.composer import register_builder
+from orxhestra.composer import register_builder
 
 
 async def build_custom(name, agent_def, spec, *, helpers):
@@ -361,7 +361,7 @@ The build function receives `(name, agent_def, spec, *, helpers)` where `helpers
 ### Custom Model Providers
 
 ```python
-from langchain_adk.composer import register_provider
+from orxhestra.composer import register_provider
 
 register_provider("my_llm", MyCustomChatModel)
 ```
@@ -371,7 +371,7 @@ Built-in providers: `openai`, `anthropic`, `google`. Any unrecognized provider s
 ### Custom Builtin Tools
 
 ```python
-from langchain_adk.composer import register_builtin_tool
+from orxhestra.composer import register_builtin_tool
 
 register_builtin_tool("my_tool", lambda: my_tool_instance)
 ```

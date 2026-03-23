@@ -2,8 +2,8 @@
 
 from langchain_core.messages import AIMessage
 
-from langchain_adk.models.llm_request import LlmRequest
-from langchain_adk.models.llm_response import LlmResponse
+from orxhestra.models.llm_request import LlmRequest
+from orxhestra.models.llm_response import LlmResponse
 
 
 def test_llm_request_defaults():

@@ -2,10 +2,10 @@
 
 import pytest
 
-from langchain_adk.events.event import Event, EventType
-from langchain_adk.events.event_actions import EventActions
-from langchain_adk.models.part import Content
-from langchain_adk.sessions.in_memory_session_service import InMemorySessionService
+from orxhestra.events.event import Event, EventType
+from orxhestra.events.event_actions import EventActions
+from orxhestra.models.part import Content
+from orxhestra.sessions.in_memory_session_service import InMemorySessionService
 
 
 @pytest.fixture

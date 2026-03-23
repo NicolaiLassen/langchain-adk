@@ -71,7 +71,7 @@ sequenceDiagram
 ```
 
 ```python
-from langchain_adk import LlmAgent
+from orxhestra import LlmAgent
 
 agent = LlmAgent(
     name="MyAgent",
@@ -106,7 +106,7 @@ agent = LlmAgent(name="Agent", llm=llm, instructions=my_instructions)
 A structured-reasoning variant that forces the LLM to emit explicit thought steps via `with_structured_output()` before acting. Extends `LlmAgent` - supports `instructions`, `planner`, callbacks, and all other LlmAgent features.
 
 ```python
-from langchain_adk import ReActAgent
+from orxhestra import ReActAgent
 
 agent = ReActAgent(
     name="ThinkingAgent",

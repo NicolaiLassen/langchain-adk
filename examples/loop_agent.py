@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import asyncio
 
-from langchain_adk import LlmAgent, LoopAgent
-from langchain_adk.events.event import Event, EventType
+from orxhestra import LlmAgent, LoopAgent
+from orxhestra.events.event import Event, EventType
 
 
 async def main() -> None:

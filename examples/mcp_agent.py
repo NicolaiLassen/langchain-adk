@@ -16,9 +16,9 @@ import asyncio
 
 from fastmcp import FastMCP
 
-from langchain_adk import LlmAgent
-from langchain_adk.events.event import Event, EventType
-from langchain_adk.integrations.mcp import MCPClient, MCPToolAdapter
+from orxhestra import LlmAgent
+from orxhestra.events.event import Event, EventType
+from orxhestra.integrations.mcp import MCPClient, MCPToolAdapter
 
 
 # --- Define an MCP server with tools ---
