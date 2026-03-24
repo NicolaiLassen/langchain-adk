@@ -69,27 +69,58 @@ for event in response:
 
 ## Composer
 
-Define entire agent systems in YAML:
+Compose agent systems in YAML:
 
 ```yaml
-agents:
-  - name: researcher
-    type: llm
-    model:
-      provider: openai
-      name: gpt-5.4
-    instructions: "Research the given topic thoroughly."
-    tools:
-      - type: builtin
-        name: filesystem
+defaults:
+  model:
+    provider: openai
+    name: gpt-5.4
 
-  - name: pipeline
+tools:
+  exit:
+    builtin: "exit_loop"
+
+agents:
+  planner:
+    type: llm
+    description: "Plans the implementation steps."
+    instructions: |
+      Break the task into steps. Output a numbered plan.
+
+  coder:
+    type: llm
+    description: "Implements code changes with filesystem and shell access."
+    instructions: |
+      Implement the current step. Read files before editing.
+      Run tests after changes.
+    tools:
+      - filesystem
+      - shell
+
+  reviewer:
+    type: llm
+    description: "Reviews changes and approves or requests fixes."
+    instructions: |
+      Review the changes. If issues remain, provide feedback.
+      If everything looks good, call the exit_loop tool.
+    tools:
+      - exit
+
+  dev_loop:
+    type: loop
+    agents: [coder, reviewer]
+    max_iterations: 10
+
+  coordinator:
     type: sequential
-    sub_agents: [researcher]
+    agents: [planner, dev_loop]
+
+main_agent: coordinator
 
 runner:
-  agent: pipeline
-  prompt: "Research quantum computing"
+  app_name: coding-agent
+  session_service: memory
 ```
 
 ```bash
