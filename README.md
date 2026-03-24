@@ -69,7 +69,7 @@ for event in response:
 
 ## Composer
 
-Compose agent systems in YAML:
+Define entire agent orchestras in a single YAML file — no Python wiring needed. Compose LLM agents, loops, pipelines, tools, and review cycles declaratively. The example below builds a coding agent that plans, implements with filesystem + shell access, and self-reviews in a loop:
 
 ```yaml
 defaults:
@@ -80,6 +80,10 @@ defaults:
 tools:
   exit:
     builtin: "exit_loop"
+  filesystem:
+    builtin: "filesystem"
+  shell:
+    builtin: "shell"
 
 agents:
   planner:

@@ -1,0 +1,62 @@
+# Coding agent: plan → code/review loop until done.
+#
+# Run: python examples/composer/coding/run.py
+
+defaults:
+  model:
+    provider: openai
+    name: gpt-4o
+
+tools:
+  exit:
+    builtin: "exit_loop"
+  filesystem:
+    builtin: "filesystem"
+  shell:
+    builtin: "shell"
+
+agents:
+  planner:
+    type: llm
+    description: "Plans the implementation steps."
+    instructions: |
+      Break the task into clear, numbered steps.
+      Be specific about what files to create and what they should contain.
+
+  coder:
+    type: llm
+    description: "Implements code changes with filesystem and shell access."
+    instructions: |
+      You are a coding agent. Implement the current task step by step.
+      Use the filesystem tools to create and edit files.
+      Use the shell tool to run commands (e.g. start servers, install packages).
+      Always verify your work by reading back files you created.
+    tools:
+      - filesystem
+      - shell
+
+  reviewer:
+    type: llm
+    description: "Reviews changes and approves or requests fixes."
+    instructions: |
+      Review the work done so far. Check files exist and look correct.
+      If everything looks good, call the exit_loop tool to finish.
+      If issues remain, describe exactly what needs to be fixed.
+    tools:
+      - exit
+      - filesystem
+
+  dev_loop:
+    type: loop
+    agents: [coder, reviewer]
+    max_iterations: 5
+
+  coordinator:
+    type: sequential
+    agents: [planner, dev_loop]
+
+main_agent: coordinator
+
+runner:
+  app_name: coding-agent
+  session_service: memory
