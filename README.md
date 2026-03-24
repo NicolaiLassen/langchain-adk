@@ -41,7 +41,7 @@ for event in response:
 ```
 
 > [!TIP]
-> For full documentation, guides, and API reference, visit [orxhestra.com](https://orxhestra.com).
+> For full documentation, guides, and API reference, visit [orxhestra.com](https://docs.orxhestra.com).
 
 ## Features
 
@@ -144,11 +144,11 @@ docker run -e OPENAI_API_KEY=$OPENAI_API_KEY \
 
 ## Documentation
 
-- [Getting Started](https://orxhestra.com/getting-started/quickstart) - Installation and first agent
-- [Agents](https://orxhestra.com/concepts/agents) - Agent types and configuration
-- [Tools](https://orxhestra.com/tools/overview) - Built-in and custom tools
-- [Composer](https://orxhestra.com/composer/overview) - YAML-based agent composition
-- [Integrations](https://orxhestra.com/integrations/mcp) - MCP and A2A setup
+- [Getting Started](https://docs.orxhestra.com/getting-started/quickstart) - Installation and first agent
+- [Agents](https://docs.orxhestra.com/concepts/agents) - Agent types and configuration
+- [Tools](https://docs.orxhestra.com/tools/overview) - Built-in and custom tools
+- [Composer](https://docs.orxhestra.com/composer/overview) - YAML-based agent composition
+- [Integrations](https://docs.orxhestra.com/integrations/mcp) - MCP and A2A setup
 
 ---
 
