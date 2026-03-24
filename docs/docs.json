@@ -93,13 +93,8 @@
   "seo": {
     "metatags": {
       "og:site_name": "orxhestra",
-      "og:title": "orxhestra - Multi-Agent Orchestration Framework",
-      "og:image": "https://docs.orxhestra.com/assets/logo_text_bottom.svg",
       "og:description": "Open-source Python framework for orchestrating multi-agent AI systems. Async streaming, composable agent hierarchies, and first-class MCP & A2A integration.",
-      "twitter:card": "summary_large_image",
-      "twitter:title": "orxhestra - Multi-Agent Orchestration Framework",
-      "twitter:description": "Compose multi-agent AI systems with async event streaming, agent hierarchies, and built-in MCP & A2A support.",
-      "twitter:image": "https://docs.orxhestra.com/assets/logo_text_bottom.svg"
+      "twitter:card": "summary_large_image"
     },
     "indexing": "all"
   },
