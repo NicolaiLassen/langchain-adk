@@ -88,16 +88,19 @@ tools:
 agents:
   planner:
     type: llm
-    description: "Plans the implementation steps."
+    description: "Plans the implementation steps for the coder agent."
     instructions: |
-      Break the task into steps. Output a numbered plan.
+      Output a numbered list of concrete steps the coder
+      should execute. Each step must be an actionable file
+      operation or shell command.
 
   coder:
     type: llm
     description: "Implements code changes with filesystem and shell access."
     instructions: |
-      Implement the current step. Read files before editing.
-      Run tests after changes.
+      Follow the plan from the previous step exactly.
+      Use filesystem tools to create files and shell to
+      run commands. Never ask the user to do anything.
     tools:
       - filesystem
       - shell
@@ -106,8 +109,8 @@ agents:
     type: llm
     description: "Reviews changes and approves or requests fixes."
     instructions: |
-      Review the changes. If issues remain, provide feedback.
-      If everything looks good, call the exit_loop tool.
+      Check files exist and look correct. If done, call
+      exit_loop. Otherwise describe what needs fixing.
     tools:
       - exit
 

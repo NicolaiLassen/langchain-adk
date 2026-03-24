@@ -18,19 +18,26 @@ tools:
 agents:
   planner:
     type: llm
-    description: "Plans the implementation steps."
+    description: "Plans the implementation steps for the coder agent."
     instructions: |
-      Break the task into clear, numbered steps.
-      Be specific about what files to create and what they should contain.
+      You are a planning agent inside an automated pipeline. Your output is read
+      by a coder agent, NOT a human. Output a numbered list of concrete steps
+      the coder should execute. Each step must be an actionable command or file
+      operation — never tell the user to "open a terminal" or "run this command
+      yourself". Example format:
+        1. Create directory /tmp/demo/
+        2. Write file /tmp/demo/index.html with the following content: ...
+        3. Start the server with `python -m http.server 8080 --directory /tmp/demo`
 
   coder:
     type: llm
     description: "Implements code changes with filesystem and shell access."
     instructions: |
-      You are a coding agent. Implement the current task step by step.
-      Use the filesystem tools to create and edit files.
-      Use the shell tool to run commands (e.g. start servers, install packages).
-      Always verify your work by reading back files you created.
+      You are a coding agent. Follow the plan from the previous step exactly.
+      Use the write_file / read_file tools to create and read files.
+      Use the shell tool to run commands (start servers, install packages, etc.).
+      Do NOT ask the user to do anything — execute every step yourself.
+      After creating files, read them back to verify correctness.
     tools:
       - filesystem
       - shell
@@ -39,9 +46,9 @@ agents:
     type: llm
     description: "Reviews changes and approves or requests fixes."
     instructions: |
-      Review the work done so far. Check files exist and look correct.
-      If everything looks good, call the exit_loop tool to finish.
-      If issues remain, describe exactly what needs to be fixed.
+      Review the work done so far. Use read_file to check that files exist and
+      are correct. If everything looks good, call the exit_loop tool to finish.
+      If issues remain, describe exactly what the coder needs to fix.
     tools:
       - exit
       - filesystem

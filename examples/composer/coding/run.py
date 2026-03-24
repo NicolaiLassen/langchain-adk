@@ -38,8 +38,6 @@ async def main() -> None:
             print(event.text, end="", flush=True)
         elif event.is_final_response():
             print(f"\n\n[{event.agent_name}] {event.text}")
-        elif event.type == EventType.TOOL_CALL:
-            print(f"\n> Tool: {event.tool_name}({event.tool_input})")
         elif event.type == EventType.TOOL_RESPONSE:
             resp = str(event.text)[:200]
             print(f"< {resp}")
