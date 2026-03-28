@@ -76,10 +76,10 @@ def data_part(data: dict[str, Any], media_type: str = "application/json") -> Par
 
 
 class Role(str, Enum):
-    """A2A v1.0 roles use SCREAMING_SNAKE_CASE."""
+    """A2A v1.0 Message roles per spec."""
 
-    USER = "ROLE_USER"
-    AGENT = "ROLE_AGENT"
+    USER = "user"
+    AGENT = "agent"
 
 
 # ---------------------------------------------------------------------------

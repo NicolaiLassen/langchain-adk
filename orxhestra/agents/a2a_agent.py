@@ -79,7 +79,7 @@ class A2AAgent(BaseAgent):
 
         message: A2AMessage = {
             "messageId": str(uuid4()),
-            "role": "ROLE_USER",
+            "role": "user",
             "parts": [{"text": text, "mediaType": "text/plain"}],
         }
 
@@ -150,7 +150,7 @@ class A2AAgent(BaseAgent):
         # 3. History — last agent message.
         history: list[A2AMessage] = task.get("history", [])
         for msg in reversed(history):
-            if msg.get("role") in ("ROLE_AGENT", "agent"):
+            if msg.get("role") == "agent":
                 text = _extract_text_from_parts(msg.get("parts", []))
                 if text:
                     return text

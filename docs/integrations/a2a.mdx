@@ -95,7 +95,7 @@ The server also accepts the legacy v0.x method names (`message/send`, `message/s
         "method": "SendMessage",
         "params": {
           "message": {
-            "role": "ROLE_USER",
+            "role": "user",
             "parts": [{"text": "What is 2+2?", "mediaType": "text/plain"}]
           }
         }
@@ -112,7 +112,7 @@ The server also accepts the legacy v0.x method names (`message/send`, `message/s
         "method": "SendStreamingMessage",
         "params": {
           "message": {
-            "role": "ROLE_USER",
+            "role": "user",
             "parts": [{"text": "Tell me a story", "mediaType": "text/plain"}]
           }
         }
@@ -144,6 +144,6 @@ async for event in remote.astream("What is the weather?"):
 
 A2A v1.0 uses:
 - **PascalCase** JSON-RPC method names (`SendMessage`, not `message/send`)
-- **SCREAMING_SNAKE_CASE** enum values (`ROLE_USER`, `TASK_STATE_COMPLETED`)
+- **Lowercase** role values (`user`, `agent`)
 - **Unified Part type** with oneof content fields (`text`, `raw`, `url`, `data`) plus `mediaType`
 - **`supportedInterfaces`** on AgentCard (replaces top-level `url`)

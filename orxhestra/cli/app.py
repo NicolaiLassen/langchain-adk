@@ -58,6 +58,17 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip approval prompts for destructive tools.",
     )
+    parser.add_argument(
+        "--serve",
+        action="store_true",
+        help="Start as an A2A server instead of interactive REPL.",
+    )
+    parser.add_argument(
+        "-p", "--port",
+        type=int,
+        default=int(os.environ.get("PORT", "8000")),
+        help="Port for --serve mode (default: 8000). Also reads $PORT.",
+    )
     return parser.parse_args()
 
 
@@ -377,6 +388,55 @@ async def _async_main() -> None:
     else:
         local_orx = Path(args.workspace) / "orx.yaml"
         orx_path = local_orx if local_orx.exists() else _DEFAULT_ORX
+
+    # Serve mode — start as A2A server
+    if args.serve:
+        import yaml
+
+        from orxhestra.composer.composer import Composer
+        from orxhestra.composer.schema import ComposeSpec
+
+        if not orx_path.exists():
+            print(f"Error: orx file not found: {orx_path}")
+            sys.exit(1)
+
+        # Add orx.yaml dir to sys.path for local tool imports
+        orx_dir: str = str(orx_path.parent.resolve())
+        if orx_dir not in sys.path:
+            sys.path.insert(0, orx_dir)
+
+        with open(orx_path) as f:
+            raw: dict = yaml.safe_load(f)
+
+        # Auto-inject a server section if missing
+        if "server" not in raw:
+            app_name: str = raw.get("runner", {}).get(
+                "app_name", "orx-server"
+            )
+            raw["server"] = {
+                "app_name": app_name,
+                "url": f"http://localhost:{args.port}",
+            }
+
+        spec: ComposeSpec = ComposeSpec.model_validate(raw)
+        composer = Composer(spec)
+        root = await composer._build()
+        app = composer._build_server(root)
+
+        try:
+            import uvicorn
+        except ImportError:
+            print(
+                "Error: uvicorn is required for --serve:"
+                " pip install uvicorn"
+            )
+            sys.exit(1)
+
+        print(f"Starting A2A server on http://localhost:{args.port}")
+        config = uvicorn.Config(app, host="0.0.0.0", port=args.port)
+        server = uvicorn.Server(config)
+        await server.serve()
+        return
 
     runner, session_id, todo_list, llm = await _build_from_orx(
         orx_path, args.model, args.workspace

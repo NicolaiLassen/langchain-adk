@@ -10,7 +10,7 @@
 #
 # To customise, copy this file and run: orx my-orx.yaml
 
-version: "0.0.6"
+version: "0.0.7"
 
 defaults:
   model:
