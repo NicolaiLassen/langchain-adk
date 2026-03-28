@@ -7,7 +7,7 @@ from typing import Any
 
 from orxhestra.cli.approval import APPROVE_REQUIRED, format_approval_prompt
 from orxhestra.cli.config import DEFAULT_USER_ID
-from orxhestra.cli.render import render_tool_call, render_tool_response, render_todos
+from orxhestra.cli.render import render_todos, render_tool_call, render_tool_response
 from orxhestra.events.event import EventType
 
 

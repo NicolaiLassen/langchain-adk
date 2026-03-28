@@ -7,7 +7,6 @@ a task list. The CLI renders the todo list in the terminal.
 from __future__ import annotations
 
 import json
-from typing import Any
 
 from langchain_core.tools import BaseTool, StructuredTool
 

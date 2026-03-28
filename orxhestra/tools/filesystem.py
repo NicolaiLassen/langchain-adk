@@ -15,6 +15,7 @@ from pathlib import Path
 
 from langchain_core.tools import BaseTool, StructuredTool
 
+
 def _default_workspace() -> str:
     """Resolve workspace at call time, not import time."""
     return os.environ.get("AGENT_WORKSPACE", "/tmp/agent-workspace")

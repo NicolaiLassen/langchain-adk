@@ -6,8 +6,6 @@ up context space. Also provides a /compact command for manual summarization.
 
 from __future__ import annotations
 
-from typing import Any
-
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 

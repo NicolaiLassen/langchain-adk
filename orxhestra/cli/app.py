@@ -272,7 +272,7 @@ async def _repl(
     # Welcome banner
     print_orx_config(orx_path, console)
     console.print(f"  [dim]workspace: {workspace}[/dim]")
-    console.print(f"  [dim]type /help for commands, Ctrl+D to exit[/dim]\n")
+    console.print("  [dim]type /help for commands, Ctrl+D to exit[/dim]\n")
 
     # Try prompt_toolkit for history support
     prompt_session: Any = None
