@@ -1,0 +1,222 @@
+---
+title: "Orx CLI"
+description: "Turn any orx.yaml agent setup into an interactive terminal agent or an A2A server. Ships with a coding agent out of the box."
+keywords: ["CLI", "terminal", "REPL", "orx", "coding agent", "A2A server"]
+---
+
+Turn any `orx.yaml` into an interactive terminal agent — or serve it as an A2A endpoint. Ships with a coding agent out of the box.
+
+## Installation
+
+```bash
+pip install orxhestra[cli,openai]
+# or with Anthropic
+pip install orxhestra[cli,anthropic]
+```
+
+## Quick Start
+
+```bash
+orx
+```
+
+That's it. The CLI detects your project, picks up `./orx.yaml` if present, and drops you into an interactive REPL:
+
+```
++-- orx - terminal coding agent ------------------------------------+
+|  model: gpt-5.4   workspace: ~/my-project   /help for commands    |
++-------------------------------------------------------------------+
+
+orx> add error handling to the API routes
+
+  > read_file(src/api/routes.py)
+  > grep(pattern="raise", path=src/api/)
+  > write_todos(3 tasks)
+
+  Tasks
+  * Add try/except to all route handlers  [in progress]
+  - Add custom error response model
+  - Write tests for error cases
+
+  > edit_file(src/api/routes.py)
+  > shell_exec(pytest tests/test_api.py)
+  4 passed
+
+  Done - added structured error handling to all 4 route handlers
+  with a custom ErrorResponse model. All tests pass.
+```
+
+## Usage
+
+```bash
+orx                               # interactive REPL (default model)
+orx --model claude-sonnet-4-6     # use a specific model
+orx -c "fix the failing tests"    # single-shot command
+orx my-agents.yaml                # run a custom orx file
+orx --auto-approve                # skip approval prompts
+orx orx.yaml --serve -p 9000      # start as A2A server
+```
+
+### Serve as A2A Server
+
+Any `orx.yaml` can be exposed as an [A2A protocol](/integrations/a2a) server:
+
+```bash
+orx orx.yaml --serve -p 9000
+```
+
+This starts a JSON-RPC 2.0 endpoint that other agents — or any HTTP client — can talk to:
+
+```bash
+curl -X POST http://localhost:9000/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0", "id": "1",
+    "method": "message/send",
+    "params": {
+      "message": {
+        "role": "user",
+        "parts": [{"text": "Hello!", "mediaType": "text/plain"}]
+      }
+    }
+  }'
+```
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `/model <name>` | Switch model mid-session |
+| `/clear` | Reset conversation |
+| `/compact` | Summarize old messages to free context |
+| `/todos` | Show current task list |
+| `/help` | Show all commands |
+| `/exit` | Exit |
+
+## Configuration
+
+### Model Selection
+
+The CLI resolves the model in this order:
+
+1. `--model` / `-m` flag
+2. `$ORX_MODEL` environment variable
+3. Default from `orx.yaml`
+
+```bash
+orx --model gpt-5.4
+orx --model claude-sonnet-4-6
+orx --model gemini-2.0-flash
+```
+
+Supported providers are auto-detected from the model name. Set the matching API key:
+
+| Provider | Environment Variable |
+|----------|---------------------|
+| OpenAI | `OPENAI_API_KEY` |
+| Anthropic | `ANTHROPIC_API_KEY` |
+| Google | `GOOGLE_API_KEY` |
+
+### Workspace
+
+By default, the CLI uses the current working directory as the workspace. Override with `--workspace`:
+
+```bash
+orx --workspace ~/other-project
+```
+
+The workspace determines:
+- Which files the agent can read, edit, and create
+- Where `AGENTS.md` memory is loaded from
+- Local context detection (language, git state, package manager)
+
+### Custom orx.yaml
+
+Run your own agent setup instead of the built-in coding agent:
+
+```yaml title="orx.yaml"
+defaults:
+  model:
+    provider: openai
+    name: gpt-5.4
+
+tools:
+  web_fetch:
+    function: tools.web_fetch
+
+agents:
+  assistant:
+    type: llm
+    description: "Assistant with web access."
+    instructions: |
+      You are a helpful assistant.
+      Use web_fetch to look things up.
+    tools:
+      - web_fetch
+
+main_agent: assistant
+
+runner:
+  app_name: my-assistant
+  session_service: memory
+```
+
+```bash
+orx orx.yaml
+```
+
+Local Python files (like `tools.py`) next to `orx.yaml` are automatically importable — no `sys.path` hacking needed.
+
+## Features
+
+### Tool Approval
+
+Destructive operations (file writes, shell commands) require approval by default. The CLI shows what the tool wants to do and asks for confirmation:
+
+```
+  > edit_file(src/main.py)
+  Allow? [y/n/always]:
+```
+
+- `y` — approve this one call
+- `n` — deny
+- `always` — approve all future calls of this type (same as `--auto-approve`)
+
+### Task Planning
+
+The agent creates structured todo lists visible in the terminal. Track progress with `/todos`:
+
+```
+  Tasks
+  * Refactor database module  [done]
+  * Update API routes          [in progress]
+  - Write integration tests
+```
+
+### AGENTS.md Memory
+
+Create an `AGENTS.md` file in your workspace root to give the agent persistent context across sessions:
+
+```markdown
+# Project Context
+
+- This is a FastAPI backend with PostgreSQL
+- Use alembic for migrations
+- Tests run with pytest, use the test database
+- Never modify the auth middleware without review
+```
+
+The CLI loads this file automatically on every session start.
+
+### Context Summarization
+
+Long conversations are auto-compacted every 20 turns. Force it manually:
+
+```
+orx> /compact
+Conversation compacted.
+```
+
+### Sub-agent Delegation
+
+The built-in coding agent can spawn isolated sub-agents for complex subtasks — each with its own context window and tool access.

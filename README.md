@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>Multi-agent orchestration framework for Python — turn any agent setup into a CLI.</strong>
+  <strong>Multi-agent orchestration framework for Python — turn any agent setup into a CLI or server.</strong>
 </p>
 
 <p align="center">
@@ -69,6 +69,7 @@ orx --model claude-sonnet-4-6     # use a specific model
 orx -c "fix the failing tests"    # single-shot command
 orx my-agents.yaml                # run a custom orx file
 orx --auto-approve                # skip approval prompts
+orx orx.yaml --serve -p 9000      # start as A2A server
 ```
 
 ### Commands

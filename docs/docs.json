@@ -43,6 +43,11 @@
             "pages": ["runtime/streaming", "runtime/callbacks", "runtime/tracing", "runtime/structured-output", "runtime/human-in-the-loop"]
           },
           {
+            "group": "CLI",
+            "icon": "terminal",
+            "pages": ["cli/overview"]
+          },
+          {
             "group": "Composer",
             "icon": "wand-magic-sparkles",
             "pages": ["composer/overview"]
