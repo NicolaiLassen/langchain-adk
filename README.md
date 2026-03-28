@@ -26,26 +26,26 @@ orx
 ```
 
 ```
-┌─ orx ─ terminal coding agent ─────────────────────────────────────┐
-│  model: gpt-5.4   workspace: ~/my-project     /help for commands  │
-└────────────────────────────────────────────────────────────────────┘
++-- orx - terminal coding agent ------------------------------------+
+|  model: gpt-5.4   workspace: ~/my-project   /help for commands    |
++-------------------------------------------------------------------+
 
 orx> add error handling to the API routes
 
-  › read_file(src/api/routes.py)
-  › grep(pattern="raise", path=src/api/)
-  › write_todos(3 tasks)
+  > read_file(src/api/routes.py)
+  > grep(pattern="raise", path=src/api/)
+  > write_todos(3 tasks)
 
   Tasks
-  ▶ Add try/except to all route handlers
-  ○ Add custom error response model
-  ○ Write tests for error cases
+  * Add try/except to all route handlers  [in progress]
+  - Add custom error response model
+  - Write tests for error cases
 
-  › edit_file(src/api/routes.py)
-  › shell_exec(pytest tests/test_api.py)
-  ✓ 4 passed
+  > edit_file(src/api/routes.py)
+  > shell_exec(pytest tests/test_api.py)
+  4 passed
 
-  Done — added structured error handling to all 4 route handlers
+  Done - added structured error handling to all 4 route handlers
   with a custom ErrorResponse model. All tests pass.
 ```
 
