@@ -73,9 +73,6 @@ async def _build_from_orx(
 ) -> tuple[Any, str, Any, Any]:
     """Build a Runner from an orx YAML with CLI enhancements.
 
-    Injects model overrides, workspace env var, CLI builtins (todos, task),
-    and project context (memory, local context) into the orx spec.
-
     Returns (runner, session_id, todo_list, llm).
     """
     import yaml
@@ -91,16 +88,10 @@ async def _build_from_orx(
         print(f"Error: orx file not found: {orx_path}")
         sys.exit(1)
 
-    # Set workspace for filesystem/shell builtins
     os.environ["AGENT_WORKSPACE"] = workspace
-
-    # Create LLM for CLI features (summarization, task delegation)
     llm = create_llm(model_name)
-
-    # Register CLI builtins before building
     register_cli_builtins(workspace, llm)
 
-    # Load and modify the orx spec
     with open(orx_path) as f:
         raw: dict = yaml.safe_load(f)
 
@@ -122,7 +113,6 @@ async def _build_from_orx(
     composer = Composer(spec)
     root = await composer._build()
 
-    # Build runner (use spec's runner config or create a default one)
     if spec.runner is not None:
         runner = composer._build_runner(root)
     else:
@@ -142,11 +132,7 @@ def _inject_context(
     memory_content: str,
     local_context: str,
 ) -> None:
-    """Append workspace, memory, and local context to LLM agent instructions.
-
-    Walks the agent tree and injects into every LLM-type agent that has
-    instructions defined.
-    """
+    """Append workspace, memory, and local context to LLM agent instructions."""
     extra: str = f"\n# Workspace\nCurrent working directory: {workspace}\n"
     if memory_content:
         extra += f"\n{memory_content}\n"
@@ -164,261 +150,99 @@ def _inject_context(
 
 
 # ---------------------------------------------------------------------------
-# Approval
+# Slash commands
 # ---------------------------------------------------------------------------
 
+_HELP_TEXT: str = """[bold]Commands:[/bold]
+  /model <name>  Switch model
+  /clear         Clear session
+  /compact       Summarize old messages to free context
+  /todos         Show current task list
+  /exit          Exit
+  /help          Show this help"""
 
-async def _prompt_approval(
-    tool_name: str,
-    args: dict[str, Any],
+
+async def _handle_slash_command(
+    cmd: str,
+    cmd_arg: str | None,
+    *,
+    runner: Any,
+    session_id: str,
+    orx_path: Path,
+    model_name: str,
+    workspace: str,
+    todo_list: Any,
+    llm: Any,
+    turn_count: int,
     console: Any,
-    auto_approve: bool,
-) -> bool:
-    """Ask the user to approve a destructive tool call."""
-    if auto_approve:
-        return True
+) -> tuple[Any, str, Any, Any, str, int, bool]:
+    """Handle a slash command. Returns updated (runner, session_id, todo_list, llm, model_name, turn_count, should_continue)."""
+    from orxhestra.cli.render import render_todos
 
-    from orxhestra.cli.approval import APPROVE_REQUIRED, format_approval_prompt
+    if cmd in ("/exit", "/quit"):
+        console.print("[dim]Goodbye![/dim]")
+        return runner, session_id, todo_list, llm, model_name, turn_count, False
 
-    if tool_name not in APPROVE_REQUIRED:
-        return True
+    if cmd == "/clear":
+        session_id = str(uuid4())
+        if todo_list is not None:
+            todo_list.todos = []
+        console.print("[dim]Session cleared.[/dim]")
+        return runner, session_id, todo_list, llm, model_name, 0, True
 
-    console.print(format_approval_prompt(tool_name, args))
+    if cmd == "/compact":
+        if llm is not None:
+            console.print("[dim]Compacting conversation...[/dim]")
+            from orxhestra.cli.summarization import summarize_session
 
-    try:
-        response: str = input("  approve? [y/n/a(ll)]: ").strip().lower()
-    except (EOFError, KeyboardInterrupt):
-        return False
-
-    if response in ("a", "all"):
-        return True  # caller should set auto_approve = True
-    return response in ("y", "yes")
-
-
-# ---------------------------------------------------------------------------
-# Rendering
-# ---------------------------------------------------------------------------
-
-
-def _render_tool_call(event: Any, console: Any) -> None:
-    """Print a tool call event."""
-    for tc in event.tool_calls:
-        args_summary: str = ""
-        args: dict = tc.args or {}
-        if "path" in args:
-            args_summary = args["path"]
-        elif "command" in args:
-            cmd: str = args["command"]
-            args_summary = cmd[:80] + ("..." if len(cmd) > 80 else "")
-        elif "pattern" in args:
-            args_summary = args["pattern"]
-        elif "description" in args:
-            desc: str = args["description"]
-            args_summary = desc[:60] + ("..." if len(desc) > 60 else "")
-        elif "todos" in args:
-            args_summary = "(task list update)"
-        else:
-            args_summary = ", ".join(
-                f"{k}={repr(v)[:40]}" for k, v in list(args.items())[:3]
+            session = await runner.get_or_create_session(
+                user_id=DEFAULT_USER_ID, session_id=session_id
             )
-        console.print(f"  [dim]> {tc.tool_name}({args_summary})[/dim]")
+            result = await summarize_session(llm, session.events)
+            if result is not None:
+                session.events[:] = result
+                console.print("[dim]Conversation compacted.[/dim]")
+            else:
+                console.print("[dim]Nothing to compact.[/dim]")
+        else:
+            console.print("[dim]Compact not available.[/dim]")
+        return runner, session_id, todo_list, llm, model_name, turn_count, True
 
+    if cmd == "/model":
+        if cmd_arg:
+            try:
+                runner, session_id, todo_list, llm = await _build_from_orx(
+                    orx_path, cmd_arg, workspace
+                )
+                model_name = cmd_arg
+                turn_count = 0
+                console.print(f"[dim]Switched to {model_name}[/dim]")
+            except Exception as e:
+                console.print(f"[red]Error: {e}[/red]")
+        else:
+            console.print(f"[dim]Current model: {model_name}[/dim]")
+        return runner, session_id, todo_list, llm, model_name, turn_count, True
 
-def _render_tool_response(event: Any, console: Any) -> None:
-    """Print a truncated tool response."""
-    text: str = (event.text or "")[:300]
-    if text:
-        lines: list[str] = text.splitlines()
-        preview: str = "\n    ".join(lines[:5])
-        if len(lines) > 5:
-            preview += f"\n    ... ({len(lines)} lines total)"
-        console.print(f"    [dim]{preview}[/dim]")
+    if cmd == "/todos":
+        if todo_list is not None:
+            render_todos(todo_list, console)
+            if not todo_list.todos:
+                console.print("[dim]No tasks.[/dim]")
+        else:
+            console.print("[dim]No tasks.[/dim]")
+        return runner, session_id, todo_list, llm, model_name, turn_count, True
 
+    if cmd == "/help":
+        console.print(_HELP_TEXT)
+        return runner, session_id, todo_list, llm, model_name, turn_count, True
 
-def _render_todos(todo_list: Any, console: Any) -> None:
-    """Render the todo list if it has items."""
-    if todo_list is None or not todo_list.todos:
-        return
-    rendered: str = todo_list.render()
-    if rendered:
-        console.print(f"\n[bold]Tasks:[/bold]\n{rendered}")
+    console.print(f"[dim]Unknown command: {cmd}. Type /help[/dim]")
+    return runner, session_id, todo_list, llm, model_name, turn_count, True
 
 
 # ---------------------------------------------------------------------------
 # REPL
 # ---------------------------------------------------------------------------
-
-
-async def _stream_response(
-    runner: Any,
-    session_id: str,
-    message: str,
-    console: Any,
-    Markdown: type,
-    *,
-    todo_list: Any = None,
-    auto_approve: bool = False,
-) -> bool:
-    """Stream a single agent turn, rendering events in real time.
-
-    Returns updated auto_approve value (may change if user selects 'all').
-    """
-    from orxhestra.cli.approval import APPROVE_REQUIRED
-    from orxhestra.events.event import EventType
-
-    buffer: str = ""
-    in_stream: bool = False
-    live: Any = None
-
-    try:
-        from rich.live import Live
-    except ImportError:
-        Live = None
-
-    try:
-        async for event in runner.astream(
-            user_id=DEFAULT_USER_ID,
-            session_id=session_id,
-            new_message=message,
-        ):
-            # Streaming partial tokens
-            if event.partial and event.type == EventType.AGENT_MESSAGE and event.text:
-                buffer += event.text
-                if Live is not None:
-                    if not in_stream:
-                        in_stream = True
-                        live = Live(
-                            Markdown(buffer),
-                            console=console,
-                            refresh_per_second=12,
-                            vertical_overflow="visible",
-                        )
-                        live.start()
-                    else:
-                        live.update(Markdown(buffer))
-                else:
-                    sys.stdout.write(event.text)
-                    sys.stdout.flush()
-                continue
-
-            # Tool call — with approval for destructive tools
-            if event.has_tool_calls:
-                if in_stream and live:
-                    live.stop()
-                    in_stream = False
-                    if buffer:
-                        console.print(Markdown(buffer))
-                        buffer = ""
-
-                _render_tool_call(event, console)
-
-                # Show approval prompt for destructive tools
-                for tc in event.tool_calls:
-                    if tc.tool_name in APPROVE_REQUIRED and not auto_approve:
-                        approved: bool = await _prompt_approval(
-                            tc.tool_name, tc.args or {}, console, auto_approve
-                        )
-                        if not approved:
-                            console.print("  [dim]Denied.[/dim]")
-                continue
-
-            # Tool response
-            if event.type == EventType.TOOL_RESPONSE:
-                _render_tool_response(event, console)
-
-                # Show updated todo list after write_todos
-                if event.tool_name == "write_todos" and todo_list is not None:
-                    _render_todos(todo_list, console)
-                continue
-
-            # Final response
-            if event.is_final_response():
-                was_streaming: bool = in_stream
-                if in_stream and live:
-                    live.stop()
-                    in_stream = False
-                    buffer = ""
-                # Only print if we weren't already streaming (Live already showed it)
-                if not was_streaming and event.text:
-                    agent_label: str = (
-                        f"[{event.agent_name}] "
-                        if event.agent_name and event.agent_name != "coder"
-                        else ""
-                    )
-                    if agent_label:
-                        console.print(f"\n[bold cyan]{agent_label}[/bold cyan]")
-                    console.print(Markdown(event.text))
-                continue
-
-            # Error events
-            if event.metadata.get("error") and event.text:
-                if in_stream and live:
-                    live.stop()
-                    in_stream = False
-                    buffer = ""
-                console.print(f"[bold red]Error:[/bold red] {event.text}")
-                continue
-
-    except KeyboardInterrupt:
-        if in_stream and live:
-            live.stop()
-        console.print("\n[dim]Interrupted.[/dim]")
-    finally:
-        if in_stream and live:
-            live.stop()
-            if buffer:
-                console.print(Markdown(buffer))
-
-    return auto_approve
-
-
-def _print_orx_config(orx_path: Path, console: Any) -> None:
-    """Pretty-print the orx.yaml agent configuration on startup."""
-    try:
-        import yaml
-    except ImportError:
-        return
-
-    try:
-        with open(orx_path) as f:
-            raw: dict = yaml.safe_load(f)
-    except Exception:
-        return
-
-    version: str = raw.get("version", "?")
-    agents: dict = raw.get("agents", {})
-    main_agent: str = raw.get("main_agent", "")
-    model_cfg: dict = raw.get("defaults", {}).get("model", {})
-    model_str: str = model_cfg.get("name", "?")
-
-    # Build agent tree summary
-    lines: list[str] = []
-    for name, agent_def in agents.items():
-        agent_type: str = agent_def.get("type", "llm")
-        desc: str = agent_def.get("description", "")
-        marker: str = "[bold cyan]*[/bold cyan] " if name == main_agent else "  "
-        tools: list = agent_def.get("tools", [])
-        tool_names: str = ", ".join(str(t) for t in tools) if tools else ""
-
-        type_badge: str = f"[dim]({agent_type})[/dim]"
-        line: str = f"  {marker}[bold]{name}[/bold] {type_badge}"
-        if desc:
-            line += f"  [dim]{desc}[/dim]"
-        lines.append(line)
-        if tool_names:
-            lines.append(f"      [dim]tools: {tool_names}[/dim]")
-
-        # Show sub-agents for orchestration types
-        sub_agents: list | None = agent_def.get("agents")
-        if sub_agents:
-            lines.append(f"      [dim]agents: {' -> '.join(sub_agents)}[/dim]")
-
-    console.print(f"\n  [bold blue]orx[/bold blue] [dim]{orx_path.name} v{version}[/dim]")
-    console.print(f"  [dim]model: {model_str}[/dim]")
-    if lines:
-        console.print()
-        for line in lines:
-            console.print(line)
 
 
 async def _repl(
@@ -440,14 +264,17 @@ async def _repl(
         print("Error: rich is required. Install with: pip install orxhestra[cli]")
         sys.exit(1)
 
+    from orxhestra.cli.render import print_orx_config
+    from orxhestra.cli.stream import stream_response
+
     console = Console()
 
-    # Welcome banner with agent config
-    _print_orx_config(orx_path, console)
+    # Welcome banner
+    print_orx_config(orx_path, console)
     console.print(f"  [dim]workspace: {workspace}[/dim]")
     console.print(f"  [dim]type /help for commands, Ctrl+D to exit[/dim]\n")
 
-    # Try prompt_toolkit for history support, fall back to plain input
+    # Try prompt_toolkit for history support
     prompt_session: Any = None
     try:
         from prompt_toolkit import PromptSession
@@ -477,78 +304,28 @@ async def _repl(
         # Slash commands
         if user_input.startswith("/"):
             cmd_parts: list[str] = user_input.split(maxsplit=1)
-            cmd: str = cmd_parts[0].lower()
+            cmd_arg: str | None = cmd_parts[1].strip() if len(cmd_parts) > 1 else None
 
-            if cmd in ("/exit", "/quit"):
-                console.print("[dim]Goodbye![/dim]")
+            runner, session_id, todo_list, llm, model_name, turn_count, should_continue = (
+                await _handle_slash_command(
+                    cmd_parts[0].lower(),
+                    cmd_arg,
+                    runner=runner,
+                    session_id=session_id,
+                    orx_path=orx_path,
+                    model_name=model_name,
+                    workspace=workspace,
+                    todo_list=todo_list,
+                    llm=llm,
+                    turn_count=turn_count,
+                    console=console,
+                )
+            )
+            if not should_continue:
                 break
+            continue
 
-            elif cmd == "/clear":
-                session_id = str(uuid4())
-                if todo_list is not None:
-                    todo_list.todos = []
-                turn_count = 0
-                console.print("[dim]Session cleared.[/dim]")
-                continue
-
-            elif cmd == "/compact":
-                if llm is not None:
-                    console.print("[dim]Compacting conversation...[/dim]")
-                    from orxhestra.cli.summarization import summarize_session
-
-                    session = await runner.get_or_create_session(
-                        user_id=DEFAULT_USER_ID, session_id=session_id
-                    )
-                    result = await summarize_session(llm, session.events)
-                    if result is not None:
-                        session.events[:] = result
-                        console.print("[dim]Conversation compacted.[/dim]")
-                    else:
-                        console.print("[dim]Nothing to compact.[/dim]")
-                else:
-                    console.print("[dim]Compact not available.[/dim]")
-                continue
-
-            elif cmd == "/model":
-                if len(cmd_parts) > 1:
-                    new_model: str = cmd_parts[1].strip()
-                    try:
-                        runner, session_id, todo_list, llm = await _build_from_orx(
-                            orx_path, new_model, workspace
-                        )
-                        model_name = new_model
-                        turn_count = 0
-                        console.print(f"[dim]Switched to {model_name}[/dim]")
-                    except Exception as e:
-                        console.print(f"[red]Error: {e}[/red]")
-                else:
-                    console.print(f"[dim]Current model: {model_name}[/dim]")
-                continue
-
-            elif cmd == "/todos":
-                if todo_list is not None:
-                    _render_todos(todo_list, console)
-                    if not todo_list.todos:
-                        console.print("[dim]No tasks.[/dim]")
-                else:
-                    console.print("[dim]No tasks.[/dim]")
-                continue
-
-            elif cmd == "/help":
-                console.print("[bold]Commands:[/bold]")
-                console.print("  /model <name>  Switch model")
-                console.print("  /clear         Clear session")
-                console.print("  /compact       Summarize old messages to free context")
-                console.print("  /todos         Show current task list")
-                console.print("  /exit          Exit")
-                console.print("  /help          Show this help")
-                continue
-
-            else:
-                console.print(f"[dim]Unknown command: {cmd}. Type /help[/dim]")
-                continue
-
-        # Auto-summarize if conversation is getting long
+        # Auto-summarize every 20 turns
         if llm is not None and turn_count > 0 and turn_count % 20 == 0:
             from orxhestra.cli.summarization import summarize_session
 
@@ -563,7 +340,7 @@ async def _repl(
             except Exception:
                 pass
 
-        auto_approve = await _stream_response(
+        auto_approve = await stream_response(
             runner,
             session_id,
             user_input,
@@ -573,7 +350,7 @@ async def _repl(
             auto_approve=auto_approve,
         )
         turn_count += 1
-        console.print()  # blank line between turns
+        console.print()
 
 
 # ---------------------------------------------------------------------------
@@ -585,10 +362,7 @@ async def _async_main() -> None:
     """Async entry point."""
     args = _parse_args()
 
-    # Resolve the orx file to use:
-    # 1. Explicit file argument
-    # 2. orx.yaml in the current workspace
-    # 3. Built-in default template
+    # Resolve orx file: explicit arg → ./orx.yaml → built-in default
     if args.orx_file:
         orx_path = Path(args.orx_file)
     else:
@@ -599,8 +373,6 @@ async def _async_main() -> None:
         orx_path, args.model, args.workspace
     )
 
-    auto_approve: bool = args.auto_approve
-
     # Single-shot mode
     if args.command:
         try:
@@ -610,15 +382,17 @@ async def _async_main() -> None:
             print("Error: rich is required. Install with: pip install orxhestra[cli]")
             sys.exit(1)
 
+        from orxhestra.cli.stream import stream_response
+
         console = Console()
-        await _stream_response(
+        await stream_response(
             runner,
             session_id,
             args.command,
             console,
             Markdown,
             todo_list=todo_list,
-            auto_approve=auto_approve,
+            auto_approve=args.auto_approve,
         )
         return
 
@@ -631,7 +405,7 @@ async def _async_main() -> None:
         args.workspace,
         todo_list=todo_list,
         llm=llm,
-        auto_approve=auto_approve,
+        auto_approve=args.auto_approve,
     )
 
 
