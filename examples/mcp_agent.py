@@ -17,9 +17,8 @@ import asyncio
 from fastmcp import FastMCP
 
 from orxhestra import LlmAgent
-from orxhestra.events.event import Event, EventType
+from orxhestra.events.event import EventType
 from orxhestra.integrations.mcp import MCPClient, MCPToolAdapter
-
 
 # --- Define an MCP server with tools ---
 mcp_server = FastMCP("WeatherServer")

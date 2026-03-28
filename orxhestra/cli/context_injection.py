@@ -185,7 +185,11 @@ async def collect_local_context(workspace: str) -> str:
 
     # Project tree (if tree command available, max 3 levels)
     tree_output: str = await _run_cmd(
-        "tree -L 2 --dirsfirst -I '__pycache__|node_modules|.git|.venv|venv|dist|build|.tox|.mypy_cache|.pytest_cache|target|.next|coverage' 2>/dev/null | head -40",
+        "tree -L 2 --dirsfirst"
+        " -I '__pycache__|node_modules|.git|.venv|venv"
+        "|dist|build|.tox|.mypy_cache|.pytest_cache"
+        "|target|.next|coverage'"
+        " 2>/dev/null | head -40",
         workspace,
     )
     if tree_output:

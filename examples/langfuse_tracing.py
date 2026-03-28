@@ -16,12 +16,12 @@ from langchain_core.tools import tool
 from langfuse.langchain import CallbackHandler
 
 from orxhestra import (
-    LlmAgent,
     AgentConfig,
-    Runner,
     InMemorySessionService,
+    LlmAgent,
+    Runner,
 )
-from orxhestra.events.event import Event, EventType
+from orxhestra.events.event import EventType
 
 
 @tool
@@ -41,7 +41,7 @@ async def main() -> None:
 
     agent = LlmAgent(
         name="WeatherAgent",
-        llm=llm,
+        llm=llm,  # noqa: F821
         tools=[get_weather],
         instructions="You are a helpful weather assistant. Use the get_weather tool.",
     )

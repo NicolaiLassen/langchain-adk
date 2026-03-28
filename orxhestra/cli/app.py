@@ -176,7 +176,11 @@ async def _handle_slash_command(
     turn_count: int,
     console: Any,
 ) -> tuple[Any, str, Any, Any, str, int, bool]:
-    """Handle a slash command. Returns updated (runner, session_id, todo_list, llm, model_name, turn_count, should_continue)."""
+    """Handle a slash command.
+
+    Returns updated state tuple:
+    (runner, session_id, todo_list, llm, model_name, turn_count, should_continue).
+    """
     from orxhestra.cli.render import render_todos
 
     if cmd in ("/exit", "/quit"):

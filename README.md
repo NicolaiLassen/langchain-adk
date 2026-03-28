@@ -25,28 +25,29 @@ pip install orxhestra[cli,openai]
 orx
 ```
 
-<pre>
-┌─ orx - terminal coding agent ───────────────────────────────────────────────┐
-│ model: <b>gpt-5.4</b>    workspace: <b>~/my-project</b>    /help for commands │
-└──────────────────────────────────────────────────────────────────────────────┘
+```
+┌─ orx ─ terminal coding agent ─────────────────────────────────────┐
+│  model: gpt-5.4   workspace: ~/my-project     /help for commands  │
+└────────────────────────────────────────────────────────────────────┘
 
-<span style="color:#58a6ff;">orx&gt;</span> add error handling to the API routes
+orx> add error handling to the API routes
 
-<span style="color:#8b949e;">›</span> read_file(src/api/routes.py)
-<span style="color:#8b949e;">›</span> grep(pattern=raise, path=src/api/)
-<span style="color:#8b949e;">›</span> write_todos([{"content": "Add try/except to all route handlers", "status": "in_progress"}, ...])
+  › read_file(src/api/routes.py)
+  › grep(pattern="raise", path=src/api/)
+  › write_todos(3 tasks)
 
-<b>Tasks</b>
-<span style="color:#3fb950;">▶</span> Add try/except to all route handlers
-<span style="color:#8b949e;">○</span> Add custom error response model
-<span style="color:#8b949e;">○</span> Write tests for error cases
+  Tasks
+  ▶ Add try/except to all route handlers
+  ○ Add custom error response model
+  ○ Write tests for error cases
 
-<span style="color:#8b949e;">›</span> edit_file(src/api/routes.py)
-<span style="color:#8b949e;">›</span> shell_exec(pytest tests/test_api.py)
+  › edit_file(src/api/routes.py)
+  › shell_exec(pytest tests/test_api.py)
+  ✓ 4 passed
 
-<span style="color:#3fb950;">Done.</span> Added structured error handling to all 4 route handlers with
-a custom <code>ErrorResponse</code> model. All tests pass.
-</pre>
+  Done — added structured error handling to all 4 route handlers
+  with a custom ErrorResponse model. All tests pass.
+```
 
 ### Features
 

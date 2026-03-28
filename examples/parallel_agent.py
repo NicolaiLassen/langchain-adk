@@ -13,8 +13,7 @@ import asyncio
 from langchain_core.tools import tool
 
 from orxhestra import LlmAgent, ParallelAgent
-from orxhestra.events.event import Event, EventType
-
+from orxhestra.events.event import EventType
 
 # --- Simulated data sources ---
 

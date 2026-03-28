@@ -10,12 +10,11 @@ from __future__ import annotations
 
 import asyncio
 
-from pydantic import BaseModel, Field
 from langchain_core.tools import tool
+from pydantic import BaseModel, Field
 
 from orxhestra import LlmAgent
-from orxhestra.events.event import Event, EventType
-
+from orxhestra.events.event import EventType
 
 # --- Structured output schema ---
 
@@ -46,9 +45,18 @@ def get_financials(company: str) -> str:
 def get_news_sentiment(company: str) -> str:
     """Get recent news sentiment for a company."""
     data = {
-        "apple": "Sentiment: Positive. AI features driving iPhone upgrades. Services growing 15% YoY.",
-        "tesla": "Sentiment: Mixed. Strong EV demand but increasing competition. Margins under pressure.",
-        "microsoft": "Sentiment: Very Positive. Azure growth accelerating. Copilot adoption strong.",
+        "apple": (
+            "Sentiment: Positive. AI features driving iPhone upgrades."
+            " Services growing 15% YoY."
+        ),
+        "tesla": (
+            "Sentiment: Mixed. Strong EV demand but increasing competition."
+            " Margins under pressure."
+        ),
+        "microsoft": (
+            "Sentiment: Very Positive. Azure growth accelerating."
+            " Copilot adoption strong."
+        ),
     }
     return data.get(company.lower(), f"No sentiment data for {company}.")
 

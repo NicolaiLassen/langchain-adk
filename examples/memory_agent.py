@@ -10,7 +10,6 @@ from __future__ import annotations
 import asyncio
 
 from orxhestra import LlmAgent
-from orxhestra.events.event import Event, EventType
 from orxhestra.memory.in_memory_store import InMemoryMemoryStore
 from orxhestra.memory.memory import Memory
 

@@ -10,7 +10,8 @@ Usage:
   docker run -v ./orx.yaml:/app/orx.yaml -p 8080:8080 nicolaimtlassen/orxhestra
 
   # With custom tools
-  docker run -v ./orx.yaml:/app/orx.yaml -v ./tools.py:/app/tools.py -p 8080:8080 nicolaimtlassen/orxhestra
+  docker run -v ./orx.yaml:/app/orx.yaml -v ./tools.py:/app/tools.py \\
+    -p 8080:8080 nicolaimtlassen/orxhestra
 
   # Override port
   docker run -e PORT=9000 -p 9000:9000 -v ./orx.yaml:/app/orx.yaml nicolaimtlassen/orxhestra
@@ -32,10 +33,10 @@ def main() -> None:
         print("Mount your config: docker run -v ./orx.yaml:/app/orx.yaml ...")
         sys.exit(1)
 
-    from orxhestra.composer import Composer
-
     # Read YAML to check which mode to use
     import yaml
+
+    from orxhestra.composer import Composer
 
     with open(yaml_path) as f:
         spec = yaml.safe_load(f)

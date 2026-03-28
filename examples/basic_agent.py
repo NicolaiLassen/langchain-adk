@@ -14,11 +14,10 @@ import asyncio
 # from langchain_openai import ChatOpenAI
 # from langchain_anthropic import ChatAnthropic
 # from langchain_google_genai import ChatGoogleGenerativeAI
-
 from langchain_core.tools import tool
 
 from orxhestra import LlmAgent
-from orxhestra.events.event import Event, EventType
+from orxhestra.events.event import EventType
 
 
 @tool

@@ -40,6 +40,10 @@ Then test:
 
 from __future__ import annotations
 
+from orxhestra import InMemorySessionService, LlmAgent
+from orxhestra.a2a.server import A2AServer
+from orxhestra.a2a.types import AgentSkill
+
 # --- Replace with a real LLM ---
 # from langchain_openai import ChatOpenAI
 # llm = ChatOpenAI(model="gpt-5.4")
@@ -47,10 +51,6 @@ raise NotImplementedError(
     "Replace the llm= line below with a real LangChain chat model "
     "and comment out this raise."
 )
-
-from orxhestra import LlmAgent, InMemorySessionService
-from orxhestra.a2a.server import A2AServer
-from orxhestra.a2a.types import AgentSkill
 
 agent = LlmAgent(
     name="AssistantAgent",

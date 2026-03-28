@@ -12,7 +12,6 @@ from __future__ import annotations
 import asyncio
 
 from orxhestra import LlmAgent, LoopAgent
-from orxhestra.events.event import Event, EventType
 
 
 async def main() -> None:

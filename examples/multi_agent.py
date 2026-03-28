@@ -12,15 +12,12 @@ from __future__ import annotations
 
 import asyncio
 
-from langchain_core.tools import tool
-
 from orxhestra import LlmAgent, SequentialAgent
-from orxhestra.events.event import Event, EventType
 from orxhestra.prompts.catalog import build_system_prompt
 from orxhestra.prompts.context import PromptContext
+from orxhestra.skills.load_skill_tool import make_list_skills_tool, make_load_skill_tool
 from orxhestra.skills.skill import Skill
 from orxhestra.skills.skill_store import InMemorySkillStore
-from orxhestra.skills.load_skill_tool import make_load_skill_tool, make_list_skills_tool
 from orxhestra.tools.agent_tool import AgentTool
 
 
