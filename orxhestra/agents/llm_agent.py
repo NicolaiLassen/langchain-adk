@@ -218,10 +218,9 @@ class LlmAgent(BaseAgent):
     def _events_to_messages(events: list[Event]) -> list[BaseMessage]:
         """Convert session events to LangChain messages for multi-turn context.
 
-        Drops tool call AIMessages that lack matching ToolMessages to
-        prevent ``tool_call_id`` pairing errors from the LLM provider.
+        Drops tool call events whose calls lack a matching ToolMessage
+        response (e.g. from interrupted sessions).
         """
-        # Collect tool_call_ids that have a response
         responded_ids: set[str] = set()
         for event in events:
             if not event.partial and event.type == EventType.TOOL_RESPONSE:
@@ -237,13 +236,18 @@ class LlmAgent(BaseAgent):
                 messages.append(event.to_langchain_message())
             elif event.type == EventType.AGENT_MESSAGE:
                 if event.has_tool_calls:
-                    ids = [tc.tool_call_id for tc in event.tool_calls]
-                    if ids and all(tid in responded_ids for tid in ids):
-                        messages.append(event.to_langchain_message())
+                    paired = [
+                        {"id": tc.tool_call_id, "name": tc.tool_name, "args": tc.args}
+                        for tc in event.tool_calls
+                        if tc.tool_call_id in responded_ids
+                    ]
+                    if paired:
+                        messages.append(AIMessage(content="", tool_calls=paired))
                 elif event.text:
                     messages.append(event.to_langchain_message())
             elif event.type == EventType.TOOL_RESPONSE:
                 messages.append(event.to_langchain_message())
+
         return messages
 
     async def _call_llm(
@@ -517,18 +521,20 @@ class LlmAgent(BaseAgent):
                         await self.after_tool_callback(ctx, t_name, None)
                     return _tool_response(t_id, t_name, error=str(exc))
 
-            # Yield tool call events
-            for tool_call in llm_response.tool_calls:
-                yield self._emit_event(
-                    ctx,
-                    EventType.AGENT_MESSAGE,
-                    content=Content(parts=[ToolCallPart(
+            # Yield a single event with all tool calls
+            yield self._emit_event(
+                ctx,
+                EventType.AGENT_MESSAGE,
+                content=Content(parts=[
+                    ToolCallPart(
                         tool_call_id=tool_call["id"],
                         tool_name=tool_call["name"],
                         args=tool_call["args"],
-                    )]),
-                    llm_response=llm_response,
-                )
+                    )
+                    for tool_call in llm_response.tool_calls
+                ]),
+                llm_response=llm_response,
+            )
 
             # Run all tool calls concurrently, streaming intermediate
             # events (e.g. from AgentTool) in real time via the queue.
