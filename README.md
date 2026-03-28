@@ -18,7 +18,7 @@ Compose multi-agent AI systems with async event streaming, agent hierarchies, an
 
 ## Orx CLI
 
-A pre-built coding agent in your terminal — similar to Claude Code or Cursor — powered by any LLM. One install command and you're up and running.
+Turn any `orx.yaml` agent setup into an interactive terminal agent. Ships with a coding agent out of the box — or compose your own.
 
 ```bash
 pip install orxhestra[cli,openai]
