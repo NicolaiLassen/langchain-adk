@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>Multi-agent orchestration framework for Python — with a built-in coding CLI.</strong>
+  <strong>Multi-agent orchestration framework for Python — turn any agent setup into a CLI.</strong>
 </p>
 
 <p align="center">
