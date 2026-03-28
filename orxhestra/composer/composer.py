@@ -119,6 +119,8 @@ class Composer:
     @staticmethod
     def _load_spec(path: str | Path) -> ComposeSpec:
         """Load and validate a YAML orx file."""
+        import sys
+
         try:
             import yaml
         except ImportError:
@@ -129,6 +131,12 @@ class Composer:
         if not path.exists():
             msg = f"File not found: {path}"
             raise ComposerError(msg)
+
+        # Add the YAML's directory to sys.path so local tools can be imported
+        yaml_dir: str = str(path.parent.resolve())
+        if yaml_dir not in sys.path:
+            sys.path.insert(0, yaml_dir)
+
         with open(path) as f:
             raw = yaml.safe_load(f)
         if not isinstance(raw, dict):

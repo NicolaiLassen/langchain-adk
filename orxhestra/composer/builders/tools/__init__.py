@@ -26,9 +26,20 @@ def import_object(dotted_path: str) -> Any:
     """Import an object by its fully-qualified dotted path."""
     module_path, _, attr_name = dotted_path.rpartition(".")
     if not module_path:
-        msg = f"Invalid import path: {dotted_path}"
+        msg = f"Invalid import path '{dotted_path}' — expected 'module.attribute'"
         raise ComposerError(msg)
-    module = importlib.import_module(module_path)
+    try:
+        module = importlib.import_module(module_path)
+    except ModuleNotFoundError:
+        msg = (
+            f"Module '{module_path}' not found. "
+            f"If this is a local file, ensure it's in the same "
+            f"directory as your orx.yaml."
+        )
+        raise ComposerError(msg) from None
+    except Exception as exc:
+        msg = f"Failed to import module '{module_path}': {exc}"
+        raise ComposerError(msg) from None
     try:
         return getattr(module, attr_name)
     except AttributeError:
@@ -108,6 +119,15 @@ def resolve_function(
     from orxhestra.tools.function_tool import function_tool
 
     fn = import_object(path)
+
+    # Already a LangChain tool (e.g. decorated with @tool) — use directly
+    if isinstance(fn, BaseTool):
+        if name is not None:
+            fn.name = name
+        if description is not None:
+            fn.description = description
+        return fn
+
     kwargs: dict[str, Any] = {}
     if name is not None:
         kwargs["name"] = name

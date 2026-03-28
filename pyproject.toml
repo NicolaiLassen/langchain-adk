@@ -1,6 +1,6 @@
 [project]
 name = "orxhestra"
-version = "0.0.5"
+version = "0.0.6"
 description = "Multi-Agent Orchestration Framework for Python"
 readme = "README.md"
 requires-python = ">=3.10"

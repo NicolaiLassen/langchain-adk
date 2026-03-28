@@ -108,6 +108,11 @@ async def _build_from_orx(
     local_context: str = await collect_local_context(workspace)
     _inject_context(raw, workspace, memory_content, local_context)
 
+    # Ensure local modules (e.g. tools.py) next to orx.yaml are importable
+    orx_dir: str = str(orx_path.parent.resolve())
+    if orx_dir not in sys.path:
+        sys.path.insert(0, orx_dir)
+
     # Build via Composer
     spec: ComposeSpec = ComposeSpec.model_validate(raw)
     composer = Composer(spec)
