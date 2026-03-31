@@ -121,6 +121,7 @@ class AgentDef(BaseModel):
     agents: list[str] | None = None
     planner: PlannerDef | None = None
     output_schema: str | None = None
+    include_contents: str | None = None  # "default" or "none"
     max_iterations: int | None = None
     should_continue: str | None = None
 
@@ -132,11 +133,27 @@ class DefaultsConfig(BaseModel):
     max_iterations: int = 10
 
 
+class CompactionConfigDef(BaseModel):
+    """Compaction configuration for automatic session history management.
+
+    Attributes
+    ----------
+    max_events : int
+        Compact when session has more than this many events.
+    retention_count : int
+        Always keep the last N events as raw (uncompacted).
+    """
+
+    max_events: int = 50
+    retention_count: int = 20
+
+
 class RunnerConfig(BaseModel):
     """Runner configuration."""
 
     app_name: str = "agent-app"
     session_service: str = "memory"
+    compaction: CompactionConfigDef | None = None
 
 
 class ServerConfig(BaseModel):

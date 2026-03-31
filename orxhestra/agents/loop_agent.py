@@ -67,6 +67,16 @@ class LoopAgent(BaseAgent):
     ) -> AsyncIterator[Event]:
         """Run sub-agents in a loop until a termination condition is met.
 
+        Each iteration runs all sub-agents in order. Between iterations
+        the child context gets a unique branch suffix (``iter_0``,
+        ``iter_1``, …) so that the child LLM only sees conversation
+        history from the *current* iteration — preventing token
+        accumulation across loops (analogous to invocation-level
+        filtering).
+
+        ``ctx.state`` is shared across all iterations so structured
+        data (e.g. accumulated sources) survives the loop.
+
         Parameters
         ----------
         input : str
@@ -105,7 +115,12 @@ class LoopAgent(BaseAgent):
                 return
 
             for sub_agent in self.sub_agents:
-                child_ctx = ctx.derive(agent_name=sub_agent.name)
+                # Unique branch per iteration so the child's LLM doesn't
+                # re-read conversation history from previous iterations
+                child_ctx = ctx.derive(
+                    agent_name=sub_agent.name,
+                    branch_suffix=f"{sub_agent.name}.iter_{iteration}",
+                )
                 async for event in sub_agent.astream(input, ctx=child_ctx):
                     yield event
                     last_event = event

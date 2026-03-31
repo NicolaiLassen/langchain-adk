@@ -293,12 +293,33 @@ class Composer:
     def _build_runner(self, root: BaseAgent) -> Runner:
         """Build a ``Runner`` from the spec's runner config."""
         from orxhestra.runner import Runner
+        from orxhestra.sessions.compaction import CompactionConfig
 
         cfg = self._spec.runner
         assert cfg is not None
         session_svc = self._build_session_service(cfg.session_service)
+
+        compaction_config: CompactionConfig | None = None
+        if cfg.compaction is not None:
+            # Resolve an LLM for summarization from the default model config
+            llm = None
+            if self._spec.defaults.model:
+                from orxhestra.composer.builders.models import create
+
+                model_cfg = self._spec.defaults.model
+                llm = create(model_cfg.provider, model_cfg.name)
+
+            compaction_config = CompactionConfig(
+                max_events=cfg.compaction.max_events,
+                retention_count=cfg.compaction.retention_count,
+                llm=llm,
+            )
+
         return Runner(
-            agent=root, app_name=cfg.app_name, session_service=session_svc
+            agent=root,
+            app_name=cfg.app_name,
+            session_service=session_svc,
+            compaction_config=compaction_config,
         )
 
     def _build_server(self, root: BaseAgent) -> Any:

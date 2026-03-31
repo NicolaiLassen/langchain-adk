@@ -21,8 +21,10 @@ class SequentialAgent(BaseAgent):
     The output (final event's text) of each agent becomes the input
     to the next. All events from all agents are yielded upstream.
 
-    If a sub-agent emits an event with `actions.escalate = True`, the
-    pipeline stops early.
+    Escalate events from children (e.g. exit_loop inside a LoopAgent)
+    are yielded but do NOT stop the pipeline — only the child that
+    escalated stops. The sequential pipeline always continues to the
+    next step.
 
     Attributes
     ----------
@@ -76,9 +78,6 @@ class SequentialAgent(BaseAgent):
             child_ctx = ctx.derive(agent_name=sub_agent.name)
             async for event in sub_agent.astream(current_input, ctx=child_ctx):
                 yield event
-
-                if event.actions.escalate:
-                    return
 
                 if event.is_final_response():
                     current_input = event.text

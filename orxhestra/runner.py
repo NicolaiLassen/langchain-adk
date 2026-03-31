@@ -39,6 +39,7 @@ from orxhestra.agents.context import Context
 from orxhestra.events.event import Event, EventType
 from orxhestra.models.part import Content
 from orxhestra.sessions.base_session_service import BaseSessionService
+from orxhestra.sessions.compaction import CompactionConfig, compact_session
 from orxhestra.sessions.session import Session
 
 if TYPE_CHECKING:
@@ -52,6 +53,11 @@ class Runner:
     All events are automatically persisted to the session so that callers
     only need to consume the event stream.
 
+    When ``compaction_config`` is provided, the runner automatically
+    compacts old session events after each invocation using an LLM
+    summarizer.  This keeps the context window manageable across long
+    multi-turn conversations.
+
     Parameters
     ----------
     agent : BaseAgent
@@ -60,6 +66,9 @@ class Runner:
         Application identifier. Used to namespace sessions.
     session_service : BaseSessionService
         Where sessions are stored and retrieved.
+    compaction_config : CompactionConfig, optional
+        If set, enables automatic session compaction after each
+        invocation.
     """
 
     def __init__(
@@ -68,10 +77,12 @@ class Runner:
         *,
         app_name: str,
         session_service: BaseSessionService,
+        compaction_config: CompactionConfig | None = None,
     ) -> None:
         self.agent = agent
         self.app_name = app_name
         self.session_service = session_service
+        self.compaction_config = compaction_config
 
     async def get_or_create_session(
         self,
@@ -185,3 +196,10 @@ class Runner:
 
             current_agent = target
             ctx = ctx.model_copy(update={"agent_name": target.name})
+
+        # Run compaction after all events are yielded from the agent.
+        # Only compact at the end of an invocation, never mid-stream.
+        if self.compaction_config is not None:
+            await compact_session(
+                session, self.session_service, self.compaction_config,
+            )

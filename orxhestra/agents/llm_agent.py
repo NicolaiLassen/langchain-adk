@@ -1,16 +1,35 @@
-"""LlmAgent - the primary orxhestra agent.
+"""LlmAgent — the primary orxhestra agent.
 
 Implements a manual tool-call loop using LangChain's BaseChatModel.
-No LangGraph - orchestration is pure Python async.
+No LangGraph — orchestration is pure Python async.
 
 The loop:
-  1. Build system prompt from instructions (or instruction provider)
-  2. If a planner is attached, append its planning instruction
-  3. Build an LlmRequest and call llm.bind_tools(tools).astream(messages)
-  4. Wrap the AIMessage in LlmResponse
-  5. If response has tool_calls -> execute each in parallel -> append ToolMessages -> loop
-  6. Yield typed events throughout
-  7. Repeat until no tool calls or max_iterations
+  1. Build system prompt from instructions (or instruction provider).
+  2. Load session history filtered by branch + invocation_id (like
+     ``_get_events(current_invocation=True,
+     current_branch=True)``).  Events are further processed by
+     visibility filtering and compaction.
+  3. If a planner is attached, append its planning instruction.
+  4. Call ``llm.bind_tools(tools).astream(messages)``.
+  5. If response has tool_calls → execute in parallel → append
+     ToolMessages → loop.
+  6. Yield typed events throughout (partial tokens, tool calls,
+     tool responses, final answer).
+  7. Repeat until no tool calls or ``max_iterations``.
+
+Context management:
+  - **Branch filtering** — each agent only sees its own history;
+    sibling agents in a SequentialAgent don't contaminate each other.
+  - **Invocation filtering** — isolates events across different runs
+    and LoopAgent iterations (via unique branch suffixes).
+  - **Visibility filtering** — drops empty, partial, framework
+    lifecycle (AGENT_START/END), and error-only events.
+  - **Compaction** — when an event carries ``actions.compaction``,
+    all raw events in that timestamp range are replaced by the
+    compaction summary in the LLM context.
+  - **include_contents** — ``'default'`` loads full filtered history;
+    ``'none'`` skips history entirely (sub-agents that don't need
+    conversation context).
 """
 
 from __future__ import annotations
@@ -38,6 +57,7 @@ from orxhestra.agents.context import Context
 from orxhestra.concurrency import gather_with_event_queue
 from orxhestra.events.event import Event, EventType
 from orxhestra.events.event_actions import EventActions
+from orxhestra.events.filters import apply_compaction, should_include_event
 from orxhestra.models.llm_request import LlmRequest
 from orxhestra.models.llm_response import LlmResponse
 from orxhestra.models.part import (
@@ -84,6 +104,15 @@ class LlmAgent(BaseAgent):
         Planner that injects planning instructions before each LLM call.
     output_schema : type, optional
         Optional Pydantic model for structured final output.
+    include_contents : str
+        Controls how much session history the agent sees:
+
+        - ``'default'`` — full conversation history filtered by branch
+          and invocation (drops sibling agents' events and events from
+          other loop iterations).
+        - ``'none'`` — no prior history; agent operates solely on the
+          current input and its system instructions.  Ideal for
+          sub-agents that don't need conversation context.
     max_iterations : int
         Maximum tool-call loop iterations before stopping.
     before_model_callback : callable, optional
@@ -110,6 +139,7 @@ class LlmAgent(BaseAgent):
         description: str = "",
         planner: BasePlanner | None = None,
         output_schema: type | None = None,
+        include_contents: str = "default",
         max_iterations: int = 10,
         before_model_callback: (
             Callable[[Context, LlmRequest], Awaitable[None]] | None
@@ -137,6 +167,7 @@ class LlmAgent(BaseAgent):
         self._instructions = instructions
         self._planner = planner
         self._output_schema = output_schema
+        self._include_contents = include_contents
         self.max_iterations = max_iterations
         self.before_model_callback = before_model_callback
         self.after_model_callback = after_model_callback
@@ -218,9 +249,24 @@ class LlmAgent(BaseAgent):
     def _events_to_messages(events: list[Event]) -> list[BaseMessage]:
         """Convert session events to LangChain messages for multi-turn context.
 
-        Drops tool call events whose calls lack a matching ToolMessage
-        response (e.g. from interrupted sessions).
+        Applies visibility filtering, compaction processing, and drops
+        tool call events whose calls lack a matching response (e.g. from
+        interrupted sessions).
+
+        Parameters
+        ----------
+        events : list[Event]
+            Session events, already filtered by branch/invocation.
+
+        Returns
+        -------
+        list[BaseMessage]
+            LangChain messages ready for the LLM.
         """
+        # 1. Apply compaction — replace raw events with summaries
+        events = apply_compaction(events)
+
+        # 2. Build set of responded tool call IDs
         responded_ids: set[str] = set()
         for event in events:
             if not event.partial and event.type == EventType.TOOL_RESPONSE:
@@ -228,9 +274,10 @@ class LlmAgent(BaseAgent):
                     if tr.tool_call_id:
                         responded_ids.add(tr.tool_call_id)
 
+        # 3. Convert to messages with visibility filtering
         messages: list[BaseMessage] = []
         for event in events:
-            if event.partial:
+            if not should_include_event(event):
                 continue
             if event.type == EventType.USER_MESSAGE:
                 messages.append(event.to_langchain_message())
@@ -335,9 +382,33 @@ class LlmAgent(BaseAgent):
         if system_prompt:
             messages.append(SystemMessage(content=system_prompt))
 
-        # Rebuild conversation history from session events (multi-turn)
-        if ctx.session and ctx.session.events:
-            messages.extend(self._events_to_messages(ctx.session.events))
+        # Rebuild conversation history from session events (multi-turn).
+        #
+        # Filtering:
+        #   1. include_contents='none' → skip history entirely
+        #   2. Branch filtering → each agent only sees its own branch
+        #   3. Invocation filtering → each agent only sees current invocation
+        #   4. Visibility filtering → drop empty/framework/error events
+        #   5. Compaction → replace old event ranges with summaries
+        #
+        # ctx.state is always shared (not affected by these filters).
+        if self._include_contents != "none" and ctx.session and ctx.session.events:
+            filtered = ctx.session.events
+
+            # Branch filter — isolate sibling agents in pipelines
+            branch = ctx.branch
+            if branch:
+                filtered = [e for e in filtered if e.branch == branch]
+
+            # Invocation filter — isolate across different runs/turns
+            inv_id = ctx.invocation_id
+            if inv_id:
+                filtered = [
+                    e for e in filtered
+                    if not e.invocation_id or e.invocation_id == inv_id
+                ]
+
+            messages.extend(self._events_to_messages(filtered))
 
         messages.append(HumanMessage(content=input))
 

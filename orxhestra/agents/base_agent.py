@@ -87,6 +87,7 @@ class BaseAgent(ABC):
         return Event(
             type=type,
             session_id=ctx.session_id,
+            invocation_id=ctx.invocation_id,
             agent_name=self.name,
             branch=ctx.branch,
             **kwargs,
