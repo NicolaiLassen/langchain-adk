@@ -72,7 +72,7 @@ async def test_loop_branch_attribution():
 
     events = [e async for e in loop.astream("go")]
     assert len(events) == 1
-    assert events[0].branch == "worker"
+    assert events[0].branch == "worker.iter_0"
 
 
 @pytest.mark.asyncio
