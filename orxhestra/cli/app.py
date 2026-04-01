@@ -72,9 +72,6 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-# ---------------------------------------------------------------------------
-# Agent builder
-# ---------------------------------------------------------------------------
 
 
 async def _build_from_orx(
@@ -165,9 +162,6 @@ def _inject_context(
             agent_def["instructions"] += extra
 
 
-# ---------------------------------------------------------------------------
-# Slash commands
-# ---------------------------------------------------------------------------
 
 _HELP_TEXT: str = """[bold]Commands:[/bold]
   /model <name>  Switch model
@@ -260,9 +254,6 @@ async def _handle_slash_command(
     return runner, session_id, todo_list, llm, model_name, turn_count, True
 
 
-# ---------------------------------------------------------------------------
-# REPL
-# ---------------------------------------------------------------------------
 
 
 async def _repl(
@@ -373,9 +364,6 @@ async def _repl(
         console.print()
 
 
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
 
 
 async def _async_main() -> None:

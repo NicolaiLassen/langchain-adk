@@ -34,6 +34,8 @@ flowchart TD
     Tools --> TF[make_transfer_tool]:::tool
     Tools --> EL[exit_loop_tool]:::tool
     Tools --> MCP[MCPToolAdapter]:::tool
+    Tools --> FS[Filesystem]:::tool
+    Tools --> SH[Shell]:::tool
 
     LlmAgent --> Events:::event
     Events --> AM[AGENT_MESSAGE\nfinal answer · tool calls · partial]:::event
@@ -66,6 +68,11 @@ sequenceDiagram
         note over S: applies state_delta,<br/>appends to history
         R-->>C: yield Event
     end
+
+    opt compaction_config set
+        R->>R: compact_session()
+        note over R: summarize old events,<br/>keep last N raw
+    end
 ```
 
 ## Key design decisions
@@ -75,6 +82,8 @@ sequenceDiagram
 - **`Context.event_callback`** enables real-time event streaming from tools. `LlmAgent` injects an `asyncio.Queue`-based callback before tool execution; `AgentTool` uses it to push sub-agent events as they arrive. Any custom tool can use the same mechanism.
 - **`LlmRequest` / `LlmResponse`** isolate LangChain types from the rest of the SDK. Swap the LLM provider without touching agent logic.
 - **Planners are per-turn hooks**, not static prompts. They receive the live context and request so they can make dynamic decisions each turn.
+- **Session compaction** keeps conversations manageable. Old events are LLM-summarized and replaced with a single compaction event. Never runs mid-stream or over unresolved tool calls.
+- **Event filters** (`should_include_event`, `apply_compaction`) are pure functions extracted into `orxhestra.events.filters` — reusable by custom agents.
 
 ## Custom session backend
 

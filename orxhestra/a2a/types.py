@@ -29,9 +29,6 @@ class A2AModel(BaseModel):
     model_config = {"populate_by_name": True, "alias_generator": _to_camel}
 
 
-# ---------------------------------------------------------------------------
-# Parts — v1.0 uses a single Part with oneof content fields
-# ---------------------------------------------------------------------------
 
 
 class Part(A2AModel):
@@ -70,9 +67,6 @@ def data_part(data: dict[str, Any], media_type: str = "application/json") -> Par
     return Part(data=data, media_type=media_type)
 
 
-# ---------------------------------------------------------------------------
-# Role
-# ---------------------------------------------------------------------------
 
 
 class Role(str, Enum):
@@ -82,9 +76,6 @@ class Role(str, Enum):
     AGENT = "agent"
 
 
-# ---------------------------------------------------------------------------
-# Message
-# ---------------------------------------------------------------------------
 
 
 class Message(A2AModel):
@@ -100,9 +91,6 @@ class Message(A2AModel):
     metadata: dict[str, Any] | None = None
 
 
-# ---------------------------------------------------------------------------
-# Artifact
-# ---------------------------------------------------------------------------
 
 
 class Artifact(A2AModel):
@@ -116,9 +104,6 @@ class Artifact(A2AModel):
     metadata: dict[str, Any] | None = None
 
 
-# ---------------------------------------------------------------------------
-# Task
-# ---------------------------------------------------------------------------
 
 
 class TaskState(str, Enum):
@@ -162,9 +147,6 @@ class Task(A2AModel):
     metadata: dict[str, Any] | None = None
 
 
-# ---------------------------------------------------------------------------
-# Streaming events
-# ---------------------------------------------------------------------------
 
 
 class TaskStatusUpdateEvent(A2AModel):
@@ -188,9 +170,6 @@ class TaskArtifactUpdateEvent(A2AModel):
     metadata: dict[str, Any] | None = None
 
 
-# ---------------------------------------------------------------------------
-# Agent Card — v1.0
-# ---------------------------------------------------------------------------
 
 
 class AgentProvider(A2AModel):
@@ -249,9 +228,6 @@ class AgentCard(A2AModel):
     icon_url: str | None = None
 
 
-# ---------------------------------------------------------------------------
-# JSON-RPC 2.0
-# ---------------------------------------------------------------------------
 
 
 class JSONRPCError(A2AModel):
@@ -280,9 +256,6 @@ class JSONRPCResponse(A2AModel):
     error: JSONRPCError | None = None
 
 
-# ---------------------------------------------------------------------------
-# A2A-specific request params
-# ---------------------------------------------------------------------------
 
 
 class SendMessageConfiguration(A2AModel):
@@ -315,9 +288,6 @@ class TaskIdParams(A2AModel):
     metadata: dict[str, Any] | None = None
 
 
-# ---------------------------------------------------------------------------
-# Error codes
-# ---------------------------------------------------------------------------
 
 
 class A2AErrorCode:

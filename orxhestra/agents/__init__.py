@@ -1,6 +1,6 @@
 from orxhestra.agents.a2a_agent import A2AAgent
 from orxhestra.agents.base_agent import BaseAgent
-from orxhestra.agents.context import Context
+from orxhestra.agents.invocation_context import InvocationContext
 from orxhestra.agents.llm_agent import LlmAgent
 from orxhestra.agents.loop_agent import LoopAgent
 from orxhestra.agents.parallel_agent import ParallelAgent
@@ -12,7 +12,7 @@ from orxhestra.agents.sequential_agent import SequentialAgent
 __all__ = [
     "A2AAgent",
     "BaseAgent",
-    "Context",
+    "InvocationContext",
     "LlmAgent",
     "ReActAgent",
     "SequentialAgent",

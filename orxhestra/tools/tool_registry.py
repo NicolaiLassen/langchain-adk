@@ -19,6 +19,7 @@ class ToolRegistry:
     """
 
     def __init__(self) -> None:
+        """Initialize an empty tool registry."""
         self._tools: dict[str, BaseTool] = {}
 
     def register(self, tool: BaseTool) -> None:
@@ -77,6 +78,7 @@ class ToolRegistry:
         return list(self._tools.values())
 
     def __contains__(self, name: str) -> bool:
+        """Check whether a tool with the given name is registered."""
         return name in self._tools
 
 

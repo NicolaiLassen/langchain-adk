@@ -17,9 +17,6 @@ from orxhestra.composer.errors import ComposerError
 if TYPE_CHECKING:
     from orxhestra.agents.base_agent import BaseAgent
 
-# ---------------------------------------------------------------------------
-# Generic import helper
-# ---------------------------------------------------------------------------
 
 
 def import_object(dotted_path: str) -> Any:
@@ -47,9 +44,6 @@ def import_object(dotted_path: str) -> Any:
         raise ComposerError(msg) from None
 
 
-# ---------------------------------------------------------------------------
-# Builtin tool registry
-# ---------------------------------------------------------------------------
 
 _ToolResult = BaseTool | list[BaseTool]
 _BUILTIN_REGISTRY: dict[str, Callable[[], _ToolResult]] = {}
@@ -91,9 +85,6 @@ def _register_defaults() -> None:
         _BUILTIN_REGISTRY["shell"] = _shell
 
 
-# ---------------------------------------------------------------------------
-# Resolvers
-# ---------------------------------------------------------------------------
 
 
 def resolve_builtin(name: str) -> _ToolResult:

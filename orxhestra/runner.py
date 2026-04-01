@@ -3,7 +3,7 @@
 The Runner is the main entry point for running agents. It:
 
 1. Fetches or creates the session via the session service.
-2. Builds a ``Context`` from the session and run config.
+2. Builds a ``InvocationContext`` from the session and run config.
 3. Streams the agent via ``astream()``, following transfers.
 4. Persists every event to the session via ``append_event()``.
 5. Yields the event stream back to the caller.
@@ -35,7 +35,7 @@ from typing import TYPE_CHECKING
 
 from langchain_core.runnables import RunnableConfig
 
-from orxhestra.agents.context import Context
+from orxhestra.agents.invocation_context import InvocationContext
 from orxhestra.events.event import Event, EventType
 from orxhestra.models.part import Content
 from orxhestra.sessions.base_session_service import BaseSessionService
@@ -156,14 +156,16 @@ class Runner:
             session_id=session_id,
         )
 
-        ctx = Context(
+        ctx = InvocationContext(
             session_id=session.id,
             user_id=user_id,
             app_name=self.app_name,
             agent_name=self.agent.name,
             state=dict(session.state),
+            input_content=new_message,
             session=session,
             run_config=config or {},
+            current_agent=self.agent,
         )
 
         user_event = Event(

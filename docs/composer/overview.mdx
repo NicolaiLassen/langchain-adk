@@ -141,9 +141,13 @@ tools:
     mcp:
       url: "http://localhost:8001/mcp"
 
-  # Built-in tool
+  # Built-in tools
   exit:
     builtin: exit_loop
+  fs:
+    builtin: filesystem     # ls, read_file, write_file, edit_file, mkdir, glob, grep
+  sh:
+    builtin: shell           # shell_exec, shell_exec_background
 
   # Agent as tool (AgentTool)
   researcher:
@@ -249,7 +253,12 @@ Optional. Enables `Composer.runner_from_yaml()`.
 runner:
   app_name: my-app
   session_service: memory  # or dotted.import.path
+  compaction:               # optional: auto-compact long sessions
+    max_events: 50          # compact when session exceeds this
+    retention_count: 20     # always keep the last N events raw
 ```
+
+When `compaction` is set, the Runner automatically summarizes old session events after each invocation. Uses the default model for LLM-based summarization. See [Session Compaction](/concepts/runner-sessions#session-compaction) for details.
 
 ### `server`
 

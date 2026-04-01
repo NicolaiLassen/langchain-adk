@@ -86,6 +86,43 @@ class EventActions(BaseModel):
     compaction: EventCompaction | None = None
 ```
 
+## Event Filters
+
+The `orxhestra.events.filters` module provides reusable functions for preparing session events before they are sent to the LLM. These are used internally by `LlmAgent` and available for custom agents.
+
+### `should_include_event(event)`
+
+Returns `True` if the event should be included in LLM context. Filters out:
+
+- Partial (streaming) events
+- Lifecycle events (`AGENT_START`, `AGENT_END`)
+- Error-only metadata events
+- Scratchpad notes
+- Empty `AGENT_MESSAGE` events (no text, data, or tool calls)
+
+```python
+from orxhestra.events.filters import should_include_event
+
+visible = [e for e in session.events if should_include_event(e)]
+```
+
+### `apply_compaction(events)`
+
+Replaces raw events with compaction summaries where applicable. When events carry an `EventActions.compaction` entry, all raw events within that timestamp range are replaced by a single synthetic event containing the summary.
+
+```python
+from orxhestra.events.filters import apply_compaction
+
+events = apply_compaction(session.events)
+# Compacted ranges become single summary events
+```
+
+Both functions are also re-exported from `orxhestra.events`:
+
+```python
+from orxhestra.events import should_include_event, apply_compaction
+```
+
 ## LlmResponse
 
 `AGENT_MESSAGE` events may carry an `llm_response: LlmResponse` field with token usage and model version:

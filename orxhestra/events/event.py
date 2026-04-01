@@ -27,9 +27,6 @@ from orxhestra.events.event_actions import EventActions
 from orxhestra.models.llm_response import LlmResponse
 from orxhestra.models.part import Content, ToolCallPart, ToolResponsePart
 
-# ---------------------------------------------------------------------------
-# EventType
-# ---------------------------------------------------------------------------
 
 
 class EventType(str, Enum):
@@ -42,9 +39,6 @@ class EventType(str, Enum):
     AGENT_END = "agent_end"
 
 
-# ---------------------------------------------------------------------------
-# Unified Event
-# ---------------------------------------------------------------------------
 
 
 class Event(BaseModel):

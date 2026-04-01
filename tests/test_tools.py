@@ -2,10 +2,13 @@
 
 import pytest
 
-from orxhestra.agents.context import Context
+from orxhestra.agents.base_agent import BaseAgent  # noqa: F401
+from orxhestra.agents.invocation_context import InvocationContext as Context
+
+Context.model_rebuild()
 from orxhestra.tools.exit_loop import EXIT_LOOP_SENTINEL, exit_loop_tool
 from orxhestra.tools.function_tool import function_tool
-from orxhestra.tools.tool_context import ToolContext
+from orxhestra.tools.call_context import CallContext as ToolContext
 from orxhestra.tools.tool_registry import ToolRegistry
 
 

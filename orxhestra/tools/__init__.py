@@ -5,7 +5,7 @@ from orxhestra.tools.function_tool import function_tool
 from orxhestra.tools.long_running_tool import LongRunningFunctionTool
 from orxhestra.tools.output import truncate_output
 from orxhestra.tools.shell import make_shell_tools
-from orxhestra.tools.tool_context import ToolContext
+from orxhestra.tools.call_context import CallContext
 from orxhestra.tools.tool_registry import ToolRegistry, register_tool, tool_registry
 from orxhestra.tools.transfer_tool import make_transfer_tool
 
@@ -18,7 +18,7 @@ __all__ = [
     "ToolRegistry",
     "tool_registry",
     "register_tool",
-    "ToolContext",
+    "CallContext",
     "exit_loop_tool",
     "make_exit_loop_tool",
     "EXIT_LOOP_SENTINEL",

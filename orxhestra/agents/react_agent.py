@@ -16,7 +16,7 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
-from orxhestra.agents.context import Context
+from orxhestra.agents.invocation_context import InvocationContext
 from orxhestra.agents.llm_agent import LlmAgent
 from orxhestra.events.event import Event, EventType
 from orxhestra.models.part import Content, ToolCallPart, ToolResponsePart
@@ -41,6 +41,7 @@ class ReActStep(BaseModel):
 
     @property
     def is_final(self) -> bool:
+        """Whether this step produced a final answer (no more tool calls)."""
         return self.answer is not None
 
 

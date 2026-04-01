@@ -11,7 +11,7 @@ from collections.abc import AsyncIterator
 from langchain_core.runnables import RunnableConfig
 
 from orxhestra.agents.base_agent import BaseAgent
-from orxhestra.agents.context import Context
+from orxhestra.agents.invocation_context import InvocationContext
 from orxhestra.events.event import Event
 
 
@@ -48,7 +48,7 @@ class SequentialAgent(BaseAgent):
         input: str,
         config: RunnableConfig | None = None,
         *,
-        ctx: Context | None = None,
+        ctx: InvocationContext | None = None,
     ) -> AsyncIterator[Event]:
         """Run sub-agents in sequence, chaining final answers as input.
 
@@ -58,7 +58,7 @@ class SequentialAgent(BaseAgent):
             The initial user message or task description.
         config : RunnableConfig, optional
             LangChain-compatible config dict (tags, callbacks, etc.).
-        ctx : Context, optional
+        ctx : InvocationContext, optional
             Invocation context. Auto-created if not provided.
 
         Yields
@@ -75,6 +75,8 @@ class SequentialAgent(BaseAgent):
         current_input = input
 
         for sub_agent in self.sub_agents:
+            if ctx.end_invocation:
+                return
             child_ctx = ctx.derive(agent_name=sub_agent.name)
             async for event in sub_agent.astream(current_input, ctx=child_ctx):
                 yield event

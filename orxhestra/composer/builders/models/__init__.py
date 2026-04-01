@@ -13,9 +13,6 @@ from langchain_core.language_models import BaseChatModel
 
 from orxhestra.composer.errors import ComposerError
 
-# ---------------------------------------------------------------------------
-# Provider registry
-# ---------------------------------------------------------------------------
 
 _REGISTRY: dict[str, type[BaseChatModel]] = {}
 
@@ -59,9 +56,6 @@ def _resolve_provider(provider: str) -> type[BaseChatModel]:
     return cls
 
 
-# ---------------------------------------------------------------------------
-# Public factory
-# ---------------------------------------------------------------------------
 
 
 def create(provider: str, name: str, **kwargs: Any) -> BaseChatModel:

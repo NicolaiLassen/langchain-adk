@@ -46,14 +46,11 @@ from orxhestra.planners.task_board import (
 )
 
 if TYPE_CHECKING:
-    from orxhestra.agents.context import Context
+    from orxhestra.agents.invocation_context import InvocationContext
     from orxhestra.agents.readonly_context import ReadonlyContext
     from orxhestra.models.llm_request import LlmRequest
 
 
-# ---------------------------------------------------------------------------
-# TaskPlanner
-# ---------------------------------------------------------------------------
 
 
 class TaskPlanner(BasePlanner):
@@ -80,7 +77,7 @@ class TaskPlanner(BasePlanner):
     def __init__(self, tasks: list[dict[str, Any]] | None = None) -> None:
         self.initial_tasks: list[dict[str, Any]] = tasks or []
 
-    def _ensure_board(self, ctx: Context) -> dict[str, Any]:
+    def _ensure_board(self, ctx: InvocationContext) -> dict[str, Any]:
         """Seed the task board on the first call if it does not exist yet."""
         board = ctx.state.get(StateKey.TASK_BOARD)
         if not board and self.initial_tasks:
@@ -90,7 +87,7 @@ class TaskPlanner(BasePlanner):
 
     def build_planning_instruction(
         self,
-        readonly_context: ReadonlyContext,
+        readonly_context: ReadonlyInvocationContext,
         llm_request: LlmRequest,
     ) -> str | None:
         """Inject current task board status into the system prompt.
@@ -143,9 +140,6 @@ class TaskPlanner(BasePlanner):
         return ManageTasksTool(planner=self)
 
 
-# ---------------------------------------------------------------------------
-# ManageTasksTool
-# ---------------------------------------------------------------------------
 
 
 class _ManageTasksInput(BaseModel):
@@ -180,7 +174,7 @@ class _ManageTasksInput(BaseModel):
 
 
 class ManageTasksTool(BaseTool):
-    """Tool that reads and writes the task board in Context.state.
+    """Tool that reads and writes the task board in InvocationContext.state.
 
     The task board is stored at ``state[StateKey.TASK_BOARD]``. Agents use
     this tool to track progress on multi-step work.
@@ -203,12 +197,12 @@ class ManageTasksTool(BaseTool):
     planner: Any = None
     _ctx: Any | None = None
 
-    def inject_context(self, ctx: Context) -> None:
+    def inject_context(self, ctx: InvocationContext) -> None:
         """Inject the invocation context before tool execution.
 
         Parameters
         ----------
-        ctx : Context
+        ctx : InvocationContext
             The invocation context to inject.
         """
         object.__setattr__(self, "_ctx", ctx)

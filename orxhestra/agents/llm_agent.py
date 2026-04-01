@@ -53,7 +53,7 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool
 
 from orxhestra.agents.base_agent import BaseAgent
-from orxhestra.agents.context import Context
+from orxhestra.agents.invocation_context import InvocationContext
 from orxhestra.concurrency import gather_with_event_queue
 from orxhestra.events.event import Event, EventType
 from orxhestra.events.event_actions import EventActions
@@ -75,7 +75,7 @@ if TYPE_CHECKING:
 
 # Type alias for instruction providers - either a static string or a callable
 # that receives the current Context and returns a string.
-InstructionProvider = str | Callable[[Context], str | Awaitable[str]]
+InstructionProvider = str | Callable[[InvocationContext], str | Awaitable[str]]
 
 _DEFAULT_INSTRUCTIONS = """\
 You are a helpful assistant. Answer the user's questions clearly and concisely.
@@ -142,23 +142,23 @@ class LlmAgent(BaseAgent):
         include_contents: str = "default",
         max_iterations: int = 10,
         before_model_callback: (
-            Callable[[Context, LlmRequest], Awaitable[None]] | None
+            Callable[[InvocationContext, LlmRequest], Awaitable[None]] | None
         ) = None,
         after_model_callback: (
-            Callable[[Context, LlmResponse], Awaitable[None]] | None
+            Callable[[InvocationContext, LlmResponse], Awaitable[None]] | None
         ) = None,
         on_model_error_callback: (
             Callable[
-                [Context, LlmRequest, Exception],
+                [InvocationContext, LlmRequest, Exception],
                 Awaitable[LlmResponse | None],
             ]
             | None
         ) = None,
         before_tool_callback: (
-            Callable[[Context, str, dict], Awaitable[None]] | None
+            Callable[[InvocationContext, str, dict], Awaitable[None]] | None
         ) = None,
         after_tool_callback: (
-            Callable[[Context, str, Any], Awaitable[None]] | None
+            Callable[[InvocationContext, str, Any], Awaitable[None]] | None
         ) = None,
     ) -> None:
         super().__init__(name=name, description=description)
@@ -175,7 +175,7 @@ class LlmAgent(BaseAgent):
         self.before_tool_callback = before_tool_callback
         self.after_tool_callback = after_tool_callback
 
-    async def _resolve_instructions(self, ctx: Context) -> str:
+    async def _resolve_instructions(self, ctx: InvocationContext) -> str:
         """Resolve the system prompt from a string or instruction provider."""
         if callable(self._instructions):
             result = self._instructions(ctx)
@@ -231,7 +231,7 @@ class LlmAgent(BaseAgent):
     def _apply_planner_instruction(
         self,
         base_prompt: str,
-        ctx: Context,
+        ctx: InvocationContext,
         request: LlmRequest,
     ) -> str:
         """Append the planner's instruction to the system prompt."""
@@ -301,7 +301,7 @@ class LlmAgent(BaseAgent):
         self,
         llm: BaseChatModel,
         messages: list[BaseMessage],
-        ctx: Context,
+        ctx: InvocationContext,
     ) -> AsyncIterator[Event | AIMessage]:
         """Call the LLM, yielding partial events and the final AIMessage.
 
@@ -353,7 +353,7 @@ class LlmAgent(BaseAgent):
         input: str,
         config: RunnableConfig | None = None,
         *,
-        ctx: Context | None = None,
+        ctx: InvocationContext | None = None,
     ) -> AsyncIterator[Event]:
         """Stream events from the LLM agent.
 
@@ -366,7 +366,7 @@ class LlmAgent(BaseAgent):
             The user message or task description.
         config : RunnableConfig, optional
             LangChain-compatible config dict (tags, callbacks, etc.).
-        ctx : Context, optional
+        ctx : InvocationContext, optional
             Invocation context. Auto-created if not provided.
 
         Yields
@@ -383,38 +383,22 @@ class LlmAgent(BaseAgent):
             messages.append(SystemMessage(content=system_prompt))
 
         # Rebuild conversation history from session events (multi-turn).
-        #
-        # Filtering:
-        #   1. include_contents='none' → skip history entirely
-        #   2. Branch filtering → each agent only sees its own branch
-        #   3. Invocation filtering → each agent only sees current invocation
-        #   4. Visibility filtering → drop empty/framework/error events
-        #   5. Compaction → replace old event ranges with summaries
-        #
-        # ctx.state is always shared (not affected by these filters).
-        if self._include_contents != "none" and ctx.session and ctx.session.events:
-            filtered = ctx.session.events
-
-            # Branch filter — isolate sibling agents in pipelines
-            branch = ctx.branch
-            if branch:
-                filtered = [e for e in filtered if e.branch == branch]
-
-            # Invocation filter — isolate across different runs/turns
-            inv_id = ctx.invocation_id
-            if inv_id:
-                filtered = [
-                    e for e in filtered
-                    if not e.invocation_id or e.invocation_id == inv_id
-                ]
-
-            messages.extend(self._events_to_messages(filtered))
+        # ctx.state is always shared (not affected by event filters).
+        if self._include_contents != "none":
+            filtered = ctx.get_events(
+                current_branch=bool(ctx.branch),
+                current_invocation=bool(ctx.invocation_id),
+            )
+            if filtered:
+                messages.extend(self._events_to_messages(filtered))
 
         messages.append(HumanMessage(content=input))
 
         llm = self._build_bound_llm()
 
         for _ in range(self.max_iterations):
+            if ctx.end_invocation:
+                return
             request = self._build_request(system_prompt, messages)
 
             # Apply planner instruction

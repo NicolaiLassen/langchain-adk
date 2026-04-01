@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
     from orxhestra.agents.base_agent import BaseAgent
-    from orxhestra.agents.context import Context
+    from orxhestra.agents.invocation_context import InvocationContext
     from orxhestra.events.event import Event
 
 
@@ -92,7 +92,7 @@ class AgentTool(BaseTool):
         object.__setattr__(self, "_after_agent_callback", after_agent_callback)
         object.__setattr__(self, "_ctx", None)
 
-    def inject_context(self, ctx: Context) -> None:
+    def inject_context(self, ctx: InvocationContext) -> None:
         """Inject the parent invocation context before tool execution."""
         object.__setattr__(self, "_ctx", ctx)
 
@@ -127,7 +127,7 @@ class AgentTool(BaseTool):
         import asyncio
 
         agent: BaseAgent = object.__getattribute__(self, "_agent")  # type: ignore[assignment]
-        ctx: Context | None = object.__getattribute__(self, "_ctx")
+        ctx: InvocationContext | None = object.__getattribute__(self, "_ctx")
         before_cb = object.__getattribute__(self, "_before_agent_callback")
         after_cb = object.__getattribute__(self, "_after_agent_callback")
 

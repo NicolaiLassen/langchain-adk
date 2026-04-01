@@ -11,13 +11,11 @@ from langchain_core.runnables import RunnableConfig
 
 
 class AgentConfig(RunnableConfig, total=False):
-    """LangChain ``RunnableConfig`` extended with ADK-specific fields.
+    """LangChain ``RunnableConfig`` extended with max LLM calls.
 
     All standard LangChain config keys (``callbacks``, ``tags``, ``metadata``,
     ``run_name``, ``max_concurrency``, ``configurable``, ``run_id``,
     ``recursion_limit``) are inherited from ``RunnableConfig``.
-
-    ADK-specific fields:
 
     Attributes
     ----------

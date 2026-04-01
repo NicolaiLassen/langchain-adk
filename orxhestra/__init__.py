@@ -21,7 +21,7 @@ Events::
 
 Context::
 
-    from orxhestra.agents import Context
+    from orxhestra.agents import InvocationContext
     from orxhestra.agents import ReadonlyContext, CallbackContext
 
 Sessions::
@@ -31,7 +31,7 @@ Sessions::
 Tools::
 
     from orxhestra.tools import function_tool, AgentTool, make_transfer_tool
-    from orxhestra.tools import exit_loop_tool, ToolContext
+    from orxhestra.tools import exit_loop_tool, CallContext
 
 Composer::
 
@@ -42,7 +42,7 @@ from orxhestra.agents import (
     AgentConfig,
     BaseAgent,
     CallbackContext,
-    Context,
+    InvocationContext,
     LlmAgent,
     LoopAgent,
     ParallelAgent,
@@ -96,7 +96,7 @@ __all__ = [
     "ToolCallPart",
     "ToolResponsePart",
     # Context
-    "Context",
+    "InvocationContext",
     "ReadonlyContext",
     "CallbackContext",
     # Sessions

@@ -22,9 +22,6 @@ from __future__ import annotations
 
 from orxhestra.prompts.context import PromptContext
 
-# ---------------------------------------------------------------------------
-# Block builders
-# ---------------------------------------------------------------------------
 
 
 def _skills_block(skills: list[dict]) -> str:
@@ -54,9 +51,6 @@ def _tasks_block(tasks: list[dict]) -> str:
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
-# Main builder
-# ---------------------------------------------------------------------------
 
 
 def build_system_prompt(ctx: PromptContext) -> str:

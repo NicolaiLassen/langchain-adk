@@ -1,6 +1,9 @@
 """Tests for Context."""
 
-from orxhestra.agents.context import Context
+from orxhestra.agents.base_agent import BaseAgent  # noqa: F401
+from orxhestra.agents.invocation_context import InvocationContext as Context
+
+Context.model_rebuild()
 
 
 def test_context_defaults():

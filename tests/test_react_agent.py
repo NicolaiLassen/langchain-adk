@@ -7,7 +7,7 @@ from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.tools import tool
 
-from orxhestra.agents.context import Context
+from orxhestra.agents.invocation_context import InvocationContext as Context
 from orxhestra.agents.llm_agent import LlmAgent
 from orxhestra.agents.react_agent import ReActAgent, ReActStep
 from orxhestra.events.event import EventType

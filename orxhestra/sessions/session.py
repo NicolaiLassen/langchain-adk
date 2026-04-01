@@ -30,7 +30,7 @@ class Session(BaseModel):
     events : list[Event]
         Ordered list of events in this conversation.
     last_update_time : float
-        Unix timestamp of the last update (like ADK).
+        Unix timestamp of the last update.
     """
 
     id: str = Field(default_factory=lambda: str(uuid4()))

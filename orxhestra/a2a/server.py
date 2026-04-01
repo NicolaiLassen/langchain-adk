@@ -48,7 +48,7 @@ from orxhestra.a2a.types import (
     TaskStatusUpdateEvent,
 )
 from orxhestra.agents.base_agent import BaseAgent
-from orxhestra.agents.context import Context
+from orxhestra.agents.invocation_context import InvocationContext
 from orxhestra.sessions.base_session_service import BaseSessionService
 
 
@@ -87,9 +87,6 @@ class A2AServer:
         # In-memory task store: task_id -> Task
         self._tasks: dict[str, Task] = {}
 
-    # ------------------------------------------------------------------
-    # Agent Card
-    # ------------------------------------------------------------------
 
     def _build_agent_card(self) -> AgentCard:
         return AgentCard(
@@ -110,9 +107,6 @@ class A2AServer:
             skills=self.skills,
         )
 
-    # ------------------------------------------------------------------
-    # Task helpers
-    # ------------------------------------------------------------------
 
     def _create_task(self, message: Message, context_id: str | None = None) -> Task:
         task = Task(
@@ -179,9 +173,6 @@ class A2AServer:
 
         self._update_task_status(task, TaskState.COMPLETED, agent_message=agent_msg)
 
-    # ------------------------------------------------------------------
-    # JSON-RPC handlers
-    # ------------------------------------------------------------------
 
     async def _handle_send_message(
         self, params: dict[str, Any], request_id: Any,
@@ -293,9 +284,6 @@ class A2AServer:
         self._update_task_status(task, TaskState.CANCELED)
         return _jsonrpc_success(request_id, task)
 
-    # ------------------------------------------------------------------
-    # JSON-RPC dispatch — v1.0 PascalCase methods
-    # ------------------------------------------------------------------
 
     _METHOD_MAP = {
         "SendMessage": "_handle_send_message",
@@ -331,9 +319,6 @@ class A2AServer:
         handler = getattr(self, handler_name)
         return await handler(rpc.params or {}, rpc.id)
 
-    # ------------------------------------------------------------------
-    # FastAPI app
-    # ------------------------------------------------------------------
 
     def as_fastapi_app(self) -> FastAPI:
         """Build and return a FastAPI application with A2A v1.0 routes."""
@@ -357,9 +342,6 @@ class A2AServer:
         return app
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 
 def _extract_text(message: Message) -> str:

@@ -128,3 +128,72 @@ class MyStatefulTool(BaseTool):
 ```
 
 `LlmAgent` automatically calls `inject_context()` on any tool that exposes it before each tool execution.
+
+## Filesystem tools
+
+Sandboxed file operations restricted to a configurable workspace directory. All paths are validated to prevent escaping the workspace.
+
+```python
+from orxhestra.tools import make_filesystem_tools
+
+tools = make_filesystem_tools(workspace="/tmp/my-workspace")
+# or use $AGENT_WORKSPACE env var / default /tmp/agent-workspace
+
+agent = LlmAgent(name="coder", llm=llm, tools=tools)
+```
+
+| Tool | Description |
+|------|-------------|
+| `ls` | List files and directories |
+| `read_file` | Read file contents (returns base64 for images) |
+| `write_file` | Write content to a file, creating parents as needed |
+| `edit_file` | Replace the first occurrence of `old` with `new` |
+| `mkdir` | Create a directory and parents |
+| `glob` | Find files matching a glob pattern (e.g. `**/*.py`) |
+| `grep` | Search file contents for a text pattern |
+
+In Composer YAML, use the `filesystem` builtin:
+
+```yaml
+tools:
+  fs:
+    builtin: filesystem
+```
+
+## Shell tools
+
+Sandboxed shell execution with timeout, output truncation, and command filtering.
+
+```python
+from orxhestra.tools import make_shell_tools
+
+tools = make_shell_tools(
+    workspace="/tmp/my-workspace",
+    timeout=30,                          # max seconds per command
+    max_output_bytes=102400,             # truncate beyond 100KB
+    allowed_commands=["python", "npm"],   # whitelist (optional)
+    denied_commands=["rm", "shutdown"],   # blocklist (optional)
+    env={"NODE_ENV": "test"},            # extra env vars (optional)
+)
+```
+
+| Tool | Description |
+|------|-------------|
+| `shell_exec` | Run a command and return stdout + stderr |
+| `shell_exec_background` | Start a command in the background, return PID |
+
+Configuration via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AGENT_WORKSPACE` | `/tmp/agent-workspace` | Working directory |
+| `AGENT_SHELL_TIMEOUT` | `30` | Max seconds per command |
+| `AGENT_SHELL_MAX_OUTPUT` | `102400` | Output truncation limit (bytes) |
+
+In Composer YAML, use the `shell` builtin:
+
+```yaml
+tools:
+  sh:
+    builtin: shell
+```

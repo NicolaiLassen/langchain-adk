@@ -55,3 +55,63 @@ await svc.delete_session(session.id)
 <Tip>
   Implement `BaseSessionService` to back sessions with any database. See [Architecture](/architecture#custom-session-backend) for an example.
 </Tip>
+
+## Session Compaction
+
+Long conversations accumulate events that eventually exceed the LLM's context window. The Runner supports automatic **compaction** — summarizing old events into a single condensed event while keeping recent events intact.
+
+```python
+from orxhestra import Runner, InMemorySessionService
+from orxhestra.sessions.compaction import CompactionConfig
+
+runner = Runner(
+    agent=agent,
+    app_name="my-app",
+    session_service=InMemorySessionService(),
+    compaction_config=CompactionConfig(
+        max_events=50,        # compact when session exceeds this
+        retention_count=20,   # always keep the last N events raw
+        llm=llm,              # optional: LLM for summarization
+    ),
+)
+```
+
+After each invocation, the Runner checks whether the session exceeds `max_events`. If so:
+
+1. The last `retention_count` events are kept as-is
+2. Older events are summarized into a single compaction event
+3. The compaction event replaces the originals in the session
+
+If `llm` is provided, the summary is generated via an LLM call. Otherwise, a simple text extraction fallback is used.
+
+### Safety
+
+Compaction never runs mid-stream — only after all agent events have been yielded. Events with unresolved tool calls are never compacted.
+
+### Compaction events
+
+Compaction events are regular `AGENT_MESSAGE` events with an `EventActions.compaction` field:
+
+```python
+event.actions.compaction.summary        # the summary text
+event.actions.compaction.event_count    # how many events were compacted
+event.actions.compaction.start_timestamp
+event.actions.compaction.end_timestamp
+```
+
+`LlmAgent` automatically detects compaction events and includes the summary in the LLM context via `apply_compaction()` from `orxhestra.events.filters`.
+
+### Composer YAML
+
+Enable compaction in the `runner` section:
+
+```yaml
+runner:
+  app_name: my-app
+  session_service: memory
+  compaction:
+    max_events: 50
+    retention_count: 20
+```
+
+The Composer uses the default model for summarization when available.

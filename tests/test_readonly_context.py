@@ -4,8 +4,11 @@ from types import MappingProxyType
 
 import pytest
 
-from orxhestra.agents.context import Context
+from orxhestra.agents.base_agent import BaseAgent  # noqa: F401
+from orxhestra.agents.invocation_context import InvocationContext as Context
 from orxhestra.agents.readonly_context import CallbackContext, ReadonlyContext
+
+Context.model_rebuild()
 
 
 def test_readonly_context_exposes_properties():

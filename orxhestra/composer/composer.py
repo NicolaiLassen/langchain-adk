@@ -52,9 +52,6 @@ class Composer:
         self._agents: dict[str, BaseAgent] = {}
         self._building: set[str] = set()
 
-    # ------------------------------------------------------------------
-    # Public class methods
-    # ------------------------------------------------------------------
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> BaseAgent:
@@ -100,9 +97,6 @@ class Composer:
         root = await composer._build()
         return composer._build_server(root)
 
-    # ------------------------------------------------------------------
-    # Internal async wrappers
-    # ------------------------------------------------------------------
 
     @classmethod
     async def _runner_async(cls, path: str | Path) -> Runner:
@@ -112,9 +106,6 @@ class Composer:
     async def _server_async(cls, path: str | Path) -> Any:
         return await cls.server_from_yaml_async(path)
 
-    # ------------------------------------------------------------------
-    # YAML loading
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _load_spec(path: str | Path) -> ComposeSpec:
@@ -144,9 +135,6 @@ class Composer:
             raise ComposerError(msg)
         return ComposeSpec.model_validate(raw)
 
-    # ------------------------------------------------------------------
-    # Build pipeline
-    # ------------------------------------------------------------------
 
     async def _build(self) -> BaseAgent:
         """Build the full agent tree and return the root."""
@@ -206,9 +194,6 @@ class Composer:
                 if target is not None:
                     agent.register_sub_agent(target)
 
-    # ------------------------------------------------------------------
-    # Model resolution
-    # ------------------------------------------------------------------
 
     def _resolve_model(self, agent_def: AgentDef) -> ModelConfig:
         """Resolve the model config for an agent.
@@ -239,9 +224,6 @@ class Composer:
         }
         return default.model_copy(update=overrides)
 
-    # ------------------------------------------------------------------
-    # Tool resolution
-    # ------------------------------------------------------------------
 
     async def _resolve_tools(self, agent_def: AgentDef) -> list[BaseTool]:
         """Resolve all tool references for an agent."""
@@ -286,9 +268,6 @@ class Composer:
         msg = f"ToolDef has no recognized type: {td}"
         raise ComposerError(msg)
 
-    # ------------------------------------------------------------------
-    # Runner / Server builders
-    # ------------------------------------------------------------------
 
     def _build_runner(self, root: BaseAgent) -> Runner:
         """Build a ``Runner`` from the spec's runner config."""

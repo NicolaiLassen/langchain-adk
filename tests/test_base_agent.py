@@ -3,7 +3,7 @@
 import pytest
 
 from orxhestra.agents.base_agent import BaseAgent
-from orxhestra.agents.context import Context
+from orxhestra.agents.invocation_context import InvocationContext as Context
 from orxhestra.events.event import Event, EventType
 from orxhestra.models.part import Content
 

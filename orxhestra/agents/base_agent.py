@@ -19,7 +19,7 @@ from uuid import uuid4
 
 from langchain_core.runnables import RunnableConfig
 
-from orxhestra.agents.context import Context
+from orxhestra.agents.invocation_context import InvocationContext
 from orxhestra.events.event import Event, EventType
 
 
@@ -50,12 +50,12 @@ class BaseAgent(ABC):
     def _ensure_ctx(
         self,
         config: RunnableConfig | None = None,
-        ctx: Context | None = None,
-    ) -> Context:
+        ctx: InvocationContext | None = None,
+    ) -> InvocationContext:
         """Return the provided ctx or create a fresh one."""
         if ctx is not None:
             return ctx
-        return Context(
+        return InvocationContext(
             session_id=str(uuid4()),
             agent_name=self.name,
             run_config=config or {},
@@ -63,7 +63,7 @@ class BaseAgent(ABC):
 
     def _emit_event(
         self,
-        ctx: Context,
+        ctx: InvocationContext,
         type: EventType,
         **kwargs: Any,
     ) -> Event:
@@ -71,7 +71,7 @@ class BaseAgent(ABC):
 
         Parameters
         ----------
-        ctx : Context
+        ctx : InvocationContext
             The invocation context providing session_id and branch.
         type : EventType
             The event type.
@@ -93,9 +93,6 @@ class BaseAgent(ABC):
             **kwargs,
         )
 
-    # ------------------------------------------------------------------
-    # Abstract: subclasses override this
-    # ------------------------------------------------------------------
 
     @abstractmethod
     async def astream(
@@ -103,7 +100,7 @@ class BaseAgent(ABC):
         input: str,
         config: RunnableConfig | None = None,
         *,
-        ctx: Context | None = None,
+        ctx: InvocationContext | None = None,
     ) -> AsyncIterator[Event]:
         """Stream events from the agent asynchronously.
 
@@ -115,7 +112,7 @@ class BaseAgent(ABC):
             The user message or task description.
         config : RunnableConfig, optional
             LangChain-compatible config dict (tags, callbacks, etc.).
-        ctx : Context, optional
+        ctx : InvocationContext, optional
             Invocation context. Auto-created if not provided.
 
         Yields
@@ -125,16 +122,13 @@ class BaseAgent(ABC):
         """
         yield  # type: ignore[misc]  # pragma: no cover
 
-    # ------------------------------------------------------------------
-    # Public API (matches LangChain Runnable interface)
-    # ------------------------------------------------------------------
 
     async def ainvoke(
         self,
         input: str,
         config: RunnableConfig | None = None,
         *,
-        ctx: Context | None = None,
+        ctx: InvocationContext | None = None,
     ) -> Event:
         """Run to completion, return the final answer event.
 
@@ -144,7 +138,7 @@ class BaseAgent(ABC):
             The user message or task description.
         config : RunnableConfig, optional
             LangChain-compatible config dict.
-        ctx : Context, optional
+        ctx : InvocationContext, optional
             Invocation context. Auto-created if not provided.
 
         Returns
@@ -209,9 +203,6 @@ class BaseAgent(ABC):
         """
         return asyncio.run(self.ainvoke(input, config))
 
-    # ------------------------------------------------------------------
-    # Agent tree management
-    # ------------------------------------------------------------------
 
     def register_sub_agent(self, agent: BaseAgent) -> None:
         """Register a child agent under this agent.

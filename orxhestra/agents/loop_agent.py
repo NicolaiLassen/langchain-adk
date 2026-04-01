@@ -14,7 +14,7 @@ from collections.abc import AsyncIterator, Callable
 from langchain_core.runnables import RunnableConfig
 
 from orxhestra.agents.base_agent import BaseAgent
-from orxhestra.agents.context import Context
+from orxhestra.agents.invocation_context import InvocationContext
 from orxhestra.events.event import Event, EventType
 from orxhestra.models.part import Content
 
@@ -63,7 +63,7 @@ class LoopAgent(BaseAgent):
         input: str,
         config: RunnableConfig | None = None,
         *,
-        ctx: Context | None = None,
+        ctx: InvocationContext | None = None,
     ) -> AsyncIterator[Event]:
         """Run sub-agents in a loop until a termination condition is met.
 
@@ -83,7 +83,7 @@ class LoopAgent(BaseAgent):
             The user message or task description.
         config : RunnableConfig, optional
             LangChain-compatible config dict (tags, callbacks, etc.).
-        ctx : Context, optional
+        ctx : InvocationContext, optional
             Invocation context. Auto-created if not provided.
 
         Yields
@@ -102,6 +102,9 @@ class LoopAgent(BaseAgent):
         last_event: Event | None = None
 
         while True:
+            if ctx.end_invocation:
+                return
+
             if self.max_iterations is not None and iteration >= self.max_iterations:
                 yield self._emit_event(
                     ctx,
@@ -132,5 +135,9 @@ class LoopAgent(BaseAgent):
             if self.should_continue is not None and last_event is not None:
                 if not self.should_continue(last_event):
                     return
+
+            # Reset sub-agent states between iterations so children
+            # start fresh each loop cycle.
+            ctx.reset_sub_agent_states(self.name)
 
             iteration += 1

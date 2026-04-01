@@ -12,7 +12,7 @@ from uuid import uuid4
 from langchain_core.runnables import RunnableConfig
 
 from orxhestra.agents.base_agent import BaseAgent
-from orxhestra.agents.context import Context
+from orxhestra.agents.invocation_context import InvocationContext
 from orxhestra.events.event import Event, EventType
 
 # A2A v1.0 protocol types (lightweight aliases, no external dep).
@@ -53,7 +53,23 @@ class A2AAgent(BaseAgent):
         *,
         ctx: Context | None = None,
     ) -> AsyncIterator[Event]:
-        """Send a message to the remote A2A server and yield events."""
+        """Send a message to the remote A2A server and yield events.
+
+        Parameters
+        ----------
+        input : str
+            The user message to forward to the remote server.
+        config : RunnableConfig, optional
+            LangChain-compatible config dict (tags, callbacks, etc.).
+        ctx : Context, optional
+            Invocation context. Auto-created if not provided.
+
+        Yields
+        ------
+        Event
+            AGENT_START, AGENT_MESSAGE (with the remote answer), and
+            AGENT_END events, in that order.
+        """
         ctx = self._ensure_ctx(config, ctx)
 
         yield self._emit_event(ctx, EventType.AGENT_START)
