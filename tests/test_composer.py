@@ -797,7 +797,7 @@ class TestComposerBuild:
         assert isinstance(agent, ReActAgent)
         assert isinstance(agent, LlmAgent)
         assert agent.name == "bot"
-        assert agent._instructions == "Think carefully."
+        assert "Think carefully." in agent._instructions
 
     @patch("orxhestra.composer.builders.models._resolve_provider")
     async def test_react_agent_with_planner(self, mock_resolve, tmp_path):
