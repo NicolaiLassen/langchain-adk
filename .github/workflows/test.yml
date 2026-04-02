@@ -40,7 +40,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip setuptools
-          pip install -e "./repo[mcp,a2a,composer]"
+          pip install -e "./repo[mcp,a2a,composer,database]"
           pip install "pytest>=9.0" "pytest-asyncio>=0.25"
 
       - name: Run tests

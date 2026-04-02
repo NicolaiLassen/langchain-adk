@@ -2,6 +2,9 @@
 
 import pytest
 
+sqlalchemy = pytest.importorskip("sqlalchemy")
+pytest.importorskip("aiosqlite")
+
 from orxhestra.events.event import Event, EventType
 from orxhestra.events.event_actions import EventActions
 from orxhestra.models.part import Content
