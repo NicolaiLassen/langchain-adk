@@ -56,6 +56,21 @@ await svc.delete_session(session.id)
   Implement `BaseSessionService` to back sessions with any database. See [Architecture](/architecture#custom-session-backend) for an example.
 </Tip>
 
+## Database-backed sessions
+
+For production persistence, use `DatabaseSessionService` (requires `pip install orxhestra[database]`):
+
+```python
+from orxhestra.sessions import DatabaseSessionService
+
+svc = DatabaseSessionService("sqlite+aiosqlite:///sessions.db")
+await svc.initialize()
+
+session = await svc.create_session(app_name="demo", user_id="user-1")
+```
+
+Supports any SQLAlchemy async backend (SQLite via aiosqlite, PostgreSQL via asyncpg, etc.).
+
 ## Session Compaction
 
 Long conversations accumulate events that eventually exceed the LLM's context window. The Runner supports automatic **compaction** — summarizing old events into a single condensed event while keeping recent events intact.

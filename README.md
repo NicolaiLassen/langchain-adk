@@ -110,6 +110,9 @@ for event in response:
 ```
 
 > [!TIP]
+> For persistent database sessions, install the database extra: `pip install orxhestra[database]`
+
+> [!TIP]
 > For full documentation, guides, and API reference, visit [docs.orxhestra.com](https://docs.orxhestra.com).
 
 ## Features

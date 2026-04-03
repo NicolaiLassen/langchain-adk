@@ -30,6 +30,13 @@ from orxhestra.events.event import Event
 from orxhestra.sessions.base_session_service import BaseSessionService
 from orxhestra.sessions.session import Session
 
+try:
+    import sqlalchemy  # noqa: F401
+
+    _HAS_SQLALCHEMY = True
+except ImportError:
+    _HAS_SQLALCHEMY = False
+
 
 class DatabaseSessionService(BaseSessionService):
     """Persistent session service backed by a SQL database.
@@ -46,6 +53,11 @@ class DatabaseSessionService(BaseSessionService):
     """
 
     def __init__(self, connection_string: str) -> None:
+        if not _HAS_SQLALCHEMY:
+            raise ImportError(
+                "DatabaseSessionService requires SQLAlchemy. "
+                "Install it with: pip install orxhestra[database]"
+            )
         self._connection_string = connection_string
         self._engine: Any = None
         self._initialized = False
