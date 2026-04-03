@@ -1,21 +1,21 @@
 """Session event compaction — LLM-based summarization of old events.
 
-When session history grows beyond a configured threshold, old events
-are summarized into a compaction event appended to the session. The
-original events are preserved; the view layer (``apply_compaction``)
+When session history grows beyond a configured character threshold, old
+events are summarized into a compaction event appended to the session.
+The original events are preserved; the view layer (``apply_compaction``)
 filters them out when building LLM context.
 
-Approach (non-destructive, sliding window):
-  1. Count non-compacted events.  If under ``max_events``, do nothing.
+Approach (non-destructive, token-aware):
+  1. Estimate total character count of non-compacted events.
+     If under ``char_threshold``, do nothing.
   2. Identify events not already covered by a prior compaction.
-  3. Summarize the older portion using the LLM.
-  4. Append a compaction event via the session service.  The
-     ``apply_compaction`` filter in ``events.filters`` replaces raw
-     events in the compacted range with the summary at query time.
+  3. Summarize the older portion using the LLM, keeping the most
+     recent ``retention_chars`` worth of events raw.
+  4. Append a compaction event via the session service.
 
 Example::
 
-    config = CompactionConfig(max_events=50, retention_count=20)
+    config = CompactionConfig(char_threshold=100_000, retention_chars=20_000)
     runner = Runner(agent=my_agent, ..., compaction_config=config)
 
 The runner will automatically compact after each invocation.
@@ -40,23 +40,41 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _estimate_event_chars(event: Event) -> int:
+    """Estimate the character count of an event's content."""
+    total: int = 0
+    if event.text:
+        total += len(event.text)
+    if event.has_tool_calls:
+        for tc in event.tool_calls:
+            total += len(tc.tool_name) + len(str(tc.args))
+    if event.type == EventType.TOOL_RESPONSE:
+        for tr in event.content.tool_responses:
+            if tr.result:
+                total += len(tr.result)
+    return total
+
+
 @dataclass
 class CompactionConfig:
     """Configuration for automatic session compaction.
 
-    Attributes
+    Parameters
     ----------
-    max_events : int
-        Compact when non-compacted events exceed this count.
-    retention_count : int
-        Always keep the last N events as raw (uncompacted).
+    char_threshold : int
+        Compact when non-compacted event content exceeds this many
+        characters.  Default 100,000 (~25k tokens).
+    retention_chars : int
+        Always keep the most recent events totalling at least this
+        many characters as raw (uncompacted).  Default 20,000
+        (~5k tokens).
     llm : BaseChatModel, optional
         LLM to use for summarization.  If ``None``, the compactor
         will use a simple text-based extraction instead of an LLM call.
     """
 
-    max_events: int = 50
-    retention_count: int = 20
+    char_threshold: int = 100_000
+    retention_chars: int = 20_000
     llm: BaseChatModel | None = field(default=None, repr=False)
 
 
@@ -102,6 +120,24 @@ def _find_compaction_boundary(events: list[Event]) -> float:
     return boundary
 
 
+def _split_by_retention_chars(
+    events: list[Event], retention_chars: int,
+) -> tuple[list[Event], list[Event]]:
+    """Split events into (old, recent) keeping at least retention_chars recent."""
+    cumulative: int = 0
+    split_idx: int = len(events)
+    for i in range(len(events) - 1, -1, -1):
+        cumulative += _estimate_event_chars(events[i])
+        if cumulative >= retention_chars:
+            split_idx = i + 1
+            break
+    else:
+        # All events fit within retention — nothing to compact
+        split_idx = 0
+
+    return events[:split_idx], events[split_idx:]
+
+
 async def compact_session(
     session: Session,
     session_service: BaseSessionService,
@@ -138,20 +174,19 @@ async def compact_session(
         if e.timestamp > compaction_boundary and e.actions.compaction is None
     ]
 
-    if len(candidate_events) <= config.max_events:
+    # Check character threshold
+    total_chars = sum(_estimate_event_chars(e) for e in candidate_events)
+    if total_chars <= config.char_threshold:
         return False
 
     # Split: old candidates to compact vs. recent ones to keep raw
-    split_idx = len(candidate_events) - config.retention_count
-    if split_idx <= 0:
-        return False
-
-    old_events = candidate_events[:split_idx]
+    old_events, _recent = _split_by_retention_chars(
+        candidate_events, config.retention_chars,
+    )
     if not old_events:
         return False
 
     # Skip if there are pending tool calls in the old events
-    # (never compact events with unresolved tool calls)
     responded_ids: set[str] = set()
     for e in events:
         if e.type == EventType.TOOL_RESPONSE:
@@ -204,9 +239,10 @@ async def compact_session(
     await session_service.append_event(session, compaction_event)
 
     logger.info(
-        "Compacted %d events into summary (%d chars). "
+        "Compacted %d events (%d chars) into summary (%d chars). "
         "Session has %d total events.",
         len(old_events),
+        total_chars - sum(_estimate_event_chars(e) for e in _recent),
         len(summary),
         len(session.events),
     )

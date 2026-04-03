@@ -290,8 +290,8 @@ class Composer:
                 llm = create(model_cfg.provider, model_cfg.name)
 
             compaction_config = CompactionConfig(
-                max_events=cfg.compaction.max_events,
-                retention_count=cfg.compaction.retention_count,
+                char_threshold=cfg.compaction.char_threshold,
+                retention_chars=cfg.compaction.retention_chars,
                 llm=llm,
             )
 

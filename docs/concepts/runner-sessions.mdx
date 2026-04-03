@@ -69,16 +69,16 @@ runner = Runner(
     app_name="my-app",
     session_service=InMemorySessionService(),
     compaction_config=CompactionConfig(
-        max_events=50,        # compact when session exceeds this
-        retention_count=20,   # always keep the last N events raw
-        llm=llm,              # optional: LLM for summarization
+        char_threshold=100_000,  # compact when content exceeds ~25k tokens
+        retention_chars=20_000,  # keep ~5k tokens of recent events raw
+        llm=llm,                 # optional: LLM for summarization
     ),
 )
 ```
 
-After each invocation, the Runner checks whether the session exceeds `max_events`. If so:
+After each invocation, the Runner estimates the total character count of non-compacted events. If it exceeds `char_threshold`:
 
-1. The last `retention_count` events are kept as-is
+1. The most recent events totalling `retention_chars` characters are kept as-is
 2. Older events are summarized into a single compaction event
 3. The compaction event is **appended** to the session — originals are preserved
 
@@ -114,8 +114,8 @@ runner:
   app_name: my-app
   session_service: memory
   compaction:
-    max_events: 50
-    retention_count: 20
+    char_threshold: 100000   # ~25k tokens
+    retention_chars: 20000   # ~5k tokens
 ```
 
 The Composer uses the default model for summarization when available.

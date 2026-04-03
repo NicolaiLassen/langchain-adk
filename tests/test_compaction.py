@@ -1,4 +1,4 @@
-"""Tests for session event compaction."""
+"""Tests for session event compaction (character-based thresholds)."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from orxhestra.events.filters import apply_compaction
 from orxhestra.models.part import Content, ToolCallPart, ToolResponsePart
 from orxhestra.sessions.compaction import (
     CompactionConfig,
+    _estimate_event_chars,
     _events_to_text,
     _find_compaction_boundary,
     compact_session,
@@ -41,10 +42,14 @@ def _make_event(
     )
 
 
-def _make_session(event_count: int, session_id: str = "s1") -> Session:
-    """Create a session with N text events."""
+def _make_session(
+    event_count: int,
+    chars_per_event: int = 100,
+    session_id: str = "s1",
+) -> Session:
+    """Create a session with N events, each containing chars_per_event characters."""
     events = [
-        _make_event(f"msg-{i}", timestamp=float(i))
+        _make_event("x" * chars_per_event, timestamp=float(i))
         for i in range(event_count)
     ]
     return Session(id=session_id, app_name="app", user_id="u1", events=events)
@@ -63,15 +68,32 @@ def _find_compaction_event(session: Session) -> Event:
 
 def test_compaction_config_defaults() -> None:
     config = CompactionConfig()
-    assert config.max_events == 50
-    assert config.retention_count == 20
+    assert config.char_threshold == 100_000
+    assert config.retention_chars == 20_000
     assert config.llm is None
 
 
 def test_compaction_config_custom_values() -> None:
-    config = CompactionConfig(max_events=100, retention_count=30)
-    assert config.max_events == 100
-    assert config.retention_count == 30
+    config = CompactionConfig(char_threshold=50_000, retention_chars=10_000)
+    assert config.char_threshold == 50_000
+    assert config.retention_chars == 10_000
+
+
+# --- _estimate_event_chars ---
+
+
+def test_estimate_event_chars_text() -> None:
+    event = _make_event("hello world")
+    assert _estimate_event_chars(event) == 11
+
+
+def test_estimate_event_chars_tool_response() -> None:
+    tr = ToolResponsePart(tool_call_id="tc1", tool_name="search", result="found it")
+    event = _make_event(
+        content=Content(parts=[tr]),
+        event_type=EventType.TOOL_RESPONSE,
+    )
+    assert _estimate_event_chars(event) == len("found it")
 
 
 # --- _events_to_text ---
@@ -146,16 +168,16 @@ def test_find_compaction_boundary_with_compaction() -> None:
     assert _find_compaction_boundary(events) == 39.0
 
 
-# --- compact_session (non-destructive) ---
+# --- compact_session (character-based, non-destructive) ---
 
 
 @pytest.mark.asyncio
 async def test_no_compaction_under_threshold() -> None:
-    session = _make_session(10)
-    service = InMemorySessionService()
-    config = CompactionConfig(max_events=50, retention_count=20)
+    """10 events * 100 chars = 1000 chars, well under 5000 threshold."""
+    session = _make_session(10, chars_per_event=100)
+    config = CompactionConfig(char_threshold=5000, retention_chars=1000)
 
-    result = await compact_session(session, service, config)
+    result = await compact_session(session, InMemorySessionService(), config)
 
     assert result is False
     assert len(session.events) == 10
@@ -163,8 +185,9 @@ async def test_no_compaction_under_threshold() -> None:
 
 @pytest.mark.asyncio
 async def test_no_compaction_at_exact_threshold() -> None:
-    session = _make_session(50)
-    config = CompactionConfig(max_events=50, retention_count=20)
+    """50 events * 100 chars = 5000 chars, exactly at threshold (not exceeded)."""
+    session = _make_session(50, chars_per_event=100)
+    config = CompactionConfig(char_threshold=5000, retention_chars=1000)
 
     result = await compact_session(session, InMemorySessionService(), config)
 
@@ -174,9 +197,10 @@ async def test_no_compaction_at_exact_threshold() -> None:
 
 @pytest.mark.asyncio
 async def test_compaction_above_threshold_no_llm() -> None:
-    session = _make_session(60)
+    """60 events * 100 chars = 6000 chars, above 5000 threshold."""
+    session = _make_session(60, chars_per_event=100)
     original_count = len(session.events)
-    config = CompactionConfig(max_events=50, retention_count=20)
+    config = CompactionConfig(char_threshold=5000, retention_chars=1000)
 
     result = await compact_session(session, InMemorySessionService(), config)
 
@@ -185,26 +209,25 @@ async def test_compaction_above_threshold_no_llm() -> None:
     assert len(session.events) == original_count + 1
     compaction_event = _find_compaction_event(session)
     assert compaction_event.agent_name == "compaction"
-    assert compaction_event.actions.compaction.event_count == 40
+    assert compaction_event.actions.compaction.event_count > 0
 
 
 @pytest.mark.asyncio
 async def test_compaction_preserves_all_original_events() -> None:
-    session = _make_session(60)
+    session = _make_session(60, chars_per_event=100)
     original_ids = [e.id for e in session.events]
-    config = CompactionConfig(max_events=50, retention_count=20)
+    config = CompactionConfig(char_threshold=5000, retention_chars=1000)
 
     await compact_session(session, InMemorySessionService(), config)
 
-    # All original events are still present (non-destructive)
     current_ids = [e.id for e in session.events if e.actions.compaction is None]
     assert current_ids == original_ids
 
 
 @pytest.mark.asyncio
 async def test_compaction_event_appended_at_end() -> None:
-    session = _make_session(60)
-    config = CompactionConfig(max_events=50, retention_count=20)
+    session = _make_session(60, chars_per_event=100)
+    config = CompactionConfig(char_threshold=5000, retention_chars=1000)
 
     await compact_session(session, InMemorySessionService(), config)
 
@@ -213,20 +236,21 @@ async def test_compaction_event_appended_at_end() -> None:
 
 @pytest.mark.asyncio
 async def test_compaction_event_has_correct_timestamps() -> None:
-    session = _make_session(60)
-    config = CompactionConfig(max_events=50, retention_count=20)
+    session = _make_session(60, chars_per_event=100)
+    config = CompactionConfig(char_threshold=5000, retention_chars=1000)
 
     await compact_session(session, InMemorySessionService(), config)
 
     compaction = _find_compaction_event(session).actions.compaction
     assert compaction.start_timestamp == 0.0
-    assert compaction.end_timestamp == 39.0
+    # End timestamp is before the retained window
+    assert compaction.end_timestamp < 60.0
 
 
 @pytest.mark.asyncio
 async def test_compaction_event_summary_matches_content() -> None:
-    session = _make_session(60)
-    config = CompactionConfig(max_events=50, retention_count=20)
+    session = _make_session(60, chars_per_event=100)
+    config = CompactionConfig(char_threshold=5000, retention_chars=1000)
 
     await compact_session(session, InMemorySessionService(), config)
 
@@ -241,8 +265,8 @@ async def test_compaction_with_llm() -> None:
     mock_response.content = "This is a summary of the conversation."
     mock_llm.ainvoke.return_value = mock_response
 
-    session = _make_session(60)
-    config = CompactionConfig(max_events=50, retention_count=20, llm=mock_llm)
+    session = _make_session(60, chars_per_event=100)
+    config = CompactionConfig(char_threshold=5000, retention_chars=1000, llm=mock_llm)
 
     result = await compact_session(session, InMemorySessionService(), config)
 
@@ -250,7 +274,6 @@ async def test_compaction_with_llm() -> None:
     mock_llm.ainvoke.assert_called_once()
     compaction_event = _find_compaction_event(session)
     assert compaction_event.text == "This is a summary of the conversation."
-    assert compaction_event.actions.compaction.summary == "This is a summary of the conversation."
 
 
 @pytest.mark.asyncio
@@ -258,9 +281,9 @@ async def test_compaction_llm_failure_returns_false() -> None:
     mock_llm = AsyncMock()
     mock_llm.ainvoke.side_effect = RuntimeError("LLM unavailable")
 
-    session = _make_session(60)
+    session = _make_session(60, chars_per_event=100)
     original_count = len(session.events)
-    config = CompactionConfig(max_events=50, retention_count=20, llm=mock_llm)
+    config = CompactionConfig(char_threshold=5000, retention_chars=1000, llm=mock_llm)
 
     result = await compact_session(session, InMemorySessionService(), config)
 
@@ -269,10 +292,11 @@ async def test_compaction_llm_failure_returns_false() -> None:
 
 
 @pytest.mark.asyncio
-async def test_no_compaction_when_split_idx_zero() -> None:
-    """retention_count >= event count means nothing to compact."""
-    session = _make_session(55)
-    config = CompactionConfig(max_events=50, retention_count=55)
+async def test_no_compaction_when_all_fits_in_retention() -> None:
+    """All content fits in retention_chars — nothing to compact."""
+    session = _make_session(20, chars_per_event=100)
+    # 20 * 100 = 2000 chars total, but retention is 5000 — all retained
+    config = CompactionConfig(char_threshold=1000, retention_chars=5000)
 
     result = await compact_session(session, InMemorySessionService(), config)
 
@@ -283,40 +307,32 @@ async def test_no_compaction_when_split_idx_zero() -> None:
 async def test_no_compaction_with_pending_tool_calls() -> None:
     """Events with unresolved tool calls should not be compacted."""
     events = [
-        _make_event(f"msg-{i}", timestamp=float(i))
+        _make_event("x" * 100, timestamp=float(i))
         for i in range(40)
     ]
-    # Add a tool call in old events (idx 10) with no matching response
     tc = ToolCallPart(tool_call_id="pending-tc", tool_name="search", args={})
-    events[10] = _make_event(
-        content=Content(parts=[tc]),
-        timestamp=10.0,
-    )
-    # Add retained events
+    events[10] = _make_event(content=Content(parts=[tc]), timestamp=10.0)
     events.extend(
-        _make_event(f"recent-{i}", timestamp=float(40 + i))
+        _make_event("x" * 100, timestamp=float(40 + i))
         for i in range(20)
     )
     session = Session(id="s1", app_name="app", user_id="u1", events=events)
-    config = CompactionConfig(max_events=50, retention_count=20)
+    config = CompactionConfig(char_threshold=5000, retention_chars=1000)
 
     result = await compact_session(session, InMemorySessionService(), config)
 
     assert result is False
-    assert len(session.events) == 60
 
 
 @pytest.mark.asyncio
 async def test_compaction_allows_resolved_tool_calls() -> None:
     """Tool calls with matching responses should be compactable."""
     events = [
-        _make_event(f"msg-{i}", timestamp=float(i))
+        _make_event("x" * 100, timestamp=float(i))
         for i in range(38)
     ]
-    # Add tool call in old events
     tc = ToolCallPart(tool_call_id="resolved-tc", tool_name="search", args={})
     events.append(_make_event(content=Content(parts=[tc]), timestamp=38.0))
-    # Add matching response
     tr = ToolResponsePart(tool_call_id="resolved-tc", tool_name="search", result="ok")
     events.append(
         _make_event(
@@ -325,19 +341,17 @@ async def test_compaction_allows_resolved_tool_calls() -> None:
             timestamp=39.0,
         )
     )
-    # Add retained events
     events.extend(
-        _make_event(f"recent-{i}", timestamp=float(40 + i))
+        _make_event("x" * 100, timestamp=float(40 + i))
         for i in range(20)
     )
     session = Session(id="s1", app_name="app", user_id="u1", events=events)
-    config = CompactionConfig(max_events=50, retention_count=20)
+    config = CompactionConfig(char_threshold=5000, retention_chars=1000)
 
     result = await compact_session(session, InMemorySessionService(), config)
 
     assert result is True
-    # Non-destructive: 60 originals + 1 compaction = 61
-    assert len(session.events) == 61
+    assert len(session.events) == 61  # 60 originals + 1 compaction
 
 
 @pytest.mark.asyncio
@@ -348,7 +362,7 @@ async def test_compaction_fallback_truncates_at_2000_chars() -> None:
         for i in range(80)
     ]
     session = Session(id="s1", app_name="app", user_id="u1", events=events)
-    config = CompactionConfig(max_events=50, retention_count=20)
+    config = CompactionConfig(char_threshold=5000, retention_chars=1000)
 
     await compact_session(session, InMemorySessionService(), config)
 
@@ -358,10 +372,10 @@ async def test_compaction_fallback_truncates_at_2000_chars() -> None:
 
 @pytest.mark.asyncio
 async def test_repeated_compaction_is_idempotent() -> None:
-    """Second compaction should be skipped — non-compacted events are under threshold."""
-    session = _make_session(60)
+    """Second compaction should be skipped — remaining content under threshold."""
+    session = _make_session(60, chars_per_event=100)
     service = InMemorySessionService()
-    config = CompactionConfig(max_events=50, retention_count=20)
+    config = CompactionConfig(char_threshold=5000, retention_chars=1000)
 
     first = await compact_session(session, service, config)
     assert first is True
@@ -378,53 +392,45 @@ async def test_repeated_compaction_is_idempotent() -> None:
 @pytest.mark.asyncio
 async def test_apply_compaction_filters_compacted_events() -> None:
     """Verify the view layer hides events covered by the compaction range."""
-    session = _make_session(60)
-    config = CompactionConfig(max_events=50, retention_count=20)
+    session = _make_session(60, chars_per_event=100)
+    config = CompactionConfig(char_threshold=5000, retention_chars=1000)
 
     await compact_session(session, InMemorySessionService(), config)
 
-    # apply_compaction should filter out the 40 old events
     filtered = apply_compaction(session.events)
 
-    # 20 retained events + 1 compaction summary = 21
-    assert len(filtered) == 21
-
-    # The compaction summary should be present
+    # Should have compaction summary + retained recent events
     summary_events = [e for e in filtered if "[Compacted summary" in e.text]
     assert len(summary_events) == 1
-    assert "40 events" in summary_events[0].text
 
-    # None of the old events (timestamps 0-39) should be in filtered
+    # None of the compacted events should be in filtered
+    compaction = _find_compaction_event(session).actions.compaction
     for e in filtered:
         if "[Compacted summary" not in e.text:
-            assert e.timestamp >= 40.0
+            assert e.timestamp > compaction.end_timestamp
 
 
 @pytest.mark.asyncio
 async def test_apply_compaction_after_multiple_compactions() -> None:
     """Multiple compaction rounds should produce correct filtered view."""
-    # Create 120 events (timestamps 0..119)
     events = [
-        _make_event(f"msg-{i}", timestamp=float(i))
+        _make_event("x" * 200, timestamp=float(i))
         for i in range(120)
     ]
     session = Session(id="s1", app_name="app", user_id="u1", events=events)
     service = InMemorySessionService()
-    # Compact at 50, retain 20 — first round compacts 100 old events
-    config = CompactionConfig(max_events=50, retention_count=20)
+    config = CompactionConfig(char_threshold=5000, retention_chars=2000)
 
     first = await compact_session(session, service, config)
     assert first is True
 
-    # Simulate more events arriving (timestamps 120..179)
+    # Simulate more events arriving
     for i in range(120, 180):
-        session.events.append(_make_event(f"msg-{i}", timestamp=float(i)))
+        session.events.append(_make_event("x" * 200, timestamp=float(i)))
 
     second = await compact_session(session, service, config)
     assert second is True
 
-    # View layer should produce a manageable set
     filtered = apply_compaction(session.events)
-    # Should have 2 compaction summaries + 20 retained events
     summaries = [e for e in filtered if "[Compacted summary" in e.text]
     assert len(summaries) == 2

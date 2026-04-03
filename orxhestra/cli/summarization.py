@@ -1,7 +1,8 @@
-"""Context summarization - prevent context window overflow.
+"""Context summarization — prevent context window overflow.
 
-When the conversation gets too long, summarize older messages to free
-up context space. Also provides a /compact command for manual summarization.
+When the conversation gets too long (measured by character count, not
+event count), summarize older messages to free up context space.  Also
+provides a ``/compact`` command for manual summarization.
 """
 
 from __future__ import annotations
@@ -11,11 +12,11 @@ from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
 from orxhestra.events.event import Event, EventType
 
-# Summarize when conversation exceeds this many non-partial events
-DEFAULT_EVENT_THRESHOLD: int = 40
+# Compact when conversation content exceeds this many characters (~10k tokens)
+DEFAULT_CHAR_THRESHOLD: int = 40_000
 
-# Keep the most recent N events unsummarized
-KEEP_RECENT: int = 10
+# Keep the most recent events totalling at least this many characters (~2k tokens)
+RETENTION_CHARS: int = 8_000
 
 _SUMMARIZE_PROMPT: str = """\
 Summarize the following conversation history concisely. Focus on:
@@ -29,6 +30,20 @@ Be brief but preserve all actionable context. Output only the summary.
 Conversation:
 {conversation}
 """
+
+
+def _estimate_event_chars(event: Event) -> int:
+    """Estimate the character count of an event's content."""
+    if event.partial:
+        return 0
+    total: int = 0
+    if event.text:
+        total += len(event.text)
+    if event.type == EventType.TOOL_RESPONSE:
+        for tr in event.content.tool_responses:
+            if tr.result:
+                total += len(tr.result)
+    return total
 
 
 def _events_to_text(events: list[Event]) -> str:
@@ -49,28 +64,44 @@ def _events_to_text(events: list[Event]) -> str:
 async def summarize_session(
     llm: BaseChatModel,
     events: list[Event],
-    threshold: int = DEFAULT_EVENT_THRESHOLD,
+    char_threshold: int = DEFAULT_CHAR_THRESHOLD,
+    retention_chars: int = RETENTION_CHARS,
 ) -> list[Event] | None:
-    """Summarize old events if the session exceeds the threshold.
+    """Summarize old events if the session exceeds the character threshold.
 
-    Returns a new event list with old events replaced by a summary event,
-    or None if no summarization was needed.
+    Parameters
+    ----------
+    llm : BaseChatModel
+        LLM to generate the summary.
+    events : list[Event]
+        The session's event list.
+    char_threshold : int
+        Minimum total characters before compaction triggers.
+    retention_chars : int
+        Keep the most recent events totalling at least this many characters.
+
+    Returns
+    -------
+    list[Event] or None
+        A new event list with old events replaced by a summary, or None
+        if no summarization was needed.
     """
-    # Filter to non-partial, substantive events
-    substantive: list[Event] = [
-        e for e in events
-        if not e.partial and e.type in (
-            EventType.USER_MESSAGE,
-            EventType.AGENT_MESSAGE,
-            EventType.TOOL_RESPONSE,
-        )
-    ]
+    total_chars: int = sum(_estimate_event_chars(e) for e in events)
 
-    if len(substantive) < threshold:
+    if total_chars < char_threshold:
         return None
 
-    # Split into old (summarize) and recent (keep)
-    split_idx: int = len(events) - KEEP_RECENT
+    # Walk backwards to find the split point that retains retention_chars
+    cumulative: int = 0
+    split_idx: int = len(events)
+    for i in range(len(events) - 1, -1, -1):
+        cumulative += _estimate_event_chars(events[i])
+        if cumulative >= retention_chars:
+            split_idx = i + 1
+            break
+    else:
+        split_idx = 0
+
     if split_idx <= 0:
         return None
 

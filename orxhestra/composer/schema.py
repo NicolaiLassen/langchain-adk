@@ -138,14 +138,16 @@ class CompactionConfigDef(BaseModel):
 
     Attributes
     ----------
-    max_events : int
-        Compact when session has more than this many events.
-    retention_count : int
-        Always keep the last N events as raw (uncompacted).
+    char_threshold : int
+        Compact when non-compacted event content exceeds this many
+        characters.  Default 100,000 (~25k tokens).
+    retention_chars : int
+        Always keep the most recent events totalling at least this
+        many characters as raw.  Default 20,000 (~5k tokens).
     """
 
-    max_events: int = 50
-    retention_count: int = 20
+    char_threshold: int = 100_000
+    retention_chars: int = 20_000
 
 
 class RunConfigDef(BaseModel):

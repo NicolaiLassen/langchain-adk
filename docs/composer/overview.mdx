@@ -261,11 +261,11 @@ runner:
   app_name: my-app
   session_service: memory  # or dotted.import.path
   compaction:               # optional: auto-compact long sessions
-    max_events: 50          # compact when session exceeds this
-    retention_count: 20     # always keep the last N events raw
+    char_threshold: 100000  # compact when content exceeds ~25k tokens
+    retention_chars: 20000  # keep ~5k tokens of recent events raw
 ```
 
-When `compaction` is set, the Runner automatically summarizes old session events after each invocation. Uses the default model for LLM-based summarization. See [Session Compaction](/concepts/runner-sessions#session-compaction) for details.
+When `compaction` is set, the Runner automatically summarizes old session events after each invocation based on character count (not event count). Uses the default model for LLM-based summarization. See [Session Compaction](/concepts/runner-sessions#session-compaction) for details.
 
 ### `server`
 
