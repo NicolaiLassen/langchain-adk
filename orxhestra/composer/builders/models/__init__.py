@@ -1,8 +1,16 @@
 """Model provider registry and factory.
 
-Built-in providers (``openai``, ``anthropic``, ``google``) are registered
-lazily on first use.  Custom providers can be added via
-:func:`register` or by passing a dotted import path as the provider name.
+Built-in providers are registered lazily on first use.  Custom providers
+can be added via :func:`register` or by passing a dotted import path as
+the provider name.
+
+Supported providers::
+
+    anthropic, anthropic_bedrock, azure_ai, azure_openai,
+    bedrock, bedrock_converse, cohere, deepseek, fireworks,
+    google_anthropic_vertex, google_genai, google_vertexai,
+    groq, huggingface, ibm, mistralai, nvidia, ollama,
+    openai, openrouter, perplexity, together, upstage, xai
 """
 
 from __future__ import annotations
@@ -16,10 +24,59 @@ from orxhestra.composer.errors import ComposerError
 _REGISTRY: dict[str, type[BaseChatModel]] = {}
 
 # Lazy-import specs: provider name -> (module, class_name)
+# Matches LangChain's init_chat_model _BUILTIN_PROVIDERS registry.
 _LAZY_PROVIDERS: dict[str, tuple[str, str]] = {
-    "openai": ("langchain_openai", "ChatOpenAI"),
+    # Anthropic
     "anthropic": ("langchain_anthropic", "ChatAnthropic"),
+    "anthropic_bedrock": ("langchain_aws", "ChatAnthropicBedrock"),
+    # Azure
+    "azure_ai": ("langchain_azure_ai.chat_models", "AzureAIChatCompletionsModel"),
+    "azure_openai": ("langchain_openai", "AzureChatOpenAI"),
+    "azure": ("langchain_openai", "AzureChatOpenAI"),
+    # AWS Bedrock
+    "bedrock": ("langchain_aws", "ChatBedrock"),
+    "bedrock_converse": ("langchain_aws", "ChatBedrockConverse"),
+    "aws_bedrock": ("langchain_aws", "ChatBedrockConverse"),
+    # Cohere
+    "cohere": ("langchain_cohere", "ChatCohere"),
+    # DeepSeek
+    "deepseek": ("langchain_deepseek", "ChatDeepSeek"),
+    # Fireworks
+    "fireworks": ("langchain_fireworks", "ChatFireworks"),
+    # Google
+    "google_anthropic_vertex": (
+        "langchain_google_vertexai.model_garden",
+        "ChatAnthropicVertex",
+    ),
+    "google_genai": ("langchain_google_genai", "ChatGoogleGenerativeAI"),
     "google": ("langchain_google_genai", "ChatGoogleGenerativeAI"),
+    "google_vertexai": ("langchain_google_vertexai", "ChatVertexAI"),
+    "vertexai": ("langchain_google_vertexai", "ChatVertexAI"),
+    # Groq
+    "groq": ("langchain_groq", "ChatGroq"),
+    # HuggingFace
+    "huggingface": ("langchain_huggingface", "ChatHuggingFace"),
+    # IBM watsonx
+    "ibm": ("langchain_ibm", "ChatWatsonx"),
+    # Mistral
+    "mistral": ("langchain_mistralai", "ChatMistralAI"),
+    "mistralai": ("langchain_mistralai", "ChatMistralAI"),
+    # NVIDIA NIM
+    "nvidia": ("langchain_nvidia_ai_endpoints", "ChatNVIDIA"),
+    # Ollama (local)
+    "ollama": ("langchain_ollama", "ChatOllama"),
+    # OpenAI
+    "openai": ("langchain_openai", "ChatOpenAI"),
+    # OpenRouter
+    "openrouter": ("langchain_openrouter", "ChatOpenRouter"),
+    # Perplexity
+    "perplexity": ("langchain_perplexity", "ChatPerplexity"),
+    # Together AI
+    "together": ("langchain_together", "ChatTogether"),
+    # Upstage
+    "upstage": ("langchain_upstage", "ChatUpstage"),
+    # xAI (Grok)
+    "xai": ("langchain_xai", "ChatXAI"),
 }
 
 

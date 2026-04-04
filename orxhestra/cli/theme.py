@@ -41,6 +41,15 @@ ORX_THEME = Theme(
         "orx.interrupted": MUTED,
         "orx.goodbye": MUTED,
         "orx.status": MUTED,
+        # Override Rich Markdown styles to use theme blue
+        "markdown.item.bullet": f"bold {ACCENT}",
+        "markdown.block_quote": ACCENT,
+        "markdown.h1": f"bold {ACCENT}",
+        "markdown.h2": f"bold {ACCENT}",
+        "markdown.h3": f"bold {ACCENT}",
+        "markdown.h4": f"bold {ACCENT}",
+        "markdown.link": f"underline {ACCENT}",
+        "markdown.link_url": ACCENT,
     }
 )
 
