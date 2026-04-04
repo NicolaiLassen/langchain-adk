@@ -113,10 +113,16 @@ def _register_defaults() -> None:
 
             return make_human_input_tool()
 
+        def _sleep() -> BaseTool:
+            from orxhestra.tools.sleep_tool import make_sleep_tool
+
+            return make_sleep_tool()
+
         _BUILTIN_REGISTRY["exit_loop"] = _exit_loop
         _BUILTIN_REGISTRY["filesystem"] = _filesystem
         _BUILTIN_REGISTRY["shell"] = _shell
         _BUILTIN_REGISTRY["artifacts"] = _artifacts
+        _BUILTIN_REGISTRY["sleep"] = _sleep
         _BUILTIN_REGISTRY["human_input"] = _human_input
 
 
