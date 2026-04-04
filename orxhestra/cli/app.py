@@ -342,12 +342,34 @@ async def _async_main() -> None:
     )
 
 
+def _graceful_shutdown() -> None:
+    """Clean up resources and suppress noisy errors on exit."""
+    # Flush and shut down OpenTelemetry (Langfuse, etc.)
+    try:
+        from opentelemetry import trace
+
+        provider = trace.get_tracer_provider()
+        if hasattr(provider, "force_flush"):
+            provider.force_flush(timeout_millis=2000)
+        if hasattr(provider, "shutdown"):
+            provider.shutdown()
+    except Exception:
+        pass
+
+    # Suppress errors from OTel generators garbage-collected during
+    # interpreter shutdown (e.g. "Failed to detach context").
+    for name in ("opentelemetry.context", "opentelemetry.trace"):
+        logging.getLogger(name).setLevel(logging.CRITICAL)
+
+
 def main() -> None:
     """Entry point for the ``orx`` command."""
     try:
         asyncio.run(_async_main())
     except KeyboardInterrupt:
         pass
+    finally:
+        _graceful_shutdown()
 
 
 if __name__ == "__main__":
