@@ -211,6 +211,30 @@ class InvocationContext(BaseModel):
 
         return events
 
+    def get_previous_final_responses(self) -> list[Any]:
+        """Return final responses from previous invocations (all branches).
+
+        Includes only events where ``is_final_response()`` is True and
+        the invocation_id differs from the current one.  This gives
+        agents context about what happened in prior turns without
+        including raw tool calls.
+
+        Returns
+        -------
+        list[Event]
+            Final response events from previous invocations.
+        """
+        if self.session is None:
+            return []
+
+        inv_id = self.invocation_id
+        return [
+            e for e in self.session.events
+            if e.invocation_id != inv_id
+            and e.is_final_response()
+            and e.text
+        ]
+
     def set_agent_state(
         self,
         agent_name: str,
