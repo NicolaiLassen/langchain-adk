@@ -2,12 +2,23 @@
 
 from __future__ import annotations
 
-from importlib.metadata import version as _pkg_version
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-_VERSION: str = _pkg_version("orxhestra")
+
+def _get_version() -> str:
+    """Read version without importing orxhestra (avoids circular import)."""
+    from pathlib import Path
+
+    init = Path(__file__).resolve().parent.parent / "__init__.py"
+    for line in init.read_text().splitlines():
+        if line.startswith("__version__"):
+            return line.split('"')[1]
+    return "0.0.0"
+
+
+_VERSION: str = _get_version()
 
 
 class ModelConfig(BaseModel):
