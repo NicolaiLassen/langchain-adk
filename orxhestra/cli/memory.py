@@ -1,17 +1,35 @@
-"""Persistent project context — AGENTS.md, rules, and local overrides.
+"""Persistent project context — loads instructions from multiple AI tool conventions.
 
 Loads context from multiple sources in a defined hierarchy:
 
+**orx-native (user-level):**
+
 1. ``~/.orx/AGENTS.md`` — user-level preferences
 2. ``~/.orx/rules/*.md`` — user-level modular rules
+
+**orx-native (project-level):**
+
 3. ``<workspace>/.orx/AGENTS.md`` — project-level context
 4. ``<workspace>/.orx/AGENTS.local.md`` — project-level local (gitignored)
 5. ``<workspace>/.orx/rules/*.md`` — project-level modular rules
 6. ``<workspace>/AGENTS.md`` — project root context
 7. ``<workspace>/AGENTS.local.md`` — project root local (gitignored)
 
-The agent can update these files via filesystem tools to persist
-learnings across sessions.
+**Third-party AI tool conventions (project-level, read-only):**
+
+8.  ``<workspace>/CLAUDE.md`` — Claude Code (Anthropic)
+9.  ``<workspace>/.cursorrules`` — Cursor IDE (legacy)
+10. ``<workspace>/.cursor/rules/*.md`` — Cursor IDE (modern)
+11. ``<workspace>/.windsurfrules`` — Windsurf / Codeium (legacy)
+12. ``<workspace>/.windsurf/rules/*.md`` — Windsurf / Codeium (modern)
+13. ``<workspace>/.clinerules`` — Cline (single file)
+14. ``<workspace>/.clinerules/*.md`` — Cline (directory)
+15. ``<workspace>/.github/copilot-instructions.md`` — GitHub Copilot
+16. ``<workspace>/CONVENTIONS.md`` — Aider / general
+17. ``<workspace>/codex.md`` — OpenAI Codex CLI
+
+The agent can update orx-native files via filesystem tools to persist
+learnings across sessions. Third-party files are loaded read-only.
 """
 
 from __future__ import annotations
@@ -60,6 +78,16 @@ def load_agents_md(workspace: str) -> str:
     Sources are loaded in order from most general (user-level) to most
     specific (project root local). All non-empty sources are concatenated
     into a single string injected into agent instructions.
+
+    Parameters
+    ----------
+    workspace : str
+        Workspace directory path to search for project-level files.
+
+    Returns
+    -------
+    str
+        Concatenated memory content, or empty string if none found.
     """
     sections: list[str] = []
 
@@ -95,6 +123,41 @@ def load_agents_md(workspace: str) -> str:
     if root_local:
         sections.append(f"## Project Local Context\n{root_local}")
 
+    # ── Third-party AI tool conventions (read-only) ──────────────
+    _THIRD_PARTY: list[tuple[str, str | Path]] = [
+        ("Claude Code", "CLAUDE.md"),
+        ("Cursor Rules", ".cursorrules"),
+        ("GitHub Copilot", ".github/copilot-instructions.md"),
+        ("Conventions", "CONVENTIONS.md"),
+        ("Codex", "codex.md"),
+    ]
+    for label, rel_path in _THIRD_PARTY:
+        content = _load_file(ws / rel_path)
+        if content:
+            sections.append(f"## {label}\n{content}")
+
+    # Directory-based third-party conventions
+    _THIRD_PARTY_DIRS: list[tuple[str, str]] = [
+        ("Cursor Rule", ".cursor/rules"),
+        ("Windsurf Rule", ".windsurf/rules"),
+        ("Cline Rule", ".clinerules"),
+    ]
+    for label, rel_dir in _THIRD_PARTY_DIRS:
+        dir_path: Path = ws / rel_dir
+        if dir_path.is_dir():
+            for name, content in _load_rules_dir(dir_path):
+                sections.append(f"## {label}: {name}\n{content}")
+        elif dir_path.is_file():
+            # .clinerules can be a single file
+            content = _load_file(dir_path)
+            if content:
+                sections.append(f"## {label}\n{content}")
+
+    # Legacy single-file conventions
+    windsurfrules: str | None = _load_file(ws / ".windsurfrules")
+    if windsurfrules:
+        sections.append(f"## Windsurf Rules\n{windsurfrules}")
+
     if not sections:
         return ""
 
@@ -102,7 +165,13 @@ def load_agents_md(workspace: str) -> str:
 
 
 def get_memory_instructions() -> str:
-    """Return instructions for the agent about the memory system."""
+    """Return instructions for the agent about the memory system.
+
+    Returns
+    -------
+    str
+        Markdown-formatted instructions describing the memory hierarchy.
+    """
     return """\
 # Memory System
 You have access to persistent memory via AGENTS.md files and rules:
@@ -120,9 +189,18 @@ You have access to persistent memory via AGENTS.md files and rules:
 - **.orx/AGENTS.local.md** — personal project notes
 - **AGENTS.local.md** — personal root notes
 
+**Third-party context** (auto-loaded, read-only):
+- **CLAUDE.md** — Claude Code instructions
+- **.cursorrules** / **.cursor/rules/*.md** — Cursor IDE rules
+- **.windsurfrules** / **.windsurf/rules/*.md** — Windsurf rules
+- **.clinerules** — Cline rules (file or directory)
+- **.github/copilot-instructions.md** — GitHub Copilot instructions
+- **CONVENTIONS.md** — coding conventions (Aider / general)
+- **codex.md** — OpenAI Codex CLI instructions
+
 When you learn something important about the project (build commands, code
 conventions, architecture decisions, user preferences), update the appropriate
-file using write_file or edit_file. This persists across sessions.
+orx-native file using write_file or edit_file. This persists across sessions.
 
 For modular rules, create topic-specific files in .orx/rules/:
   .orx/rules/code-style.md

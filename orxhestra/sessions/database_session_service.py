@@ -117,7 +117,24 @@ class DatabaseSessionService(BaseSessionService):
         state: dict[str, Any] | None = None,
         session_id: str | None = None,
     ) -> Session:
-        """Create a new session and persist it to the database."""
+        """Create a new session and persist it to the database.
+
+        Parameters
+        ----------
+        app_name : str
+            Name of the application owning the session.
+        user_id : str
+            Identifier of the user the session belongs to.
+        state : dict[str, Any] | None, optional
+            Initial session state. Defaults to an empty dict.
+        session_id : str | None, optional
+            Explicit session ID. A UUID is generated when omitted.
+
+        Returns
+        -------
+        Session
+            The newly created session.
+        """
         self._check_init()
 
         sid = session_id or str(uuid4())
@@ -150,7 +167,22 @@ class DatabaseSessionService(BaseSessionService):
         user_id: str,
         session_id: str,
     ) -> Session | None:
-        """Retrieve a session and its events from the database."""
+        """Retrieve a session and its events from the database.
+
+        Parameters
+        ----------
+        app_name : str
+            Name of the application owning the session.
+        user_id : str
+            Identifier of the user the session belongs to.
+        session_id : str
+            Unique identifier of the session to retrieve.
+
+        Returns
+        -------
+        Session | None
+            The matching session, or ``None`` if not found.
+        """
         self._check_init()
         from sqlalchemy import select
 
@@ -185,7 +217,20 @@ class DatabaseSessionService(BaseSessionService):
         )
 
     async def append_event(self, session: Session, event: Event) -> Event:
-        """Persist the event to the database and apply state delta."""
+        """Persist the event to the database and apply state delta.
+
+        Parameters
+        ----------
+        session : Session
+            The session to append the event to.
+        event : Event
+            The event to persist.
+
+        Returns
+        -------
+        Event
+            The persisted event.
+        """
         event = await super().append_event(session, event)
 
         if event.partial:
@@ -221,7 +266,20 @@ class DatabaseSessionService(BaseSessionService):
         *,
         state: dict[str, Any] | None = None,
     ) -> Session:
-        """Merge state updates and persist to the database."""
+        """Merge state updates and persist to the database.
+
+        Parameters
+        ----------
+        session_id : str
+            Unique identifier of the session to update.
+        state : dict[str, Any] | None, optional
+            State entries to merge into the existing session state.
+
+        Returns
+        -------
+        Session
+            The updated session.
+        """
         self._check_init()
         from sqlalchemy import select, update
 
@@ -259,7 +317,17 @@ class DatabaseSessionService(BaseSessionService):
         )
 
     async def delete_session(self, session_id: str) -> None:
-        """Delete a session and all its events from the database."""
+        """Delete a session and all its events from the database.
+
+        Parameters
+        ----------
+        session_id : str
+            Unique identifier of the session to delete.
+
+        Returns
+        -------
+        None
+        """
         self._check_init()
         from sqlalchemy import delete
 
@@ -278,7 +346,20 @@ class DatabaseSessionService(BaseSessionService):
         app_name: str,
         user_id: str,
     ) -> list[Session]:
-        """List all sessions for a given app and user."""
+        """List all sessions for a given app and user.
+
+        Parameters
+        ----------
+        app_name : str
+            Name of the application to filter by.
+        user_id : str
+            Identifier of the user to filter by.
+
+        Returns
+        -------
+        list[Session]
+            All sessions matching the given app and user.
+        """
         self._check_init()
         from sqlalchemy import select
 

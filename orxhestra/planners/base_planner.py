@@ -58,6 +58,25 @@ class BasePlanner(ABC):
             needed for this turn.
         """
 
+    def has_pending_tasks(self, readonly_context: ReadonlyContext) -> bool:
+        """Check whether the planner still has incomplete tasks.
+
+        Called by the agent after a no-tool-call response to decide whether
+        to continue the loop or return. The default returns ``False``,
+        meaning the agent always treats text-only responses as final.
+
+        Parameters
+        ----------
+        readonly_context : ReadonlyContext
+            A read-only view of the current invocation context.
+
+        Returns
+        -------
+        bool
+            True if there are pending tasks that should keep the loop going.
+        """
+        return False
+
     def process_planning_response(
         self,
         readonly_context: ReadonlyContext,

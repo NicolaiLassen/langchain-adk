@@ -23,8 +23,20 @@ async def events_to_a2a_stream(
 ) -> AsyncIterator[TaskStatusUpdateEvent | TaskArtifactUpdateEvent]:
     """Convert SDK event stream into A2A v1.0 streaming events.
 
-    Yields TaskStatusUpdateEvent for status changes and
-    TaskArtifactUpdateEvent for content (final answer, tool results).
+    Parameters
+    ----------
+    events : AsyncIterator[Event]
+        SDK event stream from an agent's ``astream`` method.
+    task_id : str
+        A2A task identifier to attach to emitted events.
+    context_id : str
+        A2A context identifier to attach to emitted events.
+
+    Yields
+    ------
+    TaskStatusUpdateEvent | TaskArtifactUpdateEvent
+        TaskStatusUpdateEvent for status changes and
+        TaskArtifactUpdateEvent for content (final answer, tool results).
     """
     async for event in events:
         if event.is_final_response():

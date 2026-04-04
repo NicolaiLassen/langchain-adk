@@ -12,17 +12,35 @@ from langchain_core.tools import BaseTool, StructuredTool
 
 
 class TodoList:
-    """Mutable todo list shared between the tool and the CLI renderer."""
+    """Mutable todo list shared between the tool and the CLI renderer.
+
+    Attributes
+    ----------
+    todos : list[dict[str, str]]
+        List of todo items, each with ``"content"`` and ``"status"`` keys.
+    """
 
     def __init__(self) -> None:
         self.todos: list[dict[str, str]] = []
 
     def update(self, todos: list[dict[str, str]]) -> None:
-        """Replace the entire todo list."""
+        """Replace the entire todo list.
+
+        Parameters
+        ----------
+        todos : list[dict[str, str]]
+            New list of todo items.
+        """
         self.todos = todos
 
     def render(self) -> str:
-        """Render the todo list as a formatted string."""
+        """Render the todo list as a formatted string.
+
+        Returns
+        -------
+        str
+            Rich-markup formatted string, or empty string if no todos.
+        """
         if not self.todos:
             return ""
         lines: list[str] = []
@@ -40,7 +58,18 @@ class TodoList:
 
 
 def make_todo_tool(todo_list: TodoList) -> BaseTool:
-    """Create the write_todos tool backed by a shared TodoList instance."""
+    """Create the write_todos tool backed by a shared TodoList instance.
+
+    Parameters
+    ----------
+    todo_list : TodoList
+        Shared mutable todo list instance.
+
+    Returns
+    -------
+    BaseTool
+        A ``write_todos`` structured tool.
+    """
 
     async def write_todos(todos: str) -> str:
         """Update the task list for the current work.

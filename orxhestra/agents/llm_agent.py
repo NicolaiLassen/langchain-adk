@@ -495,8 +495,27 @@ class LlmAgent(BaseAgent):
 
             messages.append(raw_response)
 
-            # No tool calls -> final answer
+            # No tool calls -> check if planner has pending tasks
             if not llm_response.has_tool_calls:
+                # If a planner has pending tasks, treat text as interim and
+                # continue the loop so the agent keeps working.
+                if self._planner is not None:
+                    from orxhestra.agents.readonly_context import ReadonlyContext
+
+                    readonly = ReadonlyContext(ctx)
+                    if self._planner.has_pending_tasks(readonly):
+                        # Add a nudge so the LLM knows to keep going
+                        messages.append(
+                            HumanMessage(
+                                content=(
+                                    "You still have pending tasks on the task board. "
+                                    "Continue working on the next task — call the "
+                                    "appropriate tools to make progress."
+                                )
+                            )
+                        )
+                        continue
+
                 answer_text = llm_response.text
                 parts: list[TextPart | DataPart] = []
                 if answer_text:

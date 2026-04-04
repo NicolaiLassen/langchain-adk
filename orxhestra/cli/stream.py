@@ -69,7 +69,24 @@ async def prompt_approval(
     console: Console,
     auto_approve: bool,
 ) -> bool:
-    """Ask the user to approve a destructive tool call."""
+    """Ask the user to approve a destructive tool call.
+
+    Parameters
+    ----------
+    tool_name : str
+        Name of the tool requiring approval.
+    args : dict[str, Any]
+        Arguments passed to the tool call.
+    console : Console
+        Rich console for rendering the prompt.
+    auto_approve : bool
+        If True, skip the prompt and approve automatically.
+
+    Returns
+    -------
+    bool
+        True if the user approved (or auto-approved), False otherwise.
+    """
     if auto_approve:
         return True
     if tool_name not in APPROVE_REQUIRED:
@@ -103,7 +120,27 @@ async def stream_response(
     Markdown preview during streaming, then disappears and is replaced
     by a final static Markdown render.
 
-    Returns updated *auto_approve* value.
+    Parameters
+    ----------
+    runner : Runner
+        The agent runner to stream from.
+    session_id : str
+        Session identifier for the conversation.
+    message : str
+        User message to send to the agent.
+    console : Console
+        Rich console for rendering output.
+    markdown_cls : type
+        Rich Markdown class used to render streamed text.
+    todo_list : TodoList or None
+        Shared todo list for task tracking display.
+    auto_approve : bool
+        If True, skip approval prompts for destructive tools.
+
+    Returns
+    -------
+    bool
+        Updated auto_approve value.
     """
     s = _StreamState()
 

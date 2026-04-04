@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from importlib.metadata import version as _pkg_version
+
 from pydantic import BaseModel, Field, model_validator
+
+_VERSION: str = _pkg_version("orxhestra")
 
 
 class ModelConfig(BaseModel):
@@ -14,9 +18,18 @@ class ModelConfig(BaseModel):
     are forwarded directly to the LangChain model constructor.
     """
 
-    provider: str = Field(default="anthropic")
-    name: str = Field(default="claude-opus-4-6")
-    temperature: float | None = None
+    provider: str = Field(
+        default="anthropic",
+        description="LLM provider name (e.g. 'anthropic', 'openai', 'google').",
+    )
+    name: str = Field(
+        default="claude-opus-4-6",
+        description="Model identifier passed to the provider.",
+    )
+    temperature: float | None = Field(
+        default=None,
+        description="Sampling temperature override. None uses provider default.",
+    )
 
     model_config = {"extra": "allow"}
 
@@ -24,8 +37,14 @@ class ModelConfig(BaseModel):
 class MCPConfig(BaseModel):
     """MCP server connection — URL or dotted import path to a FastMCP instance."""
 
-    url: str | None = None
-    server: str | None = None
+    url: str | None = Field(
+        default=None,
+        description="HTTP URL of a running MCP server (e.g. 'http://localhost:8080/mcp').",
+    )
+    server: str | None = Field(
+        default=None,
+        description="Dotted import path to a FastMCP server object for in-memory usage.",
+    )
 
     @model_validator(mode="after")
     def _require_one(self) -> MCPConfig:
@@ -38,7 +57,7 @@ class MCPConfig(BaseModel):
 class TransferConfig(BaseModel):
     """Transfer tool target agents."""
 
-    targets: list[str]
+    targets: list[str] = Field(description="Agent names that can be transfer targets.")
 
 
 class ToolDef(BaseModel):
@@ -48,14 +67,38 @@ class ToolDef(BaseModel):
     ``transfer`` must be set.
     """
 
-    function: str | None = None
-    mcp: MCPConfig | None = None
-    builtin: str | None = None
-    agent: str | None = None
-    transfer: TransferConfig | None = None
-    skip_summarization: bool = Field(default=False)
-    name: str | None = None
-    description: str | None = None
+    function: str | None = Field(
+        default=None,
+        description="Dotted import path to a Python callable (e.g. 'mymod.tools.search').",
+    )
+    mcp: MCPConfig | None = Field(
+        default=None,
+        description="MCP server connection config that provides this tool.",
+    )
+    builtin: str | None = Field(
+        default=None,
+        description="Name of a registered built-in tool (e.g. 'shell', 'filesystem').",
+    )
+    agent: str | None = Field(
+        default=None,
+        description="Name of an agent to wrap as a callable tool.",
+    )
+    transfer: TransferConfig | None = Field(
+        default=None,
+        description="Transfer tool config for handing off to other agents.",
+    )
+    skip_summarization: bool = Field(
+        default=False,
+        description="If True, skip LLM summarization of this tool's result.",
+    )
+    name: str | None = Field(
+        default=None,
+        description="Override the tool name exposed to the LLM.",
+    )
+    description: str | None = Field(
+        default=None,
+        description="Override the tool description exposed to the LLM.",
+    )
 
     @model_validator(mode="after")
     def _exactly_one_type(self) -> ToolDef:
@@ -76,18 +119,36 @@ class ToolDef(BaseModel):
 class PlannerDef(BaseModel):
     """Planner configuration attached to an agent."""
 
-    type: Literal["plan_react", "task"] = Field(default="plan_react")
-    tasks: list[dict[str, Any]] | None = None
+    type: Literal["plan_react", "task"] = Field(
+        default="plan_react",
+        description="Planner strategy: 'plan_react' for ReAct-style or 'task' for task board.",
+    )
+    tasks: list[dict[str, Any]] | None = Field(
+        default=None,
+        description="Pre-defined tasks for the task planner (ignored by plan_react).",
+    )
 
 
 class SkillItemDef(BaseModel):
     """A skill definition — inline ``content``, remote ``mcp``, or ``directory``."""
 
-    name: str
-    description: str = Field(default="")
-    content: str | None = None
-    mcp: MCPConfig | None = None
-    directory: str | None = None
+    name: str = Field(description="Unique skill name used for tool registration.")
+    description: str = Field(
+        default="",
+        description="Short description shown to the LLM for skill selection.",
+    )
+    content: str | None = Field(
+        default=None,
+        description="Inline Markdown content for the skill.",
+    )
+    mcp: MCPConfig | None = Field(
+        default=None,
+        description="MCP server that provides the skill's tools.",
+    )
+    directory: str | None = Field(
+        default=None,
+        description="Path to a directory containing a SKILL.md and resources.",
+    )
 
     @model_validator(mode="after")
     def _require_one_source(self) -> SkillItemDef:
@@ -101,36 +162,90 @@ class SkillItemDef(BaseModel):
 class A2ASkillDef(BaseModel):
     """A2A skill advertisement."""
 
-    id: str
-    name: str
-    description: str = Field(default="")
-    tags: list[str] = Field(default_factory=list)
+    id: str = Field(description="Unique skill identifier advertised via A2A.")
+    name: str = Field(description="Human-readable skill name.")
+    description: str = Field(
+        default="",
+        description="Description of what the skill does.",
+    )
+    tags: list[str] = Field(
+        default_factory=list,
+        description="Tags for skill discovery and filtering.",
+    )
 
 
 class AgentDef(BaseModel):
     """Definition of a single agent in the orx file."""
 
-    type: Literal["llm", "react", "sequential", "parallel", "loop", "a2a"] = Field(default="llm")
-    description: str = Field(default="")
-    url: str | None = None
-    model: ModelConfig | str | None = None
-    instructions: str | None = None
-    tools: list[str | ToolDef] | None = None
-    skills: list[str] = Field(default_factory=list)
-    agents: list[str] | None = None
-    planner: PlannerDef | None = None
-    output_key: str | None = None
-    output_schema: str | None = None
-    include_contents: str | None = None  # "default" or "none"
-    max_iterations: int | None = None
-    should_continue: str | None = None
+    type: Literal["llm", "react", "sequential", "parallel", "loop", "a2a"] = Field(
+        default="llm",
+        description="Agent type determining execution strategy.",
+    )
+    description: str = Field(
+        default="",
+        description="Short description used by LLMs for routing decisions.",
+    )
+    url: str | None = Field(
+        default=None,
+        description="Remote A2A server URL (only for type='a2a').",
+    )
+    model: ModelConfig | str | None = Field(
+        default=None,
+        description="LLM model config or a named model reference from the models map.",
+    )
+    instructions: str | None = Field(
+        default=None,
+        description="System instructions prepended to the agent's prompt.",
+    )
+    tools: list[str | ToolDef] | None = Field(
+        default=None,
+        description="Tools available to this agent (named refs or inline ToolDef).",
+    )
+    skills: list[str] = Field(
+        default_factory=list,
+        description="Skill names to load as progressive-disclosure tools.",
+    )
+    agents: list[str] | None = Field(
+        default=None,
+        description="Sub-agent names registered under this agent.",
+    )
+    planner: PlannerDef | None = Field(
+        default=None,
+        description="Planning strategy attached to this agent.",
+    )
+    output_key: str | None = Field(
+        default=None,
+        description="Session state key where the agent's final output is stored.",
+    )
+    output_schema: str | None = Field(
+        default=None,
+        description="Dotted import path to a Pydantic model for structured output.",
+    )
+    include_contents: str | None = Field(
+        default=None,
+        description="Content inclusion mode: 'default' or 'none'.",
+    )
+    max_iterations: int | None = Field(
+        default=None,
+        description="Max tool-call loop iterations before forced stop.",
+    )
+    should_continue: str | None = Field(
+        default=None,
+        description="Dotted import path to a callable that decides loop continuation.",
+    )
 
 
 class DefaultsConfig(BaseModel):
     """Global defaults inherited by all agents."""
 
-    model: ModelConfig | None = None
-    max_iterations: int = Field(default=10)
+    model: ModelConfig | None = Field(
+        default=None,
+        description="Default model config inherited by agents without an explicit model.",
+    )
+    max_iterations: int = Field(
+        default=10,
+        description="Default max tool-call iterations for all agents.",
+    )
 
 
 class CompactionConfigDef(BaseModel):
@@ -146,49 +261,116 @@ class CompactionConfigDef(BaseModel):
         many characters as raw.  Default 20,000 (~5k tokens).
     """
 
-    char_threshold: int = Field(default=100_000)
-    retention_chars: int = Field(default=20_000)
+    char_threshold: int = Field(
+        default=100_000,
+        description="Compact when non-compacted event content exceeds this many characters (~25k tokens).",
+    )
+    retention_chars: int = Field(
+        default=20_000,
+        description="Always keep the most recent events totalling at least this many characters as raw (~5k tokens).",
+    )
 
 
 class RunConfigDef(BaseModel):
     """LangChain RunnableConfig — passed to every LLM and tool call."""
 
-    callbacks: list[str] = Field(default_factory=list)
-    tags: list[str] = Field(default_factory=list)
-    metadata: dict[str, str] = Field(default_factory=dict)
+    callbacks: list[str] = Field(
+        default_factory=list,
+        description="Dotted import paths to LangChain callback handler classes.",
+    )
+    tags: list[str] = Field(
+        default_factory=list,
+        description="Tags propagated to every LLM and tool call for tracing.",
+    )
+    metadata: dict[str, str] = Field(
+        default_factory=dict,
+        description="Arbitrary key-value metadata attached to every run.",
+    )
 
 
 class RunnerConfig(BaseModel):
     """Runner configuration."""
 
-    app_name: str = Field(default="agent-app")
-    session_service: str = Field(default="memory")
-    artifact_service: str | None = None
-    compaction: CompactionConfigDef | None = None
-    config: RunConfigDef | None = None
+    app_name: str = Field(
+        default="agent-app",
+        description="Application name used to namespace sessions.",
+    )
+    session_service: str = Field(
+        default="memory",
+        description="Session backend: 'memory' for in-memory or 'database' for persistent.",
+    )
+    artifact_service: str | None = Field(
+        default=None,
+        description="Artifact backend: 'memory', 'file', or None to disable.",
+    )
+    compaction: CompactionConfigDef | None = Field(
+        default=None,
+        description="Automatic session history compaction settings.",
+    )
+    config: RunConfigDef | None = Field(
+        default=None,
+        description="LangChain RunnableConfig passed to every LLM and tool call.",
+    )
 
 
 class ServerConfig(BaseModel):
     """A2A server configuration."""
 
-    app_name: str = Field(default="agent-app")
-    version: str = Field(default="1.0.0")
-    url: str = Field(default="http://localhost:8000")
-    skills: list[A2ASkillDef] = Field(default_factory=list)
+    app_name: str = Field(
+        default="agent-app",
+        description="Application name exposed in the A2A agent card.",
+    )
+    version: str = Field(
+        default="1.0.0",
+        description="Semantic version advertised in the A2A agent card.",
+    )
+    url: str = Field(
+        default="http://localhost:8000",
+        description="Public URL where the A2A server is reachable.",
+    )
+    skills: list[A2ASkillDef] = Field(
+        default_factory=list,
+        description="Skills advertised in the A2A agent card.",
+    )
 
 
 class ComposeSpec(BaseModel):
     """Top-level YAML schema for agent composition."""
 
-    version: str = Field(default="0.0.8")
-    defaults: DefaultsConfig = Field(default_factory=DefaultsConfig)
-    models: dict[str, ModelConfig] = Field(default_factory=dict)
-    tools: dict[str, ToolDef] = Field(default_factory=dict)
-    skills: dict[str, SkillItemDef] = Field(default_factory=dict)
-    agents: dict[str, AgentDef]
-    main_agent: str
-    runner: RunnerConfig | None = None
-    server: ServerConfig | None = None
+    version: str = Field(
+        default=_VERSION,
+        description="Schema version for forward-compatibility checks.",
+    )
+    defaults: DefaultsConfig = Field(
+        default_factory=DefaultsConfig,
+        description="Global defaults inherited by all agents.",
+    )
+    models: dict[str, ModelConfig] = Field(
+        default_factory=dict,
+        description="Named model configs referenceable by agents via string key.",
+    )
+    tools: dict[str, ToolDef] = Field(
+        default_factory=dict,
+        description="Named tool definitions referenceable by agents.",
+    )
+    skills: dict[str, SkillItemDef] = Field(
+        default_factory=dict,
+        description="Named skill definitions available to agents.",
+    )
+    agents: dict[str, AgentDef] = Field(
+        description="All agent definitions keyed by unique name.",
+    )
+    main_agent: str = Field(
+        description="Name of the root agent that receives user input.",
+    )
+    runner: RunnerConfig | None = Field(
+        default=None,
+        description="Runner configuration for session management and execution.",
+    )
+    server: ServerConfig | None = Field(
+        default=None,
+        description="A2A server configuration for remote agent hosting.",
+    )
 
     @model_validator(mode="after")
     def _validate_main_agent(self) -> ComposeSpec:

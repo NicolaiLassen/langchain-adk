@@ -94,7 +94,19 @@ async def _repl(
     *,
     auto_approve: bool = False,
 ) -> None:
-    """Run the interactive REPL."""
+    """Run the interactive REPL.
+
+    Parameters
+    ----------
+    orx_path : Path
+        Path to the orx YAML file.
+    state : ReplState
+        Shared mutable REPL state.
+    workspace : str
+        Workspace directory path.
+    auto_approve : bool
+        If True, skip approval prompts for destructive tools.
+    """
     try:
         from rich.markdown import Markdown
     except ImportError:
@@ -184,7 +196,20 @@ async def _read_multiline(
     first_line: str,
     prompt_session: Any,
 ) -> str:
-    """Read multi-line input delimited by triple quotes."""
+    """Read multi-line input delimited by triple quotes.
+
+    Parameters
+    ----------
+    first_line : str
+        The initial line containing the opening triple-quote delimiter.
+    prompt_session : Any
+        A prompt_toolkit PromptSession, or None for plain input.
+
+    Returns
+    -------
+    str
+        The concatenated multi-line input with delimiters stripped.
+    """
     delimiter: str = first_line[:3]
     ml_lines: list[str] = [first_line[3:]]
     while True:
@@ -203,7 +228,15 @@ async def _read_multiline(
 
 
 async def _serve(orx_path: Path, port: int) -> None:
-    """Start as an A2A server."""
+    """Start as an A2A server.
+
+    Parameters
+    ----------
+    orx_path : Path
+        Path to the orx YAML file.
+    port : int
+        Port number for the HTTP server.
+    """
     import yaml
 
     from orxhestra.composer.composer import Composer

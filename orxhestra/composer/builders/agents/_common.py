@@ -21,8 +21,24 @@ async def resolve_llm_kwargs(
     """Build the common keyword arguments for LlmAgent / ReActAgent.
 
     Handles model creation, tool resolution, instructions, planners,
-    output schemas, and skills — everything shared between the two
+    output schemas, and skills -- everything shared between the two
     agent types.
+
+    Parameters
+    ----------
+    name : str
+        Agent name from the YAML spec.
+    agent_def : AgentDef
+        Parsed agent definition.
+    spec : ComposeSpec
+        Full compose specification.
+    helpers : Helpers
+        Builder dependency bag.
+
+    Returns
+    -------
+    dict[str, Any]
+        Keyword arguments ready to pass to the agent constructor.
     """
     from orxhestra.composer.builders.models import create
     from orxhestra.composer.builders.tools import import_object
@@ -123,7 +139,23 @@ async def resolve_llm_kwargs(
 
 
 def _build_planner(planner_def: PlannerDef) -> BasePlanner:
-    """Build a planner from its definition."""
+    """Build a planner from its definition.
+
+    Parameters
+    ----------
+    planner_def : PlannerDef
+        Planner configuration from the YAML spec.
+
+    Returns
+    -------
+    BasePlanner
+        Constructed planner instance.
+
+    Raises
+    ------
+    ComposerError
+        If the planner type is unknown.
+    """
     if planner_def.type == "plan_react":
         from orxhestra.planners.plan_re_act_planner import PlanReActPlanner
 

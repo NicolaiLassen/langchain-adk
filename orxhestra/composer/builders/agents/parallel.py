@@ -19,7 +19,29 @@ async def build(
     *,
     helpers: Helpers,
 ) -> BaseAgent:
-    """Build a ``ParallelAgent`` from a YAML definition."""
+    """Build a ``ParallelAgent`` from a YAML definition.
+
+    Parameters
+    ----------
+    name : str
+        Agent name.
+    agent_def : AgentDef
+        YAML agent definition.
+    spec : ComposeSpec
+        Full compose specification.
+    helpers : Helpers
+        Builder dependencies.
+
+    Returns
+    -------
+    BaseAgent
+        Constructed ``ParallelAgent``.
+
+    Raises
+    ------
+    ComposerError
+        If the agent definition has no ``agents`` list.
+    """
     from orxhestra.agents.parallel_agent import ParallelAgent
 
     if not agent_def.agents:

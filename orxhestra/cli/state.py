@@ -1,26 +1,32 @@
 """Shared REPL state — passed between app, commands, and builder."""
 
-from __future__ import annotations
+from langchain_core.language_models import BaseChatModel
+from pydantic import BaseModel, ConfigDict, Field
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from langchain_core.language_models import BaseChatModel
-
-    from orxhestra.cli.todo_tool import TodoList
-    from orxhestra.runner import Runner
+from orxhestra.cli.todo_tool import TodoList
+from orxhestra.runner import Runner
 
 
-@dataclass
-class ReplState:
+class ReplState(BaseModel):
     """Mutable state for the interactive REPL."""
 
-    runner: Runner
-    session_id: str
-    model_name: str
-    todo_list: TodoList | None = None
-    llm: BaseChatModel | None = None
-    turn_count: int = 0
-    should_continue: bool = True
-    retry_message: str | None = field(default=None, repr=False)
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    runner: Runner = Field(description="Active Runner instance for agent execution.")
+    session_id: str = Field(description="Current session identifier.")
+    model_name: str = Field(description="Name of the LLM model in use.")
+    todo_list: TodoList | None = Field(
+        default=None, description="Active todo list for task tracking."
+    )
+    llm: BaseChatModel | None = Field(
+        default=None, description="LangChain LLM instance."
+    )
+    turn_count: int = Field(
+        default=0, description="Number of completed REPL turns."
+    )
+    should_continue: bool = Field(
+        default=True, description="Whether the REPL loop should continue."
+    )
+    retry_message: str | None = Field(
+        default=None, repr=False, description="Message to retry on next turn."
+    )

@@ -20,7 +20,23 @@ if TYPE_CHECKING:
 
 
 def import_object(dotted_path: str) -> Any:
-    """Import an object by its fully-qualified dotted path."""
+    """Import an object by its fully-qualified dotted path.
+
+    Parameters
+    ----------
+    dotted_path : str
+        Fully-qualified path, e.g. ``"my_module.MyClass"``.
+
+    Returns
+    -------
+    Any
+        The imported object.
+
+    Raises
+    ------
+    ComposerError
+        If the path is invalid or the module/attribute cannot be found.
+    """
     module_path, _, attr_name = dotted_path.rpartition(".")
     if not module_path:
         msg = f"Invalid import path '{dotted_path}' — expected 'module.attribute'"
@@ -53,6 +69,13 @@ def register_builtin(name: str, factory: Callable[[], _ToolResult]) -> None:
     """Register a builtin tool factory by name.
 
     The factory may return a single ``BaseTool`` or a list of them.
+
+    Parameters
+    ----------
+    name : str
+        Tool name used in YAML ``tools:`` lists.
+    factory : Callable
+        Zero-argument callable returning ``BaseTool`` or ``list[BaseTool]``.
 
     Example::
 
@@ -102,7 +125,20 @@ def _register_defaults() -> None:
 def resolve_builtin(name: str) -> _ToolResult:
     """Look up a builtin tool by name.
 
-    Returns a single ``BaseTool`` or a list of them.
+    Parameters
+    ----------
+    name : str
+        Registered builtin tool name.
+
+    Returns
+    -------
+    BaseTool | list[BaseTool]
+        The resolved tool(s).
+
+    Raises
+    ------
+    ComposerError
+        If the name is not registered.
     """
     _register_defaults()
     factory = _BUILTIN_REGISTRY.get(name)
@@ -118,7 +154,22 @@ def resolve_function(
     name: str | None = None,
     description: str | None = None,
 ) -> BaseTool:
-    """Import a Python callable and wrap it as a LangChain tool."""
+    """Import a Python callable and wrap it as a LangChain tool.
+
+    Parameters
+    ----------
+    path : str
+        Dotted import path to the callable.
+    name : str | None
+        Optional override for the tool name.
+    description : str | None
+        Optional override for the tool description.
+
+    Returns
+    -------
+    BaseTool
+        Wrapped LangChain tool.
+    """
     from orxhestra.tools.function_tool import function_tool
 
     fn = import_object(path)
@@ -143,7 +194,20 @@ async def resolve_mcp(
     url: str | None = None,
     server_path: str | None = None,
 ) -> list[BaseTool]:
-    """Connect to an MCP server and load its tools."""
+    """Connect to an MCP server and load its tools.
+
+    Parameters
+    ----------
+    url : str | None
+        MCP server URL.
+    server_path : str | None
+        Dotted import path to a local MCP server object.
+
+    Returns
+    -------
+    list[BaseTool]
+        Tools loaded from the MCP server.
+    """
     from orxhestra.integrations.mcp import MCPClient, MCPToolAdapter
 
     if url:
@@ -162,14 +226,38 @@ def resolve_agent_tool(
     agent: BaseAgent,
     skip_summarization: bool = False,
 ) -> BaseTool:
-    """Wrap an agent as an ``AgentTool``."""
+    """Wrap an agent as an ``AgentTool``.
+
+    Parameters
+    ----------
+    agent : BaseAgent
+        The agent to wrap.
+    skip_summarization : bool
+        If ``True``, skip LLM summarization of the agent's output.
+
+    Returns
+    -------
+    BaseTool
+        An ``AgentTool`` wrapping the agent.
+    """
     from orxhestra.tools.agent_tool import AgentTool
 
     return AgentTool(agent, skip_summarization=skip_summarization)
 
 
 def resolve_transfer(target_agents: list[BaseAgent]) -> BaseTool:
-    """Create a ``transfer_to_agent`` tool for the given targets."""
+    """Create a ``transfer_to_agent`` tool for the given targets.
+
+    Parameters
+    ----------
+    target_agents : list[BaseAgent]
+        Agents that can be transferred to.
+
+    Returns
+    -------
+    BaseTool
+        A transfer tool bound to the target agents.
+    """
     from orxhestra.tools.transfer_tool import make_transfer_tool
 
     return make_transfer_tool(target_agents)
@@ -185,6 +273,22 @@ async def resolve_mcp_skill(
 
     Reads the ``skill://{name}/SKILL.md`` resource and returns a ``Skill``
     object populated with the remote content.
+
+    Parameters
+    ----------
+    name : str
+        Skill name used in the resource URI.
+    description : str
+        Human-readable skill description.
+    url : str | None
+        MCP server URL.
+    server_path : str | None
+        Dotted import path to a local MCP server object.
+
+    Returns
+    -------
+    Skill
+        Populated skill instance.
     """
     from orxhestra.integrations.mcp import MCPClient
     from orxhestra.skills import Skill

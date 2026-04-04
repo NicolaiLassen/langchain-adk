@@ -15,7 +15,15 @@ if TYPE_CHECKING:
 
 
 def _set_human_input_callbacks(agent: Any, callback: Any) -> None:
-    """Walk the agent tree and wire up human_input tool callbacks."""
+    """Walk the agent tree and wire up human_input tool callbacks.
+
+    Parameters
+    ----------
+    agent : Any
+        Root agent (or sub-agent) to traverse.
+    callback : Any
+        Async callable to set on each human_input tool.
+    """
     if hasattr(agent, "_tools"):
         for tool in agent._tools.values():
             if tool.name == "human_input" and hasattr(tool, "set_callback"):
@@ -30,7 +38,19 @@ def _inject_context(
     memory_content: str,
     local_context: str,
 ) -> None:
-    """Append workspace, memory, and local context to LLM agent instructions."""
+    """Append workspace, memory, and local context to LLM agent instructions.
+
+    Parameters
+    ----------
+    raw : dict
+        Parsed orx YAML specification (mutated in place).
+    workspace : str
+        Workspace directory path.
+    memory_content : str
+        Loaded AGENTS.md content to inject.
+    local_context : str
+        Detected project context string.
+    """
     extra: str = f"\n# Workspace\nCurrent working directory: {workspace}\n"
     if memory_content:
         extra += f"\n{memory_content}\n"
@@ -52,7 +72,22 @@ async def build_from_orx(
     model_name: str,
     workspace: str,
 ) -> ReplState:
-    """Build a Runner from an orx YAML and return populated ReplState."""
+    """Build a Runner from an orx YAML and return populated ReplState.
+
+    Parameters
+    ----------
+    orx_path : Path
+        Path to the orx YAML file.
+    model_name : str
+        Name of the LLM model to use.
+    workspace : str
+        Workspace directory path.
+
+    Returns
+    -------
+    ReplState
+        Fully initialized REPL state with runner, session, and tools.
+    """
     import yaml
 
     from orxhestra.cli.builtins import get_todo_list, register_cli_builtins

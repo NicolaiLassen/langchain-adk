@@ -19,7 +19,24 @@ async def build(
     *,
     helpers: Helpers,
 ) -> BaseAgent:
-    """Build a ``LoopAgent`` from a YAML definition."""
+    """Build a ``LoopAgent`` from a YAML definition.
+
+    Parameters
+    ----------
+    name : str
+        Agent name.
+    agent_def : AgentDef
+        YAML agent definition.
+    spec : ComposeSpec
+        Full compose specification.
+    helpers : Helpers
+        Builder dependencies.
+
+    Returns
+    -------
+    BaseAgent
+        Constructed ``LoopAgent``.
+    """
     from orxhestra.agents.loop_agent import LoopAgent
     from orxhestra.composer.builders.tools import import_object
 

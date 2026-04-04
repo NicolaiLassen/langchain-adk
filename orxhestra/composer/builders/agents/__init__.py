@@ -23,6 +23,13 @@ _REGISTRY: dict[str, BuildFn] = {}
 def register(agent_type: str, fn: BuildFn) -> None:
     """Register a build function for a YAML agent type.
 
+    Parameters
+    ----------
+    agent_type : str
+        Key used in YAML ``type:`` field.
+    fn : BuildFn
+        Async callable that builds the agent.
+
     Example::
 
         async def build_custom(name, agent_def, spec, *, helpers):
@@ -34,7 +41,18 @@ def register(agent_type: str, fn: BuildFn) -> None:
 
 
 def get(agent_type: str) -> BuildFn | None:
-    """Look up a build function by agent type name."""
+    """Look up a build function by agent type name.
+
+    Parameters
+    ----------
+    agent_type : str
+        The agent type to look up.
+
+    Returns
+    -------
+    BuildFn | None
+        The registered build function, or ``None`` if not found.
+    """
     return _REGISTRY.get(agent_type)
 
 
@@ -60,6 +78,17 @@ class Helpers:
         resolve_model: Callable[[AgentDef], ModelConfig],
         build_agent: Callable[[str], Awaitable[BaseAgent]],
     ) -> None:
+        """Initialize helper dependencies for agent builders.
+
+        Parameters
+        ----------
+        resolve_tools : Callable[[AgentDef], Awaitable[list[BaseTool]]]
+            Resolve all tool references for an agent definition.
+        resolve_model : Callable[[AgentDef], ModelConfig]
+            Merge agent-level model config with defaults.
+        build_agent : Callable[[str], Awaitable[BaseAgent]]
+            Recursively build a sub-agent by name.
+        """
         self.resolve_tools = resolve_tools
         self.resolve_model = resolve_model
         self.build_agent = build_agent

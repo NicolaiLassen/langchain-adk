@@ -33,7 +33,18 @@ Conversation:
 
 
 def _estimate_event_chars(event: Event) -> int:
-    """Estimate the character count of an event's content."""
+    """Estimate the character count of an event's content.
+
+    Parameters
+    ----------
+    event : Event
+        The event to measure.
+
+    Returns
+    -------
+    int
+        Estimated character count (0 for partial events).
+    """
     if event.partial:
         return 0
     total: int = 0
@@ -47,7 +58,18 @@ def _estimate_event_chars(event: Event) -> int:
 
 
 def _events_to_text(events: list[Event]) -> str:
-    """Convert events to a readable text for summarization."""
+    """Convert events to a readable text for summarization.
+
+    Parameters
+    ----------
+    events : list[Event]
+        Events to convert.
+
+    Returns
+    -------
+    str
+        Newline-joined human-readable conversation text.
+    """
     lines: list[str] = []
     for event in events:
         if event.partial:

@@ -47,7 +47,20 @@ class Part(A2AModel):
 
 
 def text_part(text: str, media_type: str = "text/plain") -> Part:
-    """Create a text Part."""
+    """Create a text Part.
+
+    Parameters
+    ----------
+    text : str
+        The text content.
+    media_type : str
+        MIME type, defaults to ``"text/plain"``.
+
+    Returns
+    -------
+    Part
+        A Part with the ``text`` field set.
+    """
     return Part(text=text, media_type=media_type)
 
 
@@ -58,12 +71,42 @@ def file_part(
     media_type: str | None = None,
     filename: str | None = None,
 ) -> Part:
-    """Create a file Part (by URL or raw bytes)."""
+    """Create a file Part (by URL or raw bytes).
+
+    Parameters
+    ----------
+    url : str | None
+        Remote URL pointing to the file content.
+    raw : str | None
+        Base64-encoded file bytes.
+    media_type : str | None
+        MIME type of the file.
+    filename : str | None
+        Optional filename hint.
+
+    Returns
+    -------
+    Part
+        A Part with the ``url`` or ``raw`` field set.
+    """
     return Part(url=url, raw=raw, media_type=media_type, filename=filename)
 
 
 def data_part(data: dict[str, Any], media_type: str = "application/json") -> Part:
-    """Create a structured data Part."""
+    """Create a structured data Part.
+
+    Parameters
+    ----------
+    data : dict[str, Any]
+        Structured data payload.
+    media_type : str
+        MIME type, defaults to ``"application/json"``.
+
+    Returns
+    -------
+    Part
+        A Part with the ``data`` field set.
+    """
     return Part(data=data, media_type=media_type)
 
 

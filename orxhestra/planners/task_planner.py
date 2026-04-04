@@ -85,6 +85,29 @@ class TaskPlanner(BasePlanner):
             ctx.state[StateKey.TASK_BOARD] = board
         return board or {}
 
+    def has_pending_tasks(
+        self, readonly_context: ReadonlyInvocationContext
+    ) -> bool:
+        """Check whether the task board has incomplete tasks.
+
+        Parameters
+        ----------
+        readonly_context : ReadonlyContext
+            The current invocation context (read-only).
+
+        Returns
+        -------
+        bool
+            True if any task is not yet completed.
+        """
+        board: dict[str, Any] = readonly_context.state.get(
+            StateKey.TASK_BOARD, {}
+        )
+        if not board:
+            return False
+        items: list[dict[str, Any]] = list_task_items(board)
+        return any(t["status"] != TaskStatus.COMPLETED for t in items)
+
     def build_planning_instruction(
         self,
         readonly_context: ReadonlyInvocationContext,

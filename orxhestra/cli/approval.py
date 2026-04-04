@@ -51,7 +51,20 @@ def _has_suspicious_unicode(text: str) -> bool:
 
 
 def format_approval_prompt(tool_name: str, args: dict[str, Any]) -> str:
-    """Format a Rich-styled approval prompt with a bordered panel."""
+    """Format a Rich-styled approval prompt with a bordered panel.
+
+    Parameters
+    ----------
+    tool_name : str
+        Name of the tool requiring approval.
+    args : dict[str, Any]
+        Arguments passed to the tool call.
+
+    Returns
+    -------
+    str
+        Rich-markup string ready for ``console.print()``.
+    """
     # Build the primary value to display
     if tool_name == "shell_exec":
         primary: str = args.get("command", "")
@@ -105,7 +118,21 @@ def format_approval_prompt(tool_name: str, args: dict[str, Any]) -> str:
 
 
 class ApprovalWrapper(BaseTool):
-    """Wraps a tool to require human approval before execution."""
+    """Wraps a tool to require human approval before execution.
+
+    Attributes
+    ----------
+    name : str
+        Inherited tool name from the wrapped tool.
+    description : str
+        Inherited description from the wrapped tool.
+    args_schema : type[BaseModel] or None
+        Inherited argument schema from the wrapped tool.
+    inner_tool : BaseTool
+        The original tool being wrapped.
+    auto_approve_session : bool
+        Whether the user has approved all calls for this session.
+    """
 
     name: str
     description: str
@@ -137,7 +164,18 @@ class ApprovalWrapper(BaseTool):
 
 
 def wrap_tools_with_approval(tools: list[BaseTool]) -> list[BaseTool]:
-    """Wrap destructive tools with approval wrappers."""
+    """Wrap destructive tools with approval wrappers.
+
+    Parameters
+    ----------
+    tools : list[BaseTool]
+        List of tools to process.
+
+    Returns
+    -------
+    list[BaseTool]
+        New list with destructive tools wrapped in ``ApprovalWrapper``.
+    """
     result: list[BaseTool] = []
     for tool in tools:
         if tool.name in APPROVE_REQUIRED:

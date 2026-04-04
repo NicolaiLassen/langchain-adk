@@ -16,7 +16,22 @@ def make_task_tool(
     tools: list[BaseTool],
     workspace: str,
 ) -> BaseTool:
-    """Create a task delegation tool that spawns ephemeral sub-agents."""
+    """Create a task delegation tool that spawns ephemeral sub-agents.
+
+    Parameters
+    ----------
+    llm : BaseChatModel
+        LLM instance for the sub-agent.
+    tools : list[BaseTool]
+        Tools available to the sub-agent.
+    workspace : str
+        Workspace directory path injected into sub-agent instructions.
+
+    Returns
+    -------
+    BaseTool
+        A ``task`` structured tool for subtask delegation.
+    """
 
     async def task(description: str) -> str:
         """Delegate a complex subtask to a fresh agent with isolated context.

@@ -319,7 +319,23 @@ async def handle_slash_command(
     orx_path: object,
     workspace: str,
 ) -> None:
-    """Dispatch a slash command, mutating *state* in place."""
+    """Dispatch a slash command, mutating *state* in place.
+
+    Parameters
+    ----------
+    cmd : str
+        The slash command string (e.g. ``"/clear"``).
+    cmd_arg : str or None
+        Optional argument following the command.
+    state : ReplState
+        Shared mutable REPL state.
+    console : Console
+        Rich console for output.
+    orx_path : object
+        Path to the orx YAML file.
+    workspace : str
+        Workspace directory path.
+    """
     handler = _DISPATCH.get(cmd)
     if handler is None:
         console.print(

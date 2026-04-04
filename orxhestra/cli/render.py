@@ -56,7 +56,15 @@ def _tool_arg_summary(tool_name: str, args: dict) -> str:
 
 
 def render_tool_call(event: Event, console: Console) -> None:
-    """Render tool calls with boxed format and category coloring."""
+    """Render tool calls with boxed format and category coloring.
+
+    Parameters
+    ----------
+    event : Event
+        Event containing one or more tool calls.
+    console : Console
+        Rich console for output.
+    """
     for tc in event.tool_calls:
         if tc.metadata.get("interactive"):
             continue
@@ -74,7 +82,17 @@ def render_tool_response(
     *,
     elapsed: float | None = None,
 ) -> None:
-    """Render a truncated tool response with optional timing."""
+    """Render a truncated tool response with optional timing.
+
+    Parameters
+    ----------
+    event : Event
+        Event containing the tool response text.
+    console : Console
+        Rich console for output.
+    elapsed : float or None
+        Wall-clock seconds the tool call took, or None if unavailable.
+    """
     text: str = (event.text or "")[:300]
     elapsed_str: str = f" ({elapsed:.1f}s)" if elapsed is not None else ""
     if text:
@@ -92,7 +110,15 @@ def render_tool_response(
 
 
 def render_todos(todo_list: TodoList, console: Console) -> None:
-    """Render the todo list if it has items."""
+    """Render the todo list if it has items.
+
+    Parameters
+    ----------
+    todo_list : TodoList
+        The todo list instance to render.
+    console : Console
+        Rich console for output.
+    """
     if todo_list is None or not todo_list.todos:
         return
     rendered: str = todo_list.render()
@@ -107,7 +133,19 @@ def render_turn_summary(
     prompt_tokens: int = 0,
     completion_tokens: int = 0,
 ) -> None:
-    """Print a concise summary line after each agent turn."""
+    """Print a concise summary line after each agent turn.
+
+    Parameters
+    ----------
+    elapsed : float
+        Wall-clock seconds for the turn.
+    console : Console
+        Rich console for output.
+    prompt_tokens : int
+        Number of prompt tokens used.
+    completion_tokens : int
+        Number of completion tokens used.
+    """
     parts: list[str] = [f"{elapsed:.1f}s"]
     total: int = prompt_tokens + completion_tokens
     if total > 0:
@@ -124,7 +162,19 @@ def print_banner(
     workspace: str,
     console: Console,
 ) -> None:
-    """Print a styled welcome banner."""
+    """Print a styled welcome banner.
+
+    Parameters
+    ----------
+    orx_path : Path
+        Path to the orx YAML file.
+    model_name : str
+        Name of the active LLM model.
+    workspace : str
+        Workspace directory path.
+    console : Console
+        Rich console for output.
+    """
     import orxhestra
 
     try:

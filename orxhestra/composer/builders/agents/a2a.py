@@ -20,7 +20,24 @@ async def build(
     *,
     helpers: Helpers,
 ) -> BaseAgent:
-    """Build an ``A2AAgent`` from a YAML definition."""
+    """Build an ``A2AAgent`` from a YAML definition.
+
+    Parameters
+    ----------
+    name : str
+        Agent name.
+    agent_def : AgentDef
+        YAML agent definition.
+    spec : ComposeSpec
+        Full compose specification.
+    helpers : Helpers
+        Builder dependencies.
+
+    Returns
+    -------
+    BaseAgent
+        Constructed ``A2AAgent``.
+    """
     if not agent_def.url:
         msg = f"A2A agent '{name}' must have a 'url' field"
         raise ComposerError(msg)

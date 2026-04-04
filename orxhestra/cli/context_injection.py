@@ -26,7 +26,18 @@ async def _run_cmd(cmd: str, cwd: str, timeout: float = 5.0) -> str:
 
 
 def _detect_languages(workspace: str) -> list[str]:
-    """Detect programming languages from file extensions and config files."""
+    """Detect programming languages from file extensions and config files.
+
+    Parameters
+    ----------
+    workspace : str
+        Workspace directory path.
+
+    Returns
+    -------
+    list[str]
+        Detected language names.
+    """
     ws = Path(workspace)
     langs: list[str] = []
     markers: dict[str, list[str]] = {
@@ -54,7 +65,18 @@ def _detect_languages(workspace: str) -> list[str]:
 
 
 def _detect_package_manager(workspace: str) -> str | None:
-    """Detect the package manager from lock files and configs."""
+    """Detect the package manager from lock files and configs.
+
+    Parameters
+    ----------
+    workspace : str
+        Workspace directory path.
+
+    Returns
+    -------
+    str or None
+        Package manager name, or None if undetected.
+    """
     ws = Path(workspace)
     managers: list[tuple[str, str]] = [
         ("uv.lock", "uv"),
@@ -78,7 +100,18 @@ def _detect_package_manager(workspace: str) -> str | None:
 
 
 def _detect_test_command(workspace: str) -> str | None:
-    """Detect the likely test command for the project."""
+    """Detect the likely test command for the project.
+
+    Parameters
+    ----------
+    workspace : str
+        Workspace directory path.
+
+    Returns
+    -------
+    str or None
+        Detected test command, or None if undetected.
+    """
     ws = Path(workspace)
     if (ws / "Makefile").exists():
         try:
@@ -109,7 +142,20 @@ def _detect_test_command(workspace: str) -> str | None:
 
 
 def _get_directory_listing(workspace: str, max_items: int = 25) -> list[str]:
-    """Get top-level directory listing, excluding common noise."""
+    """Get top-level directory listing, excluding common noise.
+
+    Parameters
+    ----------
+    workspace : str
+        Workspace directory path.
+    max_items : int
+        Maximum number of entries to return.
+
+    Returns
+    -------
+    list[str]
+        Directory entries with trailing ``/`` for directories.
+    """
     ws = Path(workspace)
     ignore: set[str] = {
         "__pycache__", ".git", "node_modules", ".venv", "venv", ".tox",
@@ -132,7 +178,18 @@ def _get_directory_listing(workspace: str, max_items: int = 25) -> list[str]:
 
 
 async def collect_local_context(workspace: str) -> str:
-    """Collect local project context and return formatted string for prompt injection."""
+    """Collect local project context and return formatted string for prompt injection.
+
+    Parameters
+    ----------
+    workspace : str
+        Workspace directory path.
+
+    Returns
+    -------
+    str
+        Formatted context string, or empty string if nothing detected.
+    """
     sections: list[str] = []
 
     # Languages

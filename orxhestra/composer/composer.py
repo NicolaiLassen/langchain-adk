@@ -49,6 +49,13 @@ class Composer:
     """
 
     def __init__(self, spec: ComposeSpec) -> None:
+        """Initialize the composer with a validated specification.
+
+        Parameters
+        ----------
+        spec : ComposeSpec
+            The parsed and validated compose specification.
+        """
         self._spec = spec
         self._agents: dict[str, BaseAgent] = {}
         self._building: set[str] = set()
@@ -56,24 +63,78 @@ class Composer:
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> BaseAgent:
-        """Parse a YAML file and return the root agent."""
+        """Parse a YAML file and return the root agent.
+
+        Parameters
+        ----------
+        path : str | Path
+            Path to the YAML orx file.
+
+        Returns
+        -------
+        BaseAgent
+            The root agent of the composed tree.
+        """
         return asyncio.run(cls.from_yaml_async(path))
 
     @classmethod
     async def from_yaml_async(cls, path: str | Path) -> BaseAgent:
-        """Parse a YAML file and return the root agent (async)."""
+        """Parse a YAML file and return the root agent (async).
+
+        Parameters
+        ----------
+        path : str | Path
+            Path to the YAML orx file.
+
+        Returns
+        -------
+        BaseAgent
+            The root agent of the composed tree.
+        """
         spec = cls._load_spec(path)
         composer = cls(spec)
         return await composer._build()
 
     @classmethod
     def runner_from_yaml(cls, path: str | Path) -> Runner:
-        """Parse a YAML file and return a ``Runner``."""
+        """Parse a YAML file and return a ``Runner``.
+
+        Parameters
+        ----------
+        path : str | Path
+            Path to the YAML orx file.
+
+        Returns
+        -------
+        Runner
+            A configured runner with session and artifact services.
+
+        Raises
+        ------
+        ComposerError
+            If the YAML has no ``runner`` section.
+        """
         return asyncio.run(cls._runner_async(path))
 
     @classmethod
     async def runner_from_yaml_async(cls, path: str | Path) -> Runner:
-        """Parse a YAML file and return a ``Runner`` (async)."""
+        """Parse a YAML file and return a ``Runner`` (async).
+
+        Parameters
+        ----------
+        path : str | Path
+            Path to the YAML orx file.
+
+        Returns
+        -------
+        Runner
+            A configured runner with session and artifact services.
+
+        Raises
+        ------
+        ComposerError
+            If the YAML has no ``runner`` section.
+        """
         spec = cls._load_spec(path)
         if spec.runner is None:
             msg = "No 'runner' section in YAML"
@@ -84,12 +145,44 @@ class Composer:
 
     @classmethod
     def server_from_yaml(cls, path: str | Path) -> Any:
-        """Parse a YAML file and return a FastAPI app."""
+        """Parse a YAML file and return a FastAPI app.
+
+        Parameters
+        ----------
+        path : str | Path
+            Path to the YAML orx file.
+
+        Returns
+        -------
+        FastAPI
+            A FastAPI application wired to the composed agent tree.
+
+        Raises
+        ------
+        ComposerError
+            If the YAML has no ``server`` section.
+        """
         return asyncio.run(cls._server_async(path))
 
     @classmethod
     async def server_from_yaml_async(cls, path: str | Path) -> Any:
-        """Parse a YAML file and return a FastAPI app (async)."""
+        """Parse a YAML file and return a FastAPI app (async).
+
+        Parameters
+        ----------
+        path : str | Path
+            Path to the YAML orx file.
+
+        Returns
+        -------
+        FastAPI
+            A FastAPI application wired to the composed agent tree.
+
+        Raises
+        ------
+        ComposerError
+            If the YAML has no ``server`` section.
+        """
         spec = cls._load_spec(path)
         if spec.server is None:
             msg = "No 'server' section in YAML"

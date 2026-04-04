@@ -71,6 +71,13 @@ from orxhestra.sessions.database_session_service import DatabaseSessionService
 from orxhestra.sessions.in_memory_session_service import InMemorySessionService
 from orxhestra.sessions.session import Session
 
+# Decorators
+from orxhestra.decorators.deprecation import (
+    OrxhestraDeprecationWarning,
+    deprecated,
+    deprecated_param,
+)
+
 __all__ = [
     # Agents
     "BaseAgent",
@@ -109,4 +116,8 @@ __all__ = [
     "InMemorySessionService",
     # Composer
     "Composer",
+    # Decorators
+    "deprecated",
+    "deprecated_param",
+    "OrxhestraDeprecationWarning",
 ]

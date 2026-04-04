@@ -19,7 +19,24 @@ async def build(
     *,
     helpers: Helpers,
 ) -> BaseAgent:
-    """Build an ``LlmAgent`` from a YAML definition."""
+    """Build an ``LlmAgent`` from a YAML definition.
+
+    Parameters
+    ----------
+    name : str
+        Agent name.
+    agent_def : AgentDef
+        YAML agent definition.
+    spec : ComposeSpec
+        Full compose specification.
+    helpers : Helpers
+        Builder dependencies.
+
+    Returns
+    -------
+    BaseAgent
+        Constructed ``LlmAgent``.
+    """
     from orxhestra.agents.llm_agent import LlmAgent
 
     kwargs = await resolve_llm_kwargs(name, agent_def, spec, helpers=helpers)

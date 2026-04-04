@@ -19,7 +19,29 @@ async def build(
     *,
     helpers: Helpers,
 ) -> BaseAgent:
-    """Build a ``SequentialAgent`` from a YAML definition."""
+    """Build a ``SequentialAgent`` from a YAML definition.
+
+    Parameters
+    ----------
+    name : str
+        Agent name.
+    agent_def : AgentDef
+        YAML agent definition.
+    spec : ComposeSpec
+        Full compose specification.
+    helpers : Helpers
+        Builder dependencies.
+
+    Returns
+    -------
+    BaseAgent
+        Constructed ``SequentialAgent``.
+
+    Raises
+    ------
+    ComposerError
+        If the agent definition has no ``agents`` list.
+    """
     from orxhestra.agents.sequential_agent import SequentialAgent
 
     if not agent_def.agents:

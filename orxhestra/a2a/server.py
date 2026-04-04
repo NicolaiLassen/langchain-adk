@@ -77,6 +77,23 @@ class A2AServer:
         url: str = "http://localhost:8000",
         skills: list[AgentSkill] | None = None,
     ) -> None:
+        """Initialize the A2A server.
+
+        Parameters
+        ----------
+        agent : BaseAgent
+            The agent to expose via A2A.
+        session_service : BaseSessionService | None
+            Session backend for conversation state.
+        app_name : str
+            Application name used in session creation.
+        version : str
+            Version string for the Agent Card.
+        url : str
+            Base URL where the server is reachable.
+        skills : list[AgentSkill] | None
+            Skills advertised in the Agent Card.
+        """
         self.agent = agent
         self.session_service = session_service
         self.app_name = app_name
@@ -321,7 +338,13 @@ class A2AServer:
 
 
     def as_fastapi_app(self) -> FastAPI:
-        """Build and return a FastAPI application with A2A v1.0 routes."""
+        """Build and return a FastAPI application with A2A v1.0 routes.
+
+        Returns
+        -------
+        FastAPI
+            Configured application with JSON-RPC and Agent Card endpoints.
+        """
         app = FastAPI(title=f"{self.agent.name} A2A Server")
         server = self
 
@@ -345,7 +368,18 @@ class A2AServer:
 
 
 def _extract_text(message: Message) -> str:
-    """Extract plain text from a Message's parts."""
+    """Extract plain text from a Message's parts.
+
+    Parameters
+    ----------
+    message : Message
+        The A2A message to extract text from.
+
+    Returns
+    -------
+    str
+        Concatenated text from all text parts, or empty string.
+    """
     texts: list[str] = []
     for part in message.parts:
         if part.text is not None:
@@ -354,6 +388,20 @@ def _extract_text(message: Message) -> str:
 
 
 def _jsonrpc_success(request_id: Any, result: Any) -> JSONResponse:
+    """Wrap a result in a JSON-RPC 2.0 success response.
+
+    Parameters
+    ----------
+    request_id : str | int | None
+        The JSON-RPC request ID to echo back.
+    result : dict
+        Payload to include as the ``result`` field.
+
+    Returns
+    -------
+    JSONResponse
+        FastAPI JSON response with the JSON-RPC envelope.
+    """
     if hasattr(result, "model_dump"):
         result = result.model_dump(by_alias=True, exclude_none=True)
     resp = JSONRPCResponse(id=request_id, result=result)
@@ -361,6 +409,22 @@ def _jsonrpc_success(request_id: Any, result: Any) -> JSONResponse:
 
 
 def _jsonrpc_error(request_id: Any, code: int, message: str) -> JSONResponse:
+    """Wrap an error in a JSON-RPC 2.0 error response.
+
+    Parameters
+    ----------
+    request_id : str | int | None
+        The JSON-RPC request ID to echo back.
+    code : int
+        Numeric error code (see ``A2AErrorCode``).
+    message : str
+        Human-readable error description.
+
+    Returns
+    -------
+    JSONResponse
+        FastAPI JSON response with the JSON-RPC error envelope.
+    """
     resp = JSONRPCResponse(
         id=request_id or 0,
         error=JSONRPCError(code=code, message=message),
@@ -372,6 +436,20 @@ def _jsonrpc_error(request_id: Any, code: int, message: str) -> JSONResponse:
 
 
 def _sse_line(request_id: Any, event: Any) -> str:
+    """Format an A2A event as a Server-Sent Events data line.
+
+    Parameters
+    ----------
+    request_id : str | int | None
+        The JSON-RPC request ID to echo back.
+    event : Event
+        A2A event (e.g. ``TaskStatusUpdateEvent``) to serialize.
+
+    Returns
+    -------
+    str
+        SSE-formatted ``data: ...`` line with trailing double newline.
+    """
     if hasattr(event, "model_dump"):
         result_data = event.model_dump(by_alias=True, exclude_none=True)
     else:

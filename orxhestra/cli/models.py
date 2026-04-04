@@ -14,7 +14,18 @@ from orxhestra.cli.config import (
 
 
 def detect_provider(model_name: str) -> str:
-    """Detect the LLM provider from a model name prefix."""
+    """Detect the LLM provider from a model name prefix.
+
+    Parameters
+    ----------
+    model_name : str
+        Model name string (e.g. ``"claude-sonnet-4-6"``).
+
+    Returns
+    -------
+    str
+        Provider identifier (e.g. ``"anthropic"``, ``"openai"``).
+    """
     for prefix, provider in PROVIDER_PREFIXES:
         if model_name.startswith(prefix):
             return provider
@@ -26,6 +37,16 @@ def create_llm(model_name: str) -> BaseChatModel:
 
     Raises a clear error if the provider package is missing or if
     the API key environment variable is not set.
+
+    Parameters
+    ----------
+    model_name : str
+        Model name string used to detect the provider and instantiate the model.
+
+    Returns
+    -------
+    BaseChatModel
+        Configured LangChain chat model instance.
     """
     provider: str = detect_provider(model_name)
 

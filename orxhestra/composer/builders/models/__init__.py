@@ -26,6 +26,13 @@ _LAZY_PROVIDERS: dict[str, tuple[str, str]] = {
 def register(name: str, cls: type[BaseChatModel]) -> None:
     """Register a custom model provider class.
 
+    Parameters
+    ----------
+    name : str
+        Provider name used in YAML ``provider:`` field.
+    cls : type[BaseChatModel]
+        Chat model class to register.
+
     Example::
 
         register("my_provider", MyCustomChatModel)
@@ -34,7 +41,23 @@ def register(name: str, cls: type[BaseChatModel]) -> None:
 
 
 def _resolve_provider(provider: str) -> type[BaseChatModel]:
-    """Look up a provider class, lazy-importing built-ins as needed."""
+    """Look up a provider class, lazy-importing built-ins as needed.
+
+    Parameters
+    ----------
+    provider : str
+        Registered name or dotted import path.
+
+    Returns
+    -------
+    type[BaseChatModel]
+        The resolved chat model class.
+
+    Raises
+    ------
+    ComposerError
+        If the provider cannot be imported.
+    """
     if provider in _REGISTRY:
         return _REGISTRY[provider]
 
@@ -62,13 +85,18 @@ def create(provider: str, name: str, **kwargs: Any) -> BaseChatModel:
 
     Parameters
     ----------
-    provider:
+    provider : str
         A registered name (``"openai"``, ``"anthropic"``, ``"google"``), or
         a fully-qualified class import path.
-    name:
+    name : str
         Model name passed to the provider constructor.
-    **kwargs:
+    **kwargs : Any
         Extra keyword arguments forwarded to the model constructor.
+
+    Returns
+    -------
+    BaseChatModel
+        Instantiated chat model.
     """
     try:
         cls = _resolve_provider(provider)
