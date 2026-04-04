@@ -63,7 +63,7 @@ def format_approval_prompt(tool_name: str, args: dict[str, Any]) -> str:
     lines: list[str] = []
     if primary:
         display: str = primary if len(primary) <= 120 else primary[:120] + "..."
-        lines.append(f"  [bold white]{display}[/bold white]")
+        lines.append(f"  [orx.approval.cmd]{display}[/orx.approval.cmd]")
 
     # Show other args (skip the primary one we already showed)
     skip_key: str = "command" if tool_name == "shell_exec" else "path"
@@ -73,7 +73,7 @@ def format_approval_prompt(tool_name: str, args: dict[str, Any]) -> str:
         val_str: str = str(value)
         if len(val_str) > 100:
             val_str = val_str[:100] + "..."
-        lines.append(f"  [dim]{key}: {val_str}[/dim]")
+        lines.append(f"  [orx.muted]{key}: {val_str}[/orx.muted]")
 
     # Warn about dangerous patterns
     is_dangerous: bool = False
@@ -92,13 +92,13 @@ def format_approval_prompt(tool_name: str, args: dict[str, Any]) -> str:
             break
 
     if is_dangerous:
-        lines.append("  [bold red]⚠ destructive command[/bold red]")
+        lines.append("  [orx.error]⚠ destructive command[/orx.error]")
     if has_hidden:
-        lines.append("  [bold red]⚠ hidden unicode detected[/bold red]")
+        lines.append("  [orx.error]⚠ hidden unicode detected[/orx.error]")
 
-    border: str = "[bold red]" if is_dangerous or has_hidden else "[yellow]"
+    border: str = "[orx.error]" if is_dangerous or has_hidden else "[orx.approval]"
     header: str = f"{border}{'━' * 50}[/]"
-    label: str = f"  {border}approve[/] [bold]{tool_name}[/bold]"
+    label: str = f"  {border}approve[/] [orx.approval.cmd]{tool_name}[/orx.approval.cmd]"
 
     body: str = "\n".join(lines)
     return f"\n{header}\n{label}\n{body}\n{header}"

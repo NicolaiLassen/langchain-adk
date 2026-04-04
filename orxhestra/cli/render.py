@@ -5,7 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-# Tool categories for color-coding
+from orxhestra.cli.theme import SEP, TOOL_BOT, TOOL_MID, TOOL_TOP, TURN_DOT
+
 _READ_TOOLS: frozenset[str] = frozenset({
     "read_file", "ls", "glob", "grep", "list_artifacts", "load_artifact",
     "list_skills", "load_skill",
@@ -19,18 +20,18 @@ _SHELL_TOOLS: frozenset[str] = frozenset({
 
 
 def _tool_style(tool_name: str) -> str:
-    """Return a Rich style string based on tool category."""
+    """Return theme style name for a tool category."""
     if tool_name in _READ_TOOLS:
-        return "dim"
+        return "orx.tool.read"
     if tool_name in _WRITE_TOOLS:
-        return "yellow"
+        return "orx.tool.write"
     if tool_name in _SHELL_TOOLS:
-        return "bold"
-    return "dim"
+        return "orx.tool.shell"
+    return "orx.tool.default"
 
 
 def _tool_arg_summary(tool_name: str, args: dict) -> str:
-    """Build a concise summary of tool call arguments."""
+    """Build a concise one-line summary of tool call arguments."""
     if "path" in args:
         return args["path"]
     if "command" in args:
@@ -49,16 +50,16 @@ def _tool_arg_summary(tool_name: str, args: dict) -> str:
 
 
 def render_tool_call(event: Any, console: Any) -> None:
-    """Print a tool call event with boxed format."""
+    """Render tool calls with boxed format and category coloring."""
     for tc in event.tool_calls:
         if tc.metadata.get("interactive"):
-            continue  # Interactive tool handles its own UI
+            continue
         args: dict = tc.args or {}
         summary: str = _tool_arg_summary(tc.tool_name, args)
         style: str = _tool_style(tc.tool_name)
-        console.print(f"  [{style}]\u250c {tc.tool_name}[/{style}]")
+        console.print(f"  [{style}]{TOOL_TOP} {tc.tool_name}[/{style}]")
         if summary:
-            console.print(f"  [{style}]\u2502 {summary}[/{style}]")
+            console.print(f"  [{style}]{TOOL_MID} {summary}[/{style}]")
 
 
 def render_tool_response(
@@ -67,7 +68,7 @@ def render_tool_response(
     *,
     elapsed: float | None = None,
 ) -> None:
-    """Print a truncated tool response with optional timing."""
+    """Render a truncated tool response with optional timing."""
     text: str = (event.text or "")[:300]
     elapsed_str: str = f" ({elapsed:.1f}s)" if elapsed is not None else ""
     if text:
@@ -75,9 +76,9 @@ def render_tool_response(
         first_line: str = lines[0][:120]
         if len(lines) > 1:
             first_line += f"  ({len(lines)} lines)"
-        console.print(f"  [dim]\u2514 {first_line}{elapsed_str}[/dim]")
+        console.print(f"  [orx.muted]{TOOL_BOT} {first_line}{elapsed_str}[/orx.muted]")
     elif elapsed_str:
-        console.print(f"  [dim]\u2514 done{elapsed_str}[/dim]")
+        console.print(f"  [orx.muted]{TOOL_BOT} done{elapsed_str}[/orx.muted]")
 
 
 def render_todos(todo_list: Any, console: Any) -> None:
@@ -100,10 +101,11 @@ def render_turn_summary(
     parts: list[str] = [f"{elapsed:.1f}s"]
     total: int = prompt_tokens + completion_tokens
     if total > 0:
-        parts.append(f"{total:,} tokens ({prompt_tokens:,}\u2191 {completion_tokens:,}\u2193)")
-    sep: str = " \u00b7 "
-    summary: str = sep.join(parts)
-    console.print(f"  [dim]\u27e1 {summary}[/dim]")
+        parts.append(
+            f"{total:,} tokens ({prompt_tokens:,}\u2191 {completion_tokens:,}\u2193)"
+        )
+    summary: str = SEP.join(parts)
+    console.print(f"  [orx.summary]{TURN_DOT} {summary}[/orx.summary]")
 
 
 def print_banner(
@@ -131,18 +133,19 @@ def print_banner(
     except Exception:
         agent_names = "default"
 
-    # Shorten workspace path
     ws_display: str = str(workspace)
     home: str = str(Path.home())
     if ws_display.startswith(home):
         ws_display = "~" + ws_display[len(home):]
 
+    ver: str = f"[orx.banner.version]v{orxhestra.__version__}[/orx.banner.version]"
+    lbl: str = "orx.banner.label"
     content: str = (
-        f"[bold blue]orx[/bold blue] [dim]v{orxhestra.__version__}[/dim]\n"
-        f"[dim]model:[/dim]     {model_name}\n"
-        f"[dim]workspace:[/dim] {ws_display}\n"
-        f"[dim]agents:[/dim]    {agent_names}"
+        f"[orx.accent]orx[/orx.accent] {ver}\n"
+        f"[{lbl}]model:[/{lbl}]     {model_name}\n"
+        f"[{lbl}]workspace:[/{lbl}] {ws_display}\n"
+        f"[{lbl}]agents:[/{lbl}]    {agent_names}"
     )
 
     console.print()
-    console.print(Panel(content, border_style="dim", padding=(0, 2)))
+    console.print(Panel(content, border_style="orx.subtle", padding=(0, 2)))

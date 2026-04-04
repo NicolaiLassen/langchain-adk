@@ -30,11 +30,11 @@ class TodoList:
             status: str = todo.get("status", "pending")
             content: str = todo.get("content", "")
             if status == "completed":
-                icon = "[green]\u2713[/green]"
+                icon = "[orx.success]\u2713[/orx.success]"
             elif status == "in_progress":
-                icon = "[yellow]\u25b6[/yellow]"
+                icon = "[orx.warning]\u25b6[/orx.warning]"
             else:
-                icon = "[dim]\u25cb[/dim]"
+                icon = "[orx.muted]\u25cb[/orx.muted]"
             lines.append(f"  {icon} {content}")
         return "\n".join(lines)
 

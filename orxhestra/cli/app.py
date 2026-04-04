@@ -206,20 +206,23 @@ def _inject_context(
 
 
 
-_HELP_TEXT: str = """[bold]Commands:[/bold]
-  /model <name>  Switch model (preserves history)
-  /clear         Clear session
-  /compact       Summarize old messages to free context
-  /todos         Show current task list
-  /session       Show session info
-  /undo          Remove last turn
-  /retry         Re-run last message
-  /copy          Copy last response to clipboard
-  /exit          Exit
-  /help          Show this help
-
-[bold]Multi-line input:[/bold]
-  Start with \\"\\"\\" or ''' and end with the same delimiter."""
+_CMD = "orx.help.cmd"
+_DESC = "orx.help.desc"
+_HELP_TEXT: str = (
+    f"[{_CMD}]Commands:[/{_CMD}]\n"
+    f"  [{_CMD}]/model[/{_CMD}] <name>  [{_DESC}]Switch model[/{_DESC}]\n"
+    f"  [{_CMD}]/clear[/{_CMD}]         [{_DESC}]Clear session[/{_DESC}]\n"
+    f"  [{_CMD}]/compact[/{_CMD}]       [{_DESC}]Compact context[/{_DESC}]\n"
+    f"  [{_CMD}]/todos[/{_CMD}]         [{_DESC}]Show tasks[/{_DESC}]\n"
+    f"  [{_CMD}]/session[/{_CMD}]       [{_DESC}]Session info[/{_DESC}]\n"
+    f"  [{_CMD}]/undo[/{_CMD}]          [{_DESC}]Remove last turn[/{_DESC}]\n"
+    f"  [{_CMD}]/retry[/{_CMD}]         [{_DESC}]Re-run last message[/{_DESC}]\n"
+    f"  [{_CMD}]/copy[/{_CMD}]          [{_DESC}]Copy last response[/{_DESC}]\n"
+    f"  [{_CMD}]/exit[/{_CMD}]          [{_DESC}]Exit[/{_DESC}]\n"
+    f"  [{_CMD}]/help[/{_CMD}]          [{_DESC}]Show this help[/{_DESC}]\n"
+    f"\n[{_CMD}]Multi-line input:[/{_CMD}]\n"
+    f'  [{_DESC}]Start with """ or \'\'\' and end with same.[/{_DESC}]'
+)
 
 
 async def _handle_slash_command(
@@ -244,19 +247,19 @@ async def _handle_slash_command(
     from orxhestra.cli.render import render_todos
 
     if cmd in ("/exit", "/quit"):
-        console.print("[dim]Goodbye![/dim]")
+        console.print("[orx.status]Goodbye![/orx.status]")
         return runner, session_id, todo_list, llm, model_name, turn_count, False
 
     if cmd == "/clear":
         session_id = str(uuid4())
         if todo_list is not None:
             todo_list.todos = []
-        console.print("[dim]Session cleared.[/dim]")
+        console.print("[orx.status]Session cleared.[/orx.status]")
         return runner, session_id, todo_list, llm, model_name, 0, True
 
     if cmd == "/compact":
         if llm is not None:
-            console.print("[dim]Compacting conversation...[/dim]")
+            console.print("[orx.status]Compacting conversation...[/orx.status]")
             from orxhestra.cli.summarization import summarize_session
 
             session = await runner.get_or_create_session(
@@ -265,11 +268,11 @@ async def _handle_slash_command(
             result = await summarize_session(llm, session.events)
             if result is not None:
                 session.events[:] = result
-                console.print("[dim]Conversation compacted.[/dim]")
+                console.print("[orx.status]Conversation compacted.[/orx.status]")
             else:
-                console.print("[dim]Nothing to compact.[/dim]")
+                console.print("[orx.status]Nothing to compact.[/orx.status]")
         else:
-            console.print("[dim]Compact not available.[/dim]")
+            console.print("[orx.status]Compact not available.[/orx.status]")
         return runner, session_id, todo_list, llm, model_name, turn_count, True
 
     if cmd == "/model":
@@ -293,20 +296,21 @@ async def _handle_slash_command(
                 new_session.events.extend(old_events)
 
                 turn_count = 0
-                console.print(f"[dim]Switched to {model_name} (history preserved)[/dim]")
+                msg: str = f"Switched to {model_name} (history preserved)"
+                console.print(f"[orx.status]{msg}[/orx.status]")
             except Exception as e:
-                console.print(f"[red]Error: {e}[/red]")
+                console.print(f"[orx.error]Error: {e}[/orx.error]")
         else:
-            console.print(f"[dim]Current model: {model_name}[/dim]")
+            console.print(f"[orx.status]Current model: {model_name}[/orx.status]")
         return runner, session_id, todo_list, llm, model_name, turn_count, True
 
     if cmd == "/todos":
         if todo_list is not None:
             render_todos(todo_list, console)
             if not todo_list.todos:
-                console.print("[dim]No tasks.[/dim]")
+                console.print("[orx.status]No tasks.[/orx.status]")
         else:
-            console.print("[dim]No tasks.[/dim]")
+            console.print("[orx.status]No tasks.[/orx.status]")
         return runner, session_id, todo_list, llm, model_name, turn_count, True
 
     if cmd == "/session":
@@ -317,10 +321,11 @@ async def _handle_slash_command(
         from orxhestra.sessions.compaction import _estimate_event_chars
 
         total_chars: int = sum(_estimate_event_chars(e) for e in session.events)
-        console.print(f"  [dim]session:  {session_id}[/dim]")
-        console.print(f"  [dim]events:   {event_count}[/dim]")
-        console.print(f"  [dim]chars:    {total_chars:,} (~{total_chars // 4:,} tokens)[/dim]")
-        console.print(f"  [dim]turns:    {turn_count}[/dim]")
+        console.print(f"  [orx.status]session:  {session_id}[/orx.status]")
+        console.print(f"  [orx.status]events:   {event_count}[/orx.status]")
+        chars_info: str = f"{total_chars:,} (~{total_chars // 4:,} tokens)"
+        console.print(f"  [orx.status]chars:    {chars_info}[/orx.status]")
+        console.print(f"  [orx.status]turns:    {turn_count}[/orx.status]")
         return runner, session_id, todo_list, llm, model_name, turn_count, True
 
     if cmd == "/undo":
@@ -339,9 +344,9 @@ async def _handle_slash_command(
             removed: int = len(session.events) - last_user_idx
             session.events[:] = session.events[:last_user_idx]
             turn_count = max(0, turn_count - 1)
-            console.print(f"[dim]Removed last turn ({removed} events).[/dim]")
+            console.print(f"[orx.status]Removed last turn ({removed} events).[/orx.status]")
         else:
-            console.print("[dim]Nothing to undo.[/dim]")
+            console.print("[orx.status]Nothing to undo.[/orx.status]")
         return runner, session_id, todo_list, llm, model_name, turn_count, True
 
     if cmd == "/retry":
@@ -361,11 +366,11 @@ async def _handle_slash_command(
         if last_msg and last_user_idx >= 0:
             session.events[:] = session.events[:last_user_idx]
             turn_count = max(0, turn_count - 1)
-            console.print(f"[dim]Retrying: {last_msg[:60]}[/dim]")
+            console.print(f"[orx.status]Retrying: {last_msg[:60]}[/orx.status]")
             # Store retry message on runner for the REPL to pick up
             runner._retry_message = last_msg
         else:
-            console.print("[dim]Nothing to retry.[/dim]")
+            console.print("[orx.status]Nothing to retry.[/orx.status]")
         return runner, session_id, todo_list, llm, model_name, turn_count, True
 
     if cmd == "/copy":
@@ -388,18 +393,18 @@ async def _handle_slash_command(
                 subprocess.run(
                     ["pbcopy"], input=last_response.encode(), check=True,
                 )
-                console.print("[dim]Copied to clipboard.[/dim]")
+                console.print("[orx.status]Copied to clipboard.[/orx.status]")
             except Exception:
-                console.print("[dim]Clipboard not available.[/dim]")
+                console.print("[orx.status]Clipboard not available.[/orx.status]")
         else:
-            console.print("[dim]No response to copy.[/dim]")
+            console.print("[orx.status]No response to copy.[/orx.status]")
         return runner, session_id, todo_list, llm, model_name, turn_count, True
 
     if cmd == "/help":
         console.print(_HELP_TEXT)
         return runner, session_id, todo_list, llm, model_name, turn_count, True
 
-    console.print(f"[dim]Unknown command: {cmd}. Type /help[/dim]")
+    console.print(f"[orx.status]Unknown command: {cmd}. Type /help[/orx.status]")
     return runner, session_id, todo_list, llm, model_name, turn_count, True
 
 
@@ -418,7 +423,6 @@ async def _repl(
 ) -> None:
     """Run the interactive REPL."""
     try:
-        from rich.console import Console
         from rich.markdown import Markdown
     except ImportError:
         print("Error: rich is required. Install with: pip install orxhestra[cli]")
@@ -426,12 +430,13 @@ async def _repl(
 
     from orxhestra.cli.render import print_banner
     from orxhestra.cli.stream import stream_response
+    from orxhestra.cli.theme import make_console
 
-    console = Console()
+    console = make_console()
 
     # Welcome banner
     print_banner(orx_path, model_name, workspace, console)
-    console.print("  [dim]type /help for commands, Ctrl+D to exit[/dim]\n")
+    console.print("  [orx.status]type /help for commands, Ctrl+D to exit[/orx.status]\n")
 
     # Try prompt_toolkit for history support
     prompt_session: Any = None
@@ -453,7 +458,7 @@ async def _repl(
             else:
                 user_input = input("orx> ")
         except (EOFError, KeyboardInterrupt):
-            console.print("\n[dim]Goodbye![/dim]")
+            console.print("\n[orx.status]Goodbye![/orx.status]")
             break
 
         user_input = user_input.strip()
@@ -601,15 +606,15 @@ async def _async_main() -> None:
     # Single-shot mode
     if args.command:
         try:
-            from rich.console import Console
             from rich.markdown import Markdown
         except ImportError:
             print("Error: rich is required. Install with: pip install orxhestra[cli]")
             sys.exit(1)
 
         from orxhestra.cli.stream import stream_response
+        from orxhestra.cli.theme import make_console
 
-        console = Console()
+        console = make_console()
         await stream_response(
             runner,
             session_id,

@@ -154,7 +154,7 @@ async def stream_response(
                             tc.tool_name, tc.args or {}, console, auto_approve
                         )
                         if not approved:
-                            console.print("  [dim]Denied.[/dim]")
+                            console.print("  [orx.denied]Denied.[/orx.denied]")
 
                 # Start spinner while waiting for tool response (skip for interactive)
                 tool_start = time.monotonic()
@@ -201,7 +201,7 @@ async def stream_response(
                         else ""
                     )
                     if agent_label:
-                        console.print(f"\n[bold cyan]{agent_label}[/bold cyan]")
+                        console.print(f"\n[orx.agent]{agent_label}[/orx.agent]")
                     console.print(Markdown(event.text))
                 continue
 
@@ -209,13 +209,13 @@ async def stream_response(
             if event.metadata.get("error") and event.text:
                 _stop_status()
                 _end_stream()
-                console.print(f"[bold red]Error:[/bold red] {event.text}")
+                console.print(f"[orx.error]Error:[/orx.error] {event.text}")
                 continue
 
     except KeyboardInterrupt:
         _stop_status()
         _end_stream()
-        console.print("\n[dim]Interrupted.[/dim]")
+        console.print("\n[orx.interrupted]Interrupted.[/orx.interrupted]")
     finally:
         _stop_status()
         if in_stream:
