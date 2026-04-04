@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
-
 from importlib.metadata import version as _pkg_version
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -263,11 +262,17 @@ class CompactionConfigDef(BaseModel):
 
     char_threshold: int = Field(
         default=100_000,
-        description="Compact when non-compacted event content exceeds this many characters (~25k tokens).",
+        description=(
+            "Compact when non-compacted event content exceeds"
+            " this many characters (~25k tokens)."
+        ),
     )
     retention_chars: int = Field(
         default=20_000,
-        description="Always keep the most recent events totalling at least this many characters as raw (~5k tokens).",
+        description=(
+            "Always keep the most recent events totalling at least"
+            " this many characters as raw (~5k tokens)."
+        ),
     )
 
 

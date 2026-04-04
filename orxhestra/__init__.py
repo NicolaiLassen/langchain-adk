@@ -54,6 +54,11 @@ from orxhestra.agents import (
 )
 from orxhestra.agents.a2a_agent import A2AAgent
 from orxhestra.composer import Composer
+from orxhestra.decorators.deprecation import (
+    OrxhestraDeprecationWarning,
+    deprecated,
+    deprecated_param,
+)
 from orxhestra.events.event import Event, EventType
 from orxhestra.events.event_actions import EventActions
 from orxhestra.models.part import (
@@ -70,13 +75,6 @@ from orxhestra.sessions.base_session_service import BaseSessionService
 from orxhestra.sessions.database_session_service import DatabaseSessionService
 from orxhestra.sessions.in_memory_session_service import InMemorySessionService
 from orxhestra.sessions.session import Session
-
-# Decorators
-from orxhestra.decorators.deprecation import (
-    OrxhestraDeprecationWarning,
-    deprecated,
-    deprecated_param,
-)
 
 __all__ = [
     # Agents
