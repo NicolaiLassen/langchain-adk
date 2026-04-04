@@ -624,6 +624,11 @@ class LlmAgent(BaseAgent):
                         tool_call_id=tool_call["id"],
                         tool_name=tool_call["name"],
                         args=tool_call["args"],
+                        metadata={"interactive": True}
+                        if getattr(
+                            self._tools.get(tool_call["name"]), "interactive", False
+                        )
+                        else {},
                     )
                     for tool_call in llm_response.tool_calls
                 ]),

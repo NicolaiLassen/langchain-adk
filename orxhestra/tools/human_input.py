@@ -57,5 +57,6 @@ def make_human_input_tool(
             "more information, confirmation, or a choice before proceeding."
         ),
     )
+    object.__setattr__(tool, "interactive", True)
     object.__setattr__(tool, "set_callback", _set_callback)
     return tool

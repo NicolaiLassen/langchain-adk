@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 import time
 from typing import Any
 
@@ -53,6 +52,11 @@ async def stream_response(
 ) -> bool:
     """Stream a single agent turn, rendering events in real time.
 
+    Streaming uses Rich Live with transient=True: the live display shows
+    a Markdown preview during streaming, then disappears and is replaced
+    by a final static Markdown render. This avoids the duplication bug
+    while preserving formatted output.
+
     Returns updated auto_approve value (may change if user selects 'all').
     """
     buffer: str = ""
@@ -63,6 +67,7 @@ async def stream_response(
     turn_start: float = time.monotonic()
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    interactive_tool_ids: set[str] = set()
 
     try:
         from rich.live import Live
@@ -80,6 +85,18 @@ async def stream_response(
             status.stop()
             status = None
 
+    def _end_stream() -> None:
+        """Stop live preview, render final Markdown, clear buffer."""
+        nonlocal buffer, in_stream, live
+        if in_stream:
+            if live is not None:
+                live.stop()
+                live = None
+            if buffer:
+                console.print(Markdown(buffer))
+            in_stream = False
+            buffer = ""
+
     try:
         async for event in runner.astream(
             user_id=DEFAULT_USER_ID,
@@ -92,7 +109,7 @@ async def stream_response(
                 prompt_tokens += usage.get("prompt_tokens", 0) or 0
                 completion_tokens += usage.get("completion_tokens", 0) or 0
 
-            # Streaming partial tokens
+            # Streaming partial tokens — live Markdown preview
             if event.partial and event.type == EventType.AGENT_MESSAGE and event.text:
                 _stop_status()
                 buffer += event.text
@@ -102,13 +119,17 @@ async def stream_response(
                         live = Live(
                             Markdown(buffer),
                             console=console,
-                            refresh_per_second=12,
-                            vertical_overflow="visible",
+                            refresh_per_second=8,
+                            transient=True,
                         )
                         live.start()
                     else:
                         live.update(Markdown(buffer))
                 else:
+                    if not in_stream:
+                        in_stream = True
+                    import sys
+
                     sys.stdout.write(event.text)
                     sys.stdout.flush()
                 continue
@@ -116,12 +137,14 @@ async def stream_response(
             # Tool call — with approval for destructive tools
             if event.has_tool_calls:
                 _stop_status()
-                if in_stream and live:
-                    live.stop()
-                    in_stream = False
-                    if buffer:
-                        console.print(Markdown(buffer))
-                        buffer = ""
+                _end_stream()
+
+                # Track interactive tool calls
+                has_interactive: bool = False
+                for tc in event.tool_calls:
+                    if tc.metadata.get("interactive"):
+                        interactive_tool_ids.add(tc.tool_call_id)
+                        has_interactive = True
 
                 render_tool_call(event, console)
 
@@ -133,9 +156,9 @@ async def stream_response(
                         if not approved:
                             console.print("  [dim]Denied.[/dim]")
 
-                # Start spinner while waiting for tool response
+                # Start spinner while waiting for tool response (skip for interactive)
                 tool_start = time.monotonic()
-                if Status is not None:
+                if Status is not None and not has_interactive:
                     last_tool: str = event.tool_calls[-1].tool_name
                     status = Status(
                         f"  Running {last_tool}...",
@@ -148,6 +171,14 @@ async def stream_response(
             # Tool response
             if event.type == EventType.TOOL_RESPONSE:
                 _stop_status()
+                # Skip rendering for interactive tool responses
+                tool_call_id: str = ""
+                if event.content.tool_responses:
+                    tool_call_id = event.content.tool_responses[0].tool_call_id
+                if tool_call_id in interactive_tool_ids:
+                    interactive_tool_ids.discard(tool_call_id)
+                    tool_start = 0.0
+                    continue
                 elapsed: float | None = None
                 if tool_start > 0:
                     elapsed = time.monotonic() - tool_start
@@ -162,10 +193,7 @@ async def stream_response(
             if event.is_final_response():
                 _stop_status()
                 was_streaming: bool = in_stream
-                if in_stream and live:
-                    live.stop()
-                    in_stream = False
-                    buffer = ""
+                _end_stream()
                 if not was_streaming and event.text:
                     agent_label: str = (
                         f"[{event.agent_name}] "
@@ -180,24 +208,18 @@ async def stream_response(
             # Error events
             if event.metadata.get("error") and event.text:
                 _stop_status()
-                if in_stream and live:
-                    live.stop()
-                    in_stream = False
-                    buffer = ""
+                _end_stream()
                 console.print(f"[bold red]Error:[/bold red] {event.text}")
                 continue
 
     except KeyboardInterrupt:
         _stop_status()
-        if in_stream and live:
-            live.stop()
+        _end_stream()
         console.print("\n[dim]Interrupted.[/dim]")
     finally:
         _stop_status()
-        if in_stream and live:
-            live.stop()
-            if buffer:
-                console.print(Markdown(buffer))
+        if in_stream:
+            _end_stream()
 
     # Turn summary line
     turn_elapsed: float = time.monotonic() - turn_start

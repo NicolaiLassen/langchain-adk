@@ -51,6 +51,8 @@ def _tool_arg_summary(tool_name: str, args: dict) -> str:
 def render_tool_call(event: Any, console: Any) -> None:
     """Print a tool call event with boxed format."""
     for tc in event.tool_calls:
+        if tc.metadata.get("interactive"):
+            continue  # Interactive tool handles its own UI
         args: dict = tc.args or {}
         summary: str = _tool_arg_summary(tc.tool_name, args)
         style: str = _tool_style(tc.tool_name)
