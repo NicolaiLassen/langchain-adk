@@ -1,7 +1,8 @@
 """Register CLI-specific tools as composer builtins.
 
-Calling :func:`register_cli_builtins` makes ``write_todos`` and ``task``
-available in any orx YAML via ``builtin: "write_todos"`` etc.
+Calling :func:`register_cli_builtins` makes ``write_todos``, ``task``,
+``sleep``, ``background_tasks``, and ``tool_search`` available in any
+orx YAML via ``builtin: "<name>"``.
 
 The shared :class:`TodoList` is accessible via :func:`get_todo_list` so
 the REPL can render task progress.
@@ -27,9 +28,11 @@ def register_cli_builtins(
     """Register CLI builtins into the composer tool registry.
 
     Must be called before building a orx spec so that YAML files
-    can reference ``builtin: "write_todos"`` and ``builtin: "task"``.
+    can reference ``builtin: "write_todos"``, ``builtin: "task"``,
+    ``builtin: "sleep"``, ``builtin: "background_tasks"``, and
+    ``builtin: "tool_search"``.
     """
-    global _shared_todo_list
+    global _shared_todo_list  # noqa: PLW0603
     _shared_todo_list = TodoList()
 
     todo_list = _shared_todo_list
@@ -39,6 +42,15 @@ def register_cli_builtins(
         return [make_todo_tool(todo_list)]
 
     register_builtin("write_todos", _todo_factory)
+
+    # Sleep tool — always available.
+    def _sleep_factory() -> list:
+        """Create the sleep tool."""
+        from orxhestra.tools.sleep_tool import make_sleep_tool
+
+        return [make_sleep_tool()]
+
+    register_builtin("sleep", _sleep_factory)
 
     if llm is not None:
         _llm = llm
@@ -51,10 +63,26 @@ def register_cli_builtins(
             from orxhestra.tools.shell import make_shell_tools
 
             fs = make_filesystem_tools(workspace=_ws)
-            sh = make_shell_tools(workspace=_ws, timeout=120, max_output_bytes=200_000)
+            sh = make_shell_tools(
+                workspace=_ws, timeout=120, max_output_bytes=200_000,
+            )
             return [make_task_tool(_llm, [*fs, *sh], _ws)]
 
         register_builtin("task", _task_factory)
+
+        def _bg_tasks_factory() -> list:
+            """Create background task lifecycle tools."""
+            from orxhestra.tools.filesystem import make_filesystem_tools
+            from orxhestra.tools.shell import make_shell_tools
+            from orxhestra.tools.task_tools import make_task_tools
+
+            fs = make_filesystem_tools(workspace=_ws)
+            sh = make_shell_tools(
+                workspace=_ws, timeout=120, max_output_bytes=200_000,
+            )
+            return make_task_tools(_llm, [*fs, *sh], _ws)
+
+        register_builtin("background_tasks", _bg_tasks_factory)
 
 
 def get_todo_list() -> TodoList | None:
