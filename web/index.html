@@ -55,38 +55,6 @@
       pointer-events: none;
       z-index: 0;
     }
-    .glow-layer {
-      position: fixed;
-      top: -100px; left: 0; right: 0;
-      height: 400px;
-      pointer-events: none;
-      z-index: 0;
-    }
-    .glow-indigo {
-      background: radial-gradient(ellipse 80% 100% at 50% 0%, rgba(99, 102, 241, 0.18), transparent);
-      animation: breatheIndigo 12s ease-in-out infinite;
-    }
-    .glow-purple {
-      background: radial-gradient(ellipse 70% 90% at 50% 0%, rgba(168, 85, 247, 0.14), transparent);
-      animation: breathePurple 15s ease-in-out infinite;
-    }
-    .glow-sky {
-      background: radial-gradient(ellipse 75% 95% at 50% 0%, rgba(56, 189, 248, 0.12), transparent);
-      animation: breatheSky 18s ease-in-out infinite;
-    }
-    @keyframes breatheIndigo {
-      0%, 100% { opacity: 0.3; }
-      50% { opacity: 0.6; }
-    }
-    @keyframes breathePurple {
-      0%, 100% { opacity: 0.2; }
-      50% { opacity: 0.55; }
-    }
-    @keyframes breatheSky {
-      0%, 100% { opacity: 0.25; }
-      50% { opacity: 0.5; }
-    }
-
     .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
 
     /* ── Nav ── */
@@ -373,14 +341,12 @@
       .code-grid { grid-template-columns: 1fr; }
       .nav-links { gap: 16px; }
       .nav-links a:not(.nav-cta) { display: none; }
+      .features-grid { grid-template-columns: 1fr !important; }
     }
   </style>
 </head>
 <body>
 
-<div class="glow-layer glow-indigo"></div>
-<div class="glow-layer glow-purple"></div>
-<div class="glow-layer glow-sky"></div>
 <!-- removed background SVG waves --><div style="display:none">
     <path class="wave-path wave-1" d="M-100 200 C-77 200,-53 225,-30 225 C-7 225,17 247,40 247 C63 247,87 265,110 265 C133 265,157 276,180 276 C203 276,227 280,250 280 C273 280,297 276,320 276 C343 276,367 265,390 265 C413 265,437 247,460 247 C483 247,507 225,530 225 C553 225,577 200,600 200 C623 200,647 175,670 175 C693 175,717 153,740 153 C763 153,787 135,810 135 C833 135,857 124,880 124 C903 124,927 120,950 120 C973 120,997 124,1020 124 C1043 124,1067 135,1090 135 C1113 135,1137 153,1160 153 C1183 153,1207 175,1230 175 C1253 175,1277 200,1300 200"/>
     <path class="wave-path wave-2" d="M-100 281 C-77 281,-53 289,-30 289 C-7 289,17 288,40 288 C63 288,87 278,110 278 C133 278,157 259,180 259 C203 259,227 235,250 235 C273 235,297 208,320 208 C343 208,367 184,390 184 C413 184,437 164,460 164 C483 164,507 153,530 153 C553 153,577 150,600 150 C623 150,647 158,670 158 C693 158,717 174,740 174 C763 174,787 197,810 197 C833 197,857 223,880 223 C903 223,927 249,950 249 C973 249,997 270,1020 270 C1043 270,1067 285,1090 285 C1113 285,1137 290,1160 290 C1183 290,1207 286,1230 286 C1253 286,1277 272,1300 272"/>
@@ -534,7 +500,8 @@
       </svg>
     </div>
     <h1>ORXHESTRA</h1>
-    <span style="display:inline-block;background:rgba(59,130,246,0.15);color:#93c5fd;font-size:0.85rem;font-weight:600;padding:0.2em 0.7em;border-radius:999px;border:1px solid rgba(59,130,246,0.3);margin-bottom:0.5rem;letter-spacing:0.02em;">v0.0.37</span>
+    <span style="display:inline-block;background:rgba(59,130,246,0.15);color:#93c5fd;font-size:0.85rem;font-weight:600;padding:0.2em 0.7em;border-radius:999px;border:1px solid rgba(59,130,246,0.3);margin-bottom:0.5rem;letter-spacing:0.02em;">v0.0.37</span><a href="https://github.com/NicolaiLassen/orxhestra" style="display:inline-block;margin-left:8px;vertical-align:middle;"><img src="https://img.shields.io/github/stars/NicolaiLassen/orxhestra?style=social" alt="GitHub stars"></a>
+    <p style="color:var(--text-dim);font-size:1.1rem;margin-bottom:0.5rem;font-weight:500;">Multi-agent AI is complex. orxhestra makes it declarative.</p>
     <p>Compose multi-agent AI systems with async event streaming, composable agent hierarchies, and built-in MCP & A2A integration.</p>
     <div class="hero-actions">
       <a href="https://docs.orxhestra.com/getting-started/quickstart" class="btn btn-primary">
@@ -582,56 +549,90 @@
           <svg width="22" height="22" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2M20 14h2M15 13v2M9 13v2"/></svg>
         </div>
         <h3>Agent Ensemble</h3>
-        <p>LLM, ReAct, Sequential, Parallel, and Loop agents. Mix and match to build any orchestration pattern.</p>
+        <p>LLM, ReAct, Sequential, Parallel, and Loop agents. Chain a researcher into a writer, run 3 analysts in parallel, or loop a coder with a reviewer until tests pass.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="background: rgba(56,189,248,0.1)">
           <svg width="22" height="22" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>
         </div>
         <h3>Event Streaming</h3>
-        <p>Async event-driven architecture with real-time streaming. Every agent yields typed events you can observe and react to.</p>
+        <p>Async event-driven architecture with real-time token streaming. Every agent yields typed events — partial tokens, tool calls, tool responses, and final answers — observable from any parent.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="background: rgba(168,85,247,0.1)">
           <svg width="22" height="22" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>
         </div>
         <h3>Composer</h3>
-        <p>Conduct entire agent orchestras declaratively with YAML. No Python wiring needed for complex pipelines.</p>
+        <p>Declare entire agent orchestras in YAML — no Python wiring needed. Define tools, models, planners, and multi-agent pipelines in a single file. Run with <code style="color:var(--blue);">orx my-agents.yaml</code>.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="background: rgba(59,130,246,0.1)">
           <svg width="22" height="22" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z"/></svg>
         </div>
         <h3>Tools</h3>
-        <p>Filesystem with offset/limit, shell, background tasks, sleep, tool search, and agent-as-tool. Extend agents with any capability.</p>
+        <p>20+ built-in tools: filesystem with offset/limit, shell exec, background tasks, sleep, tool search, memory, and agent-as-tool. Each tool caps its own output to prevent context overflow.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="background: rgba(99,102,241,0.1)">
           <svg width="22" height="22" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 18V5"/><path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"/><path d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/><path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/><path d="M18 18a4 4 0 0 0 2-7.464"/><path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/><path d="M6 18a4 4 0 0 1-2-7.464"/><path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/></svg>
         </div>
         <h3>Auto-Memory</h3>
-        <p>Persistent per-project memories across sessions. 4 typed categories: user, feedback, project, reference. Agents learn and remember.</p>
+        <p>Persistent per-project memories that survive across sessions. 4 typed categories (user, feedback, project, reference) with YAML frontmatter, auto-maintained index, and verification nudges.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="background: rgba(168,85,247,0.1)">
           <svg width="22" height="22" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/></svg>
         </div>
         <h3>Planners</h3>
-        <p>Choreograph task execution with PlanReAct and TaskPlanner strategies. Agents that think before they act.</p>
+        <p>TaskPlanner injects task status into every LLM prompt and keeps the agent working until all tasks complete. PlanReActPlanner adds structured chain-of-thought reasoning.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="background: rgba(56,189,248,0.1)">
           <svg width="22" height="22" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 22v-5"/><path d="M15 8V2"/><path d="M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z"/><path d="M9 8V2"/></svg>
         </div>
         <h3>MCP & A2A</h3>
-        <p>First-class Model Context Protocol and Agent-to-Agent protocol integration for cross-service harmonization.</p>
+        <p>First-class Model Context Protocol for tool servers and Agent-to-Agent protocol for cross-service agent communication. Expose any agent as an A2A server with one flag.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="background: rgba(59,130,246,0.1)">
           <svg width="22" height="22" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
         </div>
         <h3>29 LLM Providers</h3>
-        <p>OpenAI, Azure, Anthropic, Google, Mistral, Groq, DeepSeek, Ollama, and 21 more. Auto-detection from model name.</p>
+        <p>OpenAI, Azure OpenAI, Anthropic, Google, Mistral, Cohere, Groq, DeepSeek, Ollama, and 20 more. Auto-detects provider from model name. Switch mid-session with <code style="color:var(--blue);">/model</code>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Providers -->
+<section style="padding:3rem 0;text-align:center;">
+  <div class="container">
+    <p style="color:var(--text-dim);font-size:0.95rem;letter-spacing:0.05em;">
+      OpenAI &middot; Azure &middot; Anthropic &middot; Google &middot; Vertex AI &middot; AWS Bedrock &middot; Mistral &middot; Cohere &middot; Groq &middot; DeepSeek &middot; Ollama &middot; xAI &middot; NVIDIA &middot; HuggingFace &middot; Together &middot; Fireworks &middot; Perplexity &middot; OpenRouter &middot; IBM &middot; Upstage &middot; <span style="color:var(--blue)">+more</span>
+    </p>
+  </div>
+</section>
+
+<!-- How it Works -->
+<section style="padding:4rem 0;">
+  <div class="container">
+    <div class="section-label">How it works</div>
+    <h2 class="section-title">Three steps to orchestration</h2>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2rem;margin-top:2rem;">
+      <div style="text-align:center;">
+        <div style="font-size:2rem;margin-bottom:0.5rem;">1</div>
+        <h3 style="font-size:1.1rem;margin-bottom:0.5rem;">Define</h3>
+        <p style="color:var(--text-dim);font-size:0.95rem;">Create agents with tools, instructions, and an LLM. Each agent is a Python class or YAML block.</p>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:2rem;margin-bottom:0.5rem;">2</div>
+        <h3 style="font-size:1.1rem;margin-bottom:0.5rem;">Compose</h3>
+        <p style="color:var(--text-dim);font-size:0.95rem;">Wire agents together — sequential pipelines, parallel fan-out, review loops, or transfer routing.</p>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:2rem;margin-bottom:0.5rem;">3</div>
+        <h3 style="font-size:1.1rem;margin-bottom:0.5rem;">Run</h3>
+        <p style="color:var(--text-dim);font-size:0.95rem;">Interactive CLI, A2A server, or programmatic async streaming. One command: <code style="color:var(--blue);">orx</code></p>
       </div>
     </div>
   </div>
@@ -677,6 +678,46 @@ runner <span class="op">=</span> Runner(agent<span class="op">=</span>agent, app
 ):
     print(event.content)</pre>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- CLI Demo -->
+<section style="padding:4rem 0;">
+  <div class="container" style="max-width:700px;">
+    <div class="section-label">CLI</div>
+    <h2 class="section-title">Your terminal, orchestrated</h2>
+    <div class="code-block" style="margin-top:2rem;">
+      <div class="code-header">
+        <div class="code-dot"></div>
+        <div class="code-dot"></div>
+        <div class="code-dot"></div>
+        <span>terminal</span>
+      </div>
+<pre><span class="fn">orx&gt;</span> add error handling to the API routes
+
+  <span class="str">&#9835;</span> <span style="color:#6c8ebf;">Analyzing...</span>
+  <span class="cm">&#9484; read_file</span>
+  <span class="cm">&#9474; src/api/routes.py</span>
+  <span class="cm">&#9492; done (0.1s)</span>
+  <span class="cm">&#9484; write_todos</span>
+  <span class="cm">&#9474; (task list update)</span>
+  <span class="cm">&#9492; done (0.0s)</span>
+
+<span class="kw">Tasks:</span>
+  <span class="str">&#9654;</span> Add try/except to route handlers
+  <span class="cm">&#9675;</span> Add custom ErrorResponse model
+  <span class="cm">&#9675;</span> Write tests for error cases
+
+  <span class="cm">&#9484; edit_file</span>
+  <span class="cm">&#9474; src/api/routes.py</span>
+  <span class="cm">&#9492; done (0.2s)</span>
+  <span class="cm">&#9484; shell_exec</span>
+  <span class="cm">&#9474; pytest tests/test_api.py</span>
+  <span class="cm">&#9492; done (2.8s)</span>
+
+<span class="str">&#9135;</span> Done — added structured error handling to all 4 route handlers.
+  <span class="cm">&#10065; 15.4s · 3,200 tokens  14:32</span></pre>
     </div>
   </div>
 </section>
@@ -803,8 +844,9 @@ runner <span class="op">=</span> Runner(agent<span class="op">=</span>agent, app
     <h2>Ready to orchestrate?</h2>
     <p>Get started with orxhestra in minutes.</p>
     <div class="hero-actions">
-      <a href="https://docs.orxhestra.com/getting-started/quickstart" class="btn btn-primary">Read the Docs</a>
-      <a href="https://github.com/NicolaiLassen/orxhestra" class="btn btn-secondary">View on GitHub</a>
+      <a href="https://docs.orxhestra.com/getting-started/quickstart" class="btn btn-primary">Quick Start</a>
+      <a href="https://docs.orxhestra.com/examples" class="btn btn-secondary">View Examples</a>
+      <a href="https://github.com/NicolaiLassen/orxhestra" class="btn btn-secondary">GitHub</a>
     </div>
   </div>
 </section>
@@ -815,7 +857,10 @@ runner <span class="op">=</span> Runner(agent<span class="op">=</span>agent, app
     <p>orxhestra &mdash; Open-source multi-agent orchestration framework</p>
     <div class="footer-links">
       <a href="https://docs.orxhestra.com">Docs</a>
+      <a href="https://docs.orxhestra.com/examples">Examples</a>
+      <a href="https://github.com/NicolaiLassen/orxhestra/releases">Changelog</a>
       <a href="https://pypi.org/project/orxhestra/">PyPI</a>
+      <a href="https://github.com/NicolaiLassen/orxhestra/blob/main/LICENSE">Apache 2.0</a>
       <a href="https://github.com/NicolaiLassen/orxhestra" title="GitHub">
         <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
       </a>
