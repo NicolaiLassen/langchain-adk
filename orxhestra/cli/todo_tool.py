@@ -33,6 +33,32 @@ class TodoList:
         """
         self.todos = todos
 
+    def has_pending(self) -> bool:
+        """Return True if any todo is not yet completed."""
+        return any(t.get("status") != "completed" for t in self.todos)
+
+    def build_status_text(self) -> str | None:
+        """Build a task status block for injection into the system prompt.
+
+        Returns
+        -------
+        str or None
+            Formatted task status, or None if no todos exist.
+        """
+        if not self.todos:
+            return None
+        lines: list[str] = ["Current tasks:"]
+        for i, t in enumerate(self.todos, 1):
+            status: str = t.get("status", "pending")
+            tag: str = "[done]" if status == "completed" else f"[{status}]"
+            content: str = t.get("content", "")
+            lines.append(f"  t{i} {tag} {content}")
+        completed: int = sum(
+            1 for t in self.todos if t.get("status") == "completed"
+        )
+        lines.append(f"\nProgress: {completed}/{len(self.todos)} completed.")
+        return "\n".join(lines)
+
     def render(self) -> str:
         """Render the todo list as a formatted string.
 
