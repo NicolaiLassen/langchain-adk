@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import random
 import time
 from dataclasses import dataclass, field
@@ -58,6 +59,10 @@ _THINKING_PHRASES: list[str] = [
 ]
 
 
+# Interval (seconds) between rotating the thinking phrase text.
+_PHRASE_ROTATE_INTERVAL: float = 4.0
+
+
 @dataclass
 class _StreamState:
     """Mutable state tracked during a single streaming turn."""
@@ -68,12 +73,16 @@ class _StreamState:
     status: Any = None
     tool_start: float = 0.0
     turn_start: float = field(default_factory=time.monotonic)
+    _phrase_task: Any = field(default=None, repr=False)
     prompt_tokens: int = 0
     completion_tokens: int = 0
     interactive_tool_ids: set[str] = field(default_factory=set)
 
     def stop_status(self) -> None:
-        """Stop and clear the spinner."""
+        """Stop and clear the spinner and phrase rotation."""
+        if self._phrase_task is not None:
+            self._phrase_task.cancel()
+            self._phrase_task = None
         if self.status is not None:
             self.status.stop()
             self.status = None
@@ -200,16 +209,36 @@ async def stream_response(
 
         SPINNERS["orx_music"] = ORX_SPINNER
 
-    # Show a thinking spinner immediately while waiting for the first event.
-    if Status is not None:
-        phrase: str = _spinner_text(todo_list)
-        s.status = Status(
+    async def _start_spinner(state: _StreamState) -> None:
+        """Start the spinner with rotating phrase text."""
+        if Status is None:
+            return
+        phrase = _spinner_text(todo_list)
+        state.status = Status(
             f"  [orx.accent]{phrase}...[/orx.accent]",
             console=console,
             spinner="orx_music",
             spinner_style=ACCENT,
         )
-        s.status.start()
+        state.status.start()
+
+        async def _rotate() -> None:
+            """Rotate the phrase text on an interval."""
+            try:
+                while True:
+                    await asyncio.sleep(_PHRASE_ROTATE_INTERVAL)
+                    if state.status is None:
+                        break
+                    new_phrase = _spinner_text(todo_list)
+                    state.status.update(
+                        f"  [orx.accent]{new_phrase}...[/orx.accent]"
+                    )
+            except asyncio.CancelledError:
+                pass
+
+        state._phrase_task = asyncio.create_task(_rotate())
+
+    await _start_spinner(s)
 
     try:
         async for event in runner.astream(
@@ -273,6 +302,7 @@ async def stream_response(
                         spinner_style=ACCENT,
                     )
                     s.status.start()
+                    # No phrase rotation for tool running — fixed text.
                 continue
 
             if event.type == EventType.TOOL_RESPONSE:
@@ -295,14 +325,7 @@ async def stream_response(
 
                 # Restart spinner — shows active task name if available.
                 if Status is not None and s.status is None:
-                    phrase = _spinner_text(todo_list)
-                    s.status = Status(
-                        f"  [orx.accent]{phrase}...[/orx.accent]",
-                        console=console,
-                        spinner="orx_music",
-                        spinner_style=ACCENT,
-                    )
-                    s.status.start()
+                    await _start_spinner(s)
                 continue
 
             if event.is_final_response():
