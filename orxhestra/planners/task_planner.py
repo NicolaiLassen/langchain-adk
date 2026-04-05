@@ -7,7 +7,7 @@ tool needed.
 
 Usage::
 
-    from orxhestra.cli.todo_tool import TodoList, make_todo_tool
+    from orxhestra.tools.todo_tool import TodoList, make_todo_tool
     from orxhestra.planners import TaskPlanner
 
     todo_list = TodoList()
@@ -29,8 +29,8 @@ from orxhestra.planners.base_planner import BasePlanner
 
 if TYPE_CHECKING:
     from orxhestra.agents.readonly_context import ReadonlyContext
-    from orxhestra.cli.todo_tool import TodoList
     from orxhestra.models.llm_request import LlmRequest
+    from orxhestra.tools.todo_tool import TodoList
 
 
 class TaskPlanner(BasePlanner):

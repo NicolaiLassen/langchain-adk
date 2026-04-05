@@ -21,9 +21,9 @@ from orxhestra.events.event import EventType
 if TYPE_CHECKING:
     from rich.console import Console
 
-    from orxhestra.cli.todo_tool import TodoList
     from orxhestra.events.event import Event
     from orxhestra.runner import Runner
+    from orxhestra.tools.todo_tool import TodoList
 
 
 _THINKING_PHRASES: list[str] = [

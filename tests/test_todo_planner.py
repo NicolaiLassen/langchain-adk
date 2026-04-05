@@ -11,8 +11,8 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 
 from orxhestra.agents.invocation_context import InvocationContext as Context
 from orxhestra.agents.llm_agent import LlmAgent
-from orxhestra.cli.todo_tool import TodoList, make_todo_tool
 from orxhestra.planners.task_planner import TaskPlanner
+from orxhestra.tools.todo_tool import TodoList, make_todo_tool
 
 # ── TodoList unit tests ──────────────────────────────────────
 

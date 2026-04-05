@@ -82,7 +82,7 @@ async def resolve_llm_kwargs(
         kwargs["planner"] = planner
         if agent_def.planner.type == "task":
             # Wire up a shared TodoList + write_todos tool for the planner.
-            from orxhestra.cli.todo_tool import TodoList, make_todo_tool
+            from orxhestra.tools.todo_tool import TodoList, make_todo_tool
 
             todo_list = TodoList()
             planner.set_todo_list(todo_list)

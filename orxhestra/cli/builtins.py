@@ -12,8 +12,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from orxhestra.cli.todo_tool import TodoList, make_todo_tool
 from orxhestra.composer.builders.tools import register_builtin
+from orxhestra.tools.todo_tool import TodoList, make_todo_tool
 
 if TYPE_CHECKING:
     from langchain_core.language_models import BaseChatModel
