@@ -26,6 +26,16 @@ if TYPE_CHECKING:
     from orxhestra.tools.todo_tool import TodoList
 
 
+def _spinner_text(todo_list: TodoList | None) -> str:
+    """Pick spinner text: active task name or random phrase."""
+    if todo_list is not None:
+        active: str | None = todo_list.get_active_task()
+        if active:
+            # Truncate long task names for the spinner.
+            return active[:60] + "..." if len(active) > 60 else active
+    return random.choice(_THINKING_PHRASES)
+
+
 _THINKING_PHRASES: list[str] = [
     "Thinking",
     "Reasoning",
@@ -180,7 +190,7 @@ async def stream_response(
 
     # Show a thinking spinner immediately while waiting for the first event.
     if Status is not None:
-        phrase: str = random.choice(_THINKING_PHRASES)
+        phrase: str = _spinner_text(todo_list)
         s.status = Status(
             f"  [orx.accent]{phrase}...[/orx.accent]",
             console=console,
@@ -271,9 +281,9 @@ async def stream_response(
                 if event.tool_name == "write_todos" and todo_list is not None:
                     render_todos(todo_list, console)
 
-                # Restart thinking spinner while LLM processes tool results.
+                # Restart spinner — shows active task name if available.
                 if Status is not None and s.status is None:
-                    phrase = random.choice(_THINKING_PHRASES)
+                    phrase = _spinner_text(todo_list)
                     s.status = Status(
                         f"  [orx.accent]{phrase}...[/orx.accent]",
                         console=console,
