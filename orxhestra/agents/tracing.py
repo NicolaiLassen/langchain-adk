@@ -6,7 +6,7 @@ nested execution trace.  Zero overhead when no callbacks are configured.
 
 Usage — decorator (preferred)::
 
-    @traced("LlmAgent")
+    @trace("LlmAgent")
     async def astream(self, input, config=None, *, ctx=None):
         ...  # yield events normally, no tracing code needed
 
@@ -177,10 +177,16 @@ def trace(agent_type: str):
             ctx, run_mgr = await start_agent_span(
                 ctx, self.name, agent_type, {"input": input},
             )
+            last_text: str = ""
             err: BaseException | None = None
             try:
                 async for event in fn(self, input, config, ctx=ctx):
+                    if hasattr(event, "text") and event.text:
+                        last_text = event.text
                     yield event
+            except GeneratorExit:
+                # Parent stopped consuming — normal cleanup, not an error.
+                pass
             except BaseException as exc:
                 err = exc
                 raise
@@ -188,7 +194,9 @@ def trace(agent_type: str):
                 if err is not None:
                     await error_agent_span(run_mgr, err)
                 else:
-                    await end_agent_span(run_mgr)
+                    await end_agent_span(
+                        run_mgr, {"output": last_text} if last_text else None,
+                    )
 
         return wrapper
 

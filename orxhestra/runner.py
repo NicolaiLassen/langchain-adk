@@ -166,6 +166,9 @@ class Runner:
 
         run_config = {**self._base_config, **(config or {})}
 
+        # Default trace/run name for observability backends (Langfuse, etc.)
+        run_config.setdefault("run_name", self.app_name or self.agent.name)
+
         # Expose session metadata so callbacks (tracing, etc.) can use it
         meta = dict(run_config.get("metadata", {}))
         meta.setdefault("session_id", session.id)
@@ -200,6 +203,7 @@ class Runner:
         )
 
         current_agent = self.agent
+        last_text: str = ""
 
         _span_err: BaseException | None = None
         try:
@@ -208,6 +212,8 @@ class Runner:
 
                 async for event in current_agent.astream(new_message, ctx=ctx):
                     await self.session_service.append_event(session, event)
+                    if event.text:
+                        last_text = event.text
                     yield event
 
                     if event.actions and event.actions.transfer_to_agent:
@@ -222,6 +228,8 @@ class Runner:
 
                 current_agent = target
                 ctx = ctx.model_copy(update={"agent_name": target.name})
+        except GeneratorExit:
+            pass
         except BaseException as exc:
             _span_err = exc
             raise
@@ -229,7 +237,10 @@ class Runner:
             if _span_err is not None:
                 await error_agent_span(run_manager, _span_err)
             else:
-                await end_agent_span(run_manager)
+                await end_agent_span(
+                    run_manager,
+                    {"output": last_text} if last_text else None,
+                )
 
         # Run compaction after all events are yielded from the agent.
         # Only compact at the end of an invocation, never mid-stream.
