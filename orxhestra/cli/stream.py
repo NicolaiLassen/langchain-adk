@@ -274,6 +274,7 @@ async def stream_response(
                             console=console,
                             refresh_per_second=8,
                             transient=True,
+                            vertical_overflow="visible",
                         )
                         s.live.start()
                     else:
