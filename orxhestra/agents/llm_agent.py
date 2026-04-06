@@ -61,6 +61,7 @@ from orxhestra.agents.message_builder import (
 from orxhestra.agents.planner_adapter import PlannerAdapter
 from orxhestra.agents.structured_output import StructuredOutputParser
 from orxhestra.agents.tool_executor import ToolExecutor
+from orxhestra.agents.tracing import trace
 from orxhestra.events.event import Event, EventType
 from orxhestra.events.event_actions import EventActions
 from orxhestra.models.llm_request import LlmRequest
@@ -210,8 +211,6 @@ class LlmAgent(BaseAgent):
             else None
         )
 
-    # ── Backward-compatible callback properties ─────────────────
-
     @property
     def before_model_callback(self) -> Callable[..., Any] | None:
         """Before-model callback."""
@@ -237,8 +236,6 @@ class LlmAgent(BaseAgent):
         """After-tool callback."""
         return self._callbacks.after_tool
 
-    # ── Instruction resolution (kept for subclass access) ───────
-
     async def _resolve_instructions(self, ctx: InvocationContext) -> str:
         """Resolve the system prompt.
 
@@ -256,8 +253,6 @@ class LlmAgent(BaseAgent):
             The fully resolved system prompt.
         """
         return await self._message_builder.resolve_instructions(ctx)
-
-    # ── LLM helpers ─────────────────────────────────────────────
 
     def _build_bound_llm(self) -> BaseChatModel:
         """Return the LLM with tools bound."""
@@ -281,8 +276,6 @@ class LlmAgent(BaseAgent):
             tools_dict=dict(self._tools),
             output_schema=self._output_schema,
         )
-
-    # ── LLM call with streaming ─────────────────────────────────
 
     async def _call_llm(
         self,
@@ -374,8 +367,6 @@ class LlmAgent(BaseAgent):
                 return AIMessage(content=recovery.text or "")
         return None
 
-    # ── Final response handling ─────────────────────────────────
-
     async def _handle_final_response(
         self,
         ctx: InvocationContext,
@@ -434,8 +425,8 @@ class LlmAgent(BaseAgent):
 
         return self._emit_event(ctx, EventType.AGENT_MESSAGE, **emit_kwargs)
 
-    # ── Main loop ───────────────────────────────────────────────
 
+    @trace("LlmAgent")
     async def astream(
         self,
         input: str,
@@ -463,13 +454,13 @@ class LlmAgent(BaseAgent):
             Events emitted during execution, including partial streaming
             tokens, tool call/response events, and the final answer.
         """
-        ctx = self._ensure_ctx(config, ctx)
         system_prompt, messages = (
             await self._message_builder.build_conversation_history(ctx, input)
         )
         llm: BaseChatModel = self._build_bound_llm()
 
         for _ in range(self.max_iterations):
+            # External kill switch — stop immediately without yielding.
             if ctx.end_invocation:
                 return
 

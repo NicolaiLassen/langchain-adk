@@ -12,6 +12,7 @@ from langchain_core.runnables import RunnableConfig
 
 from orxhestra.agents.base_agent import BaseAgent
 from orxhestra.agents.invocation_context import InvocationContext
+from orxhestra.agents.tracing import trace
 from orxhestra.events.event import Event
 
 
@@ -43,6 +44,7 @@ class SequentialAgent(BaseAgent):
         for agent in agents:
             self.register_sub_agent(agent)
 
+    @trace("SequentialAgent")
     async def astream(
         self,
         input: str,
@@ -67,8 +69,6 @@ class SequentialAgent(BaseAgent):
             All events from all sub-agents in order. Each sub-agent
             receives the previous agent's final answer text as input.
         """
-        ctx = self._ensure_ctx(config, ctx)
-
         if not self.sub_agents:
             return
 

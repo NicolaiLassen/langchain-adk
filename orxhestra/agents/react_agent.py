@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from orxhestra.agents.invocation_context import InvocationContext as Context
 from orxhestra.agents.llm_agent import LlmAgent
+from orxhestra.agents.tracing import trace
 from orxhestra.events.event import Event, EventType
 from orxhestra.models.part import Content, ToolCallPart, ToolResponsePart
 
@@ -221,6 +222,7 @@ class ReActAgent(LlmAgent):
 
         yield step
 
+    @trace("ReActAgent")
     async def astream(
         self,
         input: str,
@@ -245,8 +247,6 @@ class ReActAgent(LlmAgent):
             Events emitted during execution, including thought steps,
             tool calls, observations, and the final answer.
         """
-        ctx = self._ensure_ctx(config, ctx)
-
         system_prompt = await self._build_react_system_prompt(ctx)
         messages: list[BaseMessage] = [
             SystemMessage(content=system_prompt),

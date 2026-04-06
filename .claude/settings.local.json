@@ -4,7 +4,10 @@
       "Bash(xxd orxhestra/skills/load_skill_tool.py)",
       "Bash(python -m pytest)",
       "Bash(gh run:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(pip install:*)",
+      "Bash(python -m pytest tests/test_tracing.py -v)",
+      "Bash(python -m pytest tests/ -v)"
     ]
   }
 }

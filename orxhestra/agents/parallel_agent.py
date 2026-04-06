@@ -13,6 +13,7 @@ from langchain_core.runnables import RunnableConfig
 
 from orxhestra.agents.base_agent import BaseAgent
 from orxhestra.agents.invocation_context import InvocationContext
+from orxhestra.agents.tracing import trace
 from orxhestra.events.event import Event
 
 
@@ -39,6 +40,7 @@ class ParallelAgent(BaseAgent):
         for agent in agents:
             self.register_sub_agent(agent)
 
+    @trace("ParallelAgent")
     async def astream(
         self,
         input: str,
@@ -64,8 +66,6 @@ class ParallelAgent(BaseAgent):
             they are produced. Each event carries the sub-agent's
             branch path for attribution.
         """
-        ctx = self._ensure_ctx(config, ctx)
-
         if not self.sub_agents:
             return
 

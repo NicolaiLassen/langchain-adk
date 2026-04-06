@@ -15,6 +15,7 @@ from langchain_core.runnables import RunnableConfig
 
 from orxhestra.agents.base_agent import BaseAgent
 from orxhestra.agents.invocation_context import InvocationContext
+from orxhestra.agents.tracing import trace
 from orxhestra.events.event import Event, EventType
 from orxhestra.models.part import Content
 
@@ -58,6 +59,7 @@ class LoopAgent(BaseAgent):
         self.max_iterations = max_iterations
         self.should_continue = should_continue
 
+    @trace("LoopAgent")
     async def astream(
         self,
         input: str,
@@ -93,8 +95,6 @@ class LoopAgent(BaseAgent):
             The loop stops when a sub-agent escalates, ``max_iterations``
             is reached, or ``should_continue`` returns False.
         """
-        ctx = self._ensure_ctx(config, ctx)
-
         if not self.sub_agents:
             return
 
