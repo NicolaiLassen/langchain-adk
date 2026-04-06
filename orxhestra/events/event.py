@@ -38,8 +38,6 @@ class EventType(str, Enum):
     AGENT_END = "agent_end"
 
 
-
-
 class Event(BaseModel):
     """Single event type for everything emitted during agent execution.
 
@@ -90,9 +88,7 @@ class Event(BaseModel):
 
     id: str = Field(default_factory=lambda: str(uuid4()))
     type: EventType
-    timestamp: float = Field(
-        default_factory=lambda: datetime.now(timezone.utc).timestamp()
-    )
+    timestamp: float = Field(default_factory=lambda: datetime.now(timezone.utc).timestamp())
     invocation_id: str = ""
     session_id: str | None = None
     author: str = ""
@@ -111,6 +107,11 @@ class Event(BaseModel):
     def text(self) -> str:
         """Concatenate all text parts in content."""
         return self.content.text
+
+    @property
+    def thinking(self) -> str:
+        """Concatenate all thinking parts in content."""
+        return self.content.thinking
 
     @property
     def data(self) -> dict[str, Any] | None:
@@ -308,7 +309,9 @@ class Event(BaseModel):
             return False
 
         return verify_json_signature(
-            public_key, self.signable_payload(), self.signature,
+            public_key,
+            self.signable_payload(),
+            self.signature,
         )
 
     @staticmethod
