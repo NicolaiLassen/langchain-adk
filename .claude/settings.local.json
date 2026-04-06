@@ -6,7 +6,8 @@
       "Bash(gh run:*)",
       "Bash(git pull:*)",
       "Bash(pip install:*)",
-      "Bash(python -m pytest tests/test_tracing.py -v)"
+      "Bash(python -m pytest tests/test_tracing.py -v)",
+      "Bash(python -m pytest tests/ -v)"
     ]
   }
 }

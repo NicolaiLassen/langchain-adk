@@ -15,7 +15,7 @@ from langchain_core.runnables import RunnableConfig
 
 from orxhestra.agents.base_agent import BaseAgent
 from orxhestra.agents.invocation_context import InvocationContext
-from orxhestra.agents.tracing import end_agent_span, error_agent_span, start_agent_span
+from orxhestra.agents.tracing import trace
 from orxhestra.events.event import Event, EventType
 from orxhestra.models.part import Content
 
@@ -59,6 +59,7 @@ class LoopAgent(BaseAgent):
         self.max_iterations = max_iterations
         self.should_continue = should_continue
 
+    @trace("LoopAgent")
     async def astream(
         self,
         input: str,
@@ -94,65 +95,49 @@ class LoopAgent(BaseAgent):
             The loop stops when a sub-agent escalates, ``max_iterations``
             is reached, or ``should_continue`` returns False.
         """
-        ctx = self._ensure_ctx(config, ctx)
-        ctx, _run_mgr = await start_agent_span(
-            ctx, self.name, "LoopAgent", {"input": input},
-        )
-
         if not self.sub_agents:
-            await end_agent_span(_run_mgr)
             return
 
         iteration = 0
         last_event: Event | None = None
 
-        _span_err: BaseException | None = None
-        try:
-            while True:
-                if ctx.end_invocation:
-                    return
+        while True:
+            if ctx.end_invocation:
+                return
 
-                if self.max_iterations is not None and iteration >= self.max_iterations:
-                    yield self._emit_event(
-                        ctx,
-                        EventType.AGENT_MESSAGE,
-                        content=Content.from_text(
-                            f"LoopAgent '{self.name}' reached max_iterations "
-                            f"({self.max_iterations}) without escalating."
-                        ),
-                        metadata={"error": True},
-                    )
-                    return
+            if self.max_iterations is not None and iteration >= self.max_iterations:
+                yield self._emit_event(
+                    ctx,
+                    EventType.AGENT_MESSAGE,
+                    content=Content.from_text(
+                        f"LoopAgent '{self.name}' reached max_iterations "
+                        f"({self.max_iterations}) without escalating."
+                    ),
+                    metadata={"error": True},
+                )
+                return
 
-                for sub_agent in self.sub_agents:
-                    # Unique branch per iteration so the child's LLM doesn't
-                    # re-read conversation history from previous iterations
-                    child_ctx = ctx.derive(
-                        agent_name=sub_agent.name,
-                        branch_suffix=f"{sub_agent.name}.iter_{iteration}",
-                    )
-                    async for event in sub_agent.astream(input, ctx=child_ctx):
-                        yield event
-                        last_event = event
+            for sub_agent in self.sub_agents:
+                # Unique branch per iteration so the child's LLM doesn't
+                # re-read conversation history from previous iterations
+                child_ctx = ctx.derive(
+                    agent_name=sub_agent.name,
+                    branch_suffix=f"{sub_agent.name}.iter_{iteration}",
+                )
+                async for event in sub_agent.astream(input, ctx=child_ctx):
+                    yield event
+                    last_event = event
 
-                        if event.actions.escalate:
-                            return
-
-                # Custom termination check
-                if self.should_continue is not None and last_event is not None:
-                    if not self.should_continue(last_event):
+                    if event.actions.escalate:
                         return
 
-                # Reset sub-agent states between iterations so children
-                # start fresh each loop cycle.
-                ctx.reset_sub_agent_states(self.name)
+            # Custom termination check
+            if self.should_continue is not None and last_event is not None:
+                if not self.should_continue(last_event):
+                    return
 
-                iteration += 1
-        except BaseException as exc:
-            _span_err = exc
-            raise
-        finally:
-            if _span_err is not None:
-                await error_agent_span(_run_mgr, _span_err)
-            else:
-                await end_agent_span(_run_mgr)
+            # Reset sub-agent states between iterations so children
+            # start fresh each loop cycle.
+            ctx.reset_sub_agent_states(self.name)
+
+            iteration += 1

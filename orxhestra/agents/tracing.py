@@ -4,23 +4,33 @@ Emits ``on_chain_start`` / ``on_chain_end`` spans so that any LangChain
 callback handler (Langfuse, LangSmith, custom) automatically builds a
 nested execution trace.  Zero overhead when no callbacks are configured.
 
-Usage in an agent's ``astream()``::
+Usage — decorator (preferred)::
 
-    ctx, run_manager = await start_agent_span(
-        ctx, self.name, "LlmAgent", {"input": input}
-    )
+    @traced("LlmAgent")
+    async def astream(self, input, config=None, *, ctx=None):
+        ...  # yield events normally, no tracing code needed
+
+Usage — manual (for non-BaseAgent callers like Runner)::
+
+    ctx, run_mgr = await start_agent_span(ctx, name, "Runner", {"input": msg})
+    _span_err = None
     try:
-        ...  # yield events
+        ...
     except BaseException as exc:
-        await error_agent_span(run_manager, exc)
+        _span_err = exc
         raise
-    else:
-        await end_agent_span(run_manager)
+    finally:
+        if _span_err:
+            await error_agent_span(run_mgr, _span_err)
+        else:
+            await end_agent_span(run_mgr)
 """
 
 from __future__ import annotations
 
+import functools
 import logging
+from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Any
 
 from langchain_core.callbacks.manager import (
@@ -30,6 +40,7 @@ from langchain_core.callbacks.manager import (
 
 if TYPE_CHECKING:
     from orxhestra.agents.invocation_context import InvocationContext
+    from orxhestra.events.event import Event
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -65,14 +76,14 @@ async def start_agent_span(
 
     Parameters
     ----------
-    ctx:
+    ctx :
         Current invocation context.
-    agent_name:
+    agent_name :
         Human-readable name shown in the trace (e.g. ``"Researcher"``).
-    agent_type:
+    agent_type :
         Agent class name (e.g. ``"LlmAgent"``, ``"SequentialAgent"``).
-    inputs:
-        Serialisable dict passed to ``on_chain_start`` as the inputs.
+    inputs :
+        Serializable dict passed to ``on_chain_start`` as the inputs.
 
     Returns
     -------
@@ -133,3 +144,52 @@ async def error_agent_span(
     """
     if run_manager is not None:
         await run_manager.on_chain_error(error)
+
+
+def trace(agent_type: str):
+    """Decorator that wraps an agent's ``astream()`` with a trace span.
+
+    Handles ``_ensure_ctx``, ``start_agent_span``, ``end_agent_span``,
+    and ``error_agent_span`` automatically.  The decorated method
+    receives a fully prepared ``ctx`` — it must **not** call
+    ``_ensure_ctx()`` itself.
+
+    Usage::
+
+        @trace("LlmAgent")
+        async def astream(self, input, config=None, *, ctx=None):
+            # ctx is already set up — just yield events
+            yield self._emit_event(ctx, ...)
+    """
+
+    def decorator(
+        fn: Any,
+    ) -> Any:
+        @functools.wraps(fn)
+        async def wrapper(
+            self: Any,
+            input: str,
+            config: Any = None,
+            *,
+            ctx: Any = None,
+        ) -> AsyncIterator[Event]:
+            ctx = self._ensure_ctx(config, ctx)
+            ctx, run_mgr = await start_agent_span(
+                ctx, self.name, agent_type, {"input": input},
+            )
+            err: BaseException | None = None
+            try:
+                async for event in fn(self, input, config, ctx=ctx):
+                    yield event
+            except BaseException as exc:
+                err = exc
+                raise
+            finally:
+                if err is not None:
+                    await error_agent_span(run_mgr, err)
+                else:
+                    await end_agent_span(run_mgr)
+
+        return wrapper
+
+    return decorator

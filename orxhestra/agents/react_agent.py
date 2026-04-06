@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 from orxhestra.agents.invocation_context import InvocationContext as Context
 from orxhestra.agents.llm_agent import LlmAgent
-from orxhestra.agents.tracing import end_agent_span, error_agent_span, start_agent_span
+from orxhestra.agents.tracing import trace
 from orxhestra.events.event import Event, EventType
 from orxhestra.models.part import Content, ToolCallPart, ToolResponsePart
 
@@ -222,6 +222,7 @@ class ReActAgent(LlmAgent):
 
         yield step
 
+    @trace("ReActAgent")
     async def astream(
         self,
         input: str,
@@ -246,132 +247,117 @@ class ReActAgent(LlmAgent):
             Events emitted during execution, including thought steps,
             tool calls, observations, and the final answer.
         """
-        ctx = self._ensure_ctx(config, ctx)
-        ctx, _run_mgr = await start_agent_span(
-            ctx, self.name, "ReActAgent", {"input": input},
-        )
+        system_prompt = await self._build_react_system_prompt(ctx)
+        messages: list[BaseMessage] = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=input),
+        ]
 
-        _span_err: BaseException | None = None
-        try:
-            system_prompt = await self._build_react_system_prompt(ctx)
-            messages: list[BaseMessage] = [
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=input),
-            ]
-
-            for _ in range(self.max_iterations):
-                step: ReActStep | None = None
-                try:
-                    async for item in self._invoke_step(messages, ctx):
-                        if isinstance(item, ReActStep):
-                            step = item
-                        else:
-                            yield item
-                except Exception as exc:
-                    yield self._emit_event(
-                        ctx,
-                        EventType.AGENT_MESSAGE,
-                        content=Content.from_text(str(exc)),
-                        metadata={
-                            "error": True,
-                            "exception_type": type(exc).__name__,
-                        },
-                    )
-                    return
-
-                # Final answer
-                if step.is_final:
-                    yield self._emit_event(
-                        ctx,
-                        EventType.AGENT_MESSAGE,
-                        content=Content.from_text(step.answer),
-                        metadata={"scratchpad": step.scratchpad},
-                    )
-                    return
-
-                # Tool call
+        for _ in range(self.max_iterations):
+            step: ReActStep | None = None
+            try:
+                async for item in self._invoke_step(messages, ctx):
+                    if isinstance(item, ReActStep):
+                        step = item
+                    else:
+                        yield item
+            except Exception as exc:
                 yield self._emit_event(
                     ctx,
                     EventType.AGENT_MESSAGE,
+                    content=Content.from_text(str(exc)),
                     metadata={
-                        "react_step": "action",
-                        "action": step.action,
-                        "action_input": step.action_input,
+                        "error": True,
+                        "exception_type": type(exc).__name__,
                     },
                 )
+                return
 
-                tool = self._tools.get(step.action)
-                if tool is None:
-                    observation = f"Error: tool '{step.action}' not found."
-                else:
+            # Final answer
+            if step.is_final:
+                yield self._emit_event(
+                    ctx,
+                    EventType.AGENT_MESSAGE,
+                    content=Content.from_text(step.answer),
+                    metadata={"scratchpad": step.scratchpad},
+                )
+                return
+
+            # Tool call
+            yield self._emit_event(
+                ctx,
+                EventType.AGENT_MESSAGE,
+                metadata={
+                    "react_step": "action",
+                    "action": step.action,
+                    "action_input": step.action_input,
+                },
+            )
+
+            tool = self._tools.get(step.action)
+            if tool is None:
+                observation = f"Error: tool '{step.action}' not found."
+            else:
+                yield self._emit_event(
+                    ctx,
+                    EventType.AGENT_MESSAGE,
+                    content=Content(
+                        parts=[
+                            ToolCallPart(
+                                tool_call_id=f"react_{step.action}",
+                                tool_name=step.action,
+                                args={"input": step.action_input},
+                            )
+                        ]
+                    ),
+                )
+                try:
+                    result = await tool.ainvoke(step.action_input, config=ctx.run_config)
+                    observation = str(result)
                     yield self._emit_event(
                         ctx,
-                        EventType.AGENT_MESSAGE,
+                        EventType.TOOL_RESPONSE,
                         content=Content(
                             parts=[
-                                ToolCallPart(
+                                ToolResponsePart(
                                     tool_call_id=f"react_{step.action}",
                                     tool_name=step.action,
-                                    args={"input": step.action_input},
+                                    result=observation,
                                 )
                             ]
                         ),
                     )
-                    try:
-                        result = await tool.ainvoke(step.action_input, config=ctx.run_config)
-                        observation = str(result)
-                        yield self._emit_event(
-                            ctx,
-                            EventType.TOOL_RESPONSE,
-                            content=Content(
-                                parts=[
-                                    ToolResponsePart(
-                                        tool_call_id=f"react_{step.action}",
-                                        tool_name=step.action,
-                                        result=observation,
-                                    )
-                                ]
-                            ),
-                        )
-                    except Exception as exc:
-                        observation = f"Error: {exc}"
-                        yield self._emit_event(
-                            ctx,
-                            EventType.TOOL_RESPONSE,
-                            content=Content(
-                                parts=[
-                                    ToolResponsePart(
-                                        tool_call_id=f"react_{step.action}",
-                                        tool_name=step.action,
-                                        error=str(exc),
-                                    )
-                                ]
-                            ),
-                        )
-
-                yield self._emit_event(
-                    ctx,
-                    EventType.AGENT_MESSAGE,
-                    content=Content.from_text(observation),
-                    metadata={"react_step": "observation", "tool_name": step.action},
-                )
-
-                messages.append(AIMessage(content=str(step.model_dump())))
-                messages.append(HumanMessage(content=f"Observation: {observation}"))
+                except Exception as exc:
+                    observation = f"Error: {exc}"
+                    yield self._emit_event(
+                        ctx,
+                        EventType.TOOL_RESPONSE,
+                        content=Content(
+                            parts=[
+                                ToolResponsePart(
+                                    tool_call_id=f"react_{step.action}",
+                                    tool_name=step.action,
+                                    error=str(exc),
+                                )
+                            ]
+                        ),
+                    )
 
             yield self._emit_event(
                 ctx,
                 EventType.AGENT_MESSAGE,
-                content=Content.from_text(
-                    f"Max iterations ({self.max_iterations}) reached without a final answer."
-                ),
-                metadata={"error": True},
+                content=Content.from_text(observation),
+                metadata={"react_step": "observation", "tool_name": step.action},
             )
-        except BaseException as exc:
-            _span_err = exc
-            raise
-        finally:
-            if _span_err is not None:
-                await error_agent_span(_run_mgr, _span_err)
-            else:
-                await end_agent_span(_run_mgr)
+
+            messages.append(AIMessage(content=str(step.model_dump())))
+            messages.append(HumanMessage(content=f"Observation: {observation}"))
+
+        yield self._emit_event(
+            ctx,
+            EventType.AGENT_MESSAGE,
+            content=Content.from_text(
+                f"Max iterations ({self.max_iterations}) reached without a final answer."
+            ),
+            metadata={"error": True},
+        )

@@ -11,7 +11,7 @@ from langchain_core.callbacks import AsyncCallbackHandler
 from orxhestra.agents.base_agent import BaseAgent
 from orxhestra.agents.invocation_context import InvocationContext
 from orxhestra.agents.sequential_agent import SequentialAgent
-from orxhestra.agents.tracing import end_agent_span, error_agent_span, start_agent_span
+from orxhestra.agents.tracing import end_agent_span, error_agent_span, start_agent_span, trace
 from orxhestra.events.event import EventType
 from orxhestra.models.part import Content
 from orxhestra.runner import Runner
@@ -68,9 +68,11 @@ class SpanRecorder(AsyncCallbackHandler):
         })
 
     def started_names(self) -> list[str]:
+        """Return names of all chain_start spans."""
         return [s["name"] for s in self.spans if s["type"] == "chain_start"]
 
     def parent_of(self, child_name: str) -> str | None:
+        """Return the name of the parent span for a given child name."""
         for s in self.spans:
             if s["type"] == "chain_start" and s["name"] == child_name:
                 pid = s["parent_run_id"]
@@ -83,7 +85,7 @@ class SpanRecorder(AsyncCallbackHandler):
 
 
 class StubAgent(BaseAgent):
-    """Agent that yields a fixed answer."""
+    """Agent that yields a fixed answer without tracing."""
 
     def __init__(self, name: str = "stub", answer: str = "hello") -> None:
         super().__init__(name=name)
@@ -99,31 +101,19 @@ class StubAgent(BaseAgent):
 
 
 class TracedStubAgent(BaseAgent):
-    """Stub agent that emits its own trace span (like LlmAgent would)."""
+    """Stub agent that uses the @traced decorator."""
 
     def __init__(self, name: str = "traced_stub", answer: str = "ok") -> None:
         super().__init__(name=name)
         self._answer = answer
 
+    @trace("TracedStubAgent")
     async def astream(self, input: str, config=None, *, ctx=None):
-        ctx = self._ensure_ctx(config, ctx)
-        ctx, run_mgr = await start_agent_span(
-            ctx, self.name, "TracedStubAgent", {"input": input},
+        yield self._emit_event(
+            ctx,
+            EventType.AGENT_MESSAGE,
+            content=Content.from_text(self._answer),
         )
-        try:
-            yield self._emit_event(
-                ctx,
-                EventType.AGENT_MESSAGE,
-                content=Content.from_text(self._answer),
-            )
-        except BaseException as exc:
-            await error_agent_span(run_mgr, exc)
-            raise
-        else:
-            await end_agent_span(run_mgr)
-
-
-# ── Unit tests for start/end/error_agent_span ────────────────
 
 
 @pytest.mark.asyncio
@@ -163,7 +153,6 @@ async def test_start_agent_span_creates_child_manager() -> None:
     )
     assert run_mgr is not None
     assert new_ctx is not ctx
-    # The new config's callbacks should be a child manager, not the original list
     assert new_ctx.run_config["callbacks"] is not ctx.run_config["callbacks"]
 
     await end_agent_span(run_mgr)
@@ -187,9 +176,6 @@ async def test_error_agent_span_records_error() -> None:
 
     error_events = [s for s in recorder.spans if s["type"] == "chain_error"]
     assert len(error_events) == 1
-
-
-# ── Integration: Runner root span ────────────────────────────
 
 
 @pytest.mark.asyncio
@@ -221,9 +207,6 @@ async def test_runner_creates_root_span() -> None:
     assert len(end_events) >= 1
 
 
-# ── Integration: nested spans via SequentialAgent ────────────
-
-
 @pytest.mark.asyncio
 async def test_sequential_agent_nested_spans() -> None:
     """SequentialAgent with traced children creates nested spans."""
@@ -253,7 +236,6 @@ async def test_sequential_agent_nested_spans() -> None:
     assert len(events) == 2
 
     names = recorder.started_names()
-    # Expect: Runner:pipeline, pipeline, agent_a, agent_b
     assert "pipeline" in names
     assert "agent_a" in names
     assert "agent_b" in names
@@ -266,9 +248,6 @@ async def test_sequential_agent_nested_spans() -> None:
     pipeline_parent = recorder.parent_of("pipeline")
     assert pipeline_parent is not None
     assert "Runner:" in pipeline_parent
-
-
-# ── No-callbacks path has zero overhead ──────────────────────
 
 
 @pytest.mark.asyncio

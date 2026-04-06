@@ -13,7 +13,7 @@ from langchain_core.runnables import RunnableConfig
 
 from orxhestra.agents.base_agent import BaseAgent
 from orxhestra.agents.invocation_context import InvocationContext
-from orxhestra.agents.tracing import end_agent_span, error_agent_span, start_agent_span
+from orxhestra.agents.tracing import trace
 from orxhestra.events.event import Event
 
 
@@ -40,6 +40,7 @@ class ParallelAgent(BaseAgent):
         for agent in agents:
             self.register_sub_agent(agent)
 
+    @trace("ParallelAgent")
     async def astream(
         self,
         input: str,
@@ -65,13 +66,7 @@ class ParallelAgent(BaseAgent):
             they are produced. Each event carries the sub-agent's
             branch path for attribution.
         """
-        ctx = self._ensure_ctx(config, ctx)
-        ctx, _run_mgr = await start_agent_span(
-            ctx, self.name, "ParallelAgent", {"input": input},
-        )
-
         if not self.sub_agents:
-            await end_agent_span(_run_mgr)
             return
 
         # Use an internal queue to merge concurrent streams
@@ -88,7 +83,6 @@ class ParallelAgent(BaseAgent):
             for agent in self.sub_agents
         ]
 
-        _span_err: BaseException | None = None
         try:
             done_count = 0
             while done_count < len(tasks):
@@ -99,13 +93,6 @@ class ParallelAgent(BaseAgent):
                     yield event
 
             await asyncio.gather(*tasks)
-        except BaseException as exc:
-            _span_err = exc
-            raise
         finally:
             for t in tasks:
                 t.cancel()
-            if _span_err is not None:
-                await error_agent_span(_run_mgr, _span_err)
-            else:
-                await end_agent_span(_run_mgr)
