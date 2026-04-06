@@ -13,7 +13,17 @@ from pydantic import BaseModel, Field
 
 
 class TextPart(BaseModel):
-    """A text content part."""
+    """A plain text content part.
+
+    Attributes
+    ----------
+    type : str
+        Part discriminator, always ``"text"``.
+    text : str
+        The text payload.
+    metadata : dict[str, Any]
+        Arbitrary key-value metadata attached to this part.
+    """
 
     type: Literal["text"] = "text"
     text: str
@@ -24,6 +34,15 @@ class DataPart(BaseModel):
     """A structured data content part (JSON-serializable dict).
 
     Used for structured output, tool results with structured data, etc.
+
+    Attributes
+    ----------
+    type : str
+        Part discriminator, always ``"data"``.
+    data : dict[str, Any]
+        The structured payload. Must be JSON-serializable.
+    metadata : dict[str, Any]
+        Arbitrary key-value metadata attached to this part.
     """
 
     type: Literal["data"] = "data"
@@ -36,14 +55,18 @@ class FilePart(BaseModel):
 
     Attributes
     ----------
+    type : str
+        Part discriminator, always ``"file"``.
     uri : str, optional
         URI pointing to the file (e.g. GCS, S3, HTTP).
     inline_bytes : str, optional
         Base64-encoded file content for inline transfer.
     mime_type : str, optional
-        MIME type of the file (e.g. "image/png").
+        MIME type of the file (e.g. ``"image/png"``).
     name : str, optional
         Filename.
+    metadata : dict[str, Any]
+        Arbitrary key-value metadata attached to this part.
     """
 
     type: Literal["file"] = "file"
@@ -55,7 +78,22 @@ class FilePart(BaseModel):
 
 
 class ToolCallPart(BaseModel):
-    """A tool/function call part — the agent wants to invoke a tool."""
+    """A tool/function call part — the agent wants to invoke a tool.
+
+    Attributes
+    ----------
+    type : str
+        Part discriminator, always ``"tool_call"``.
+    tool_call_id : str
+        Unique identifier for this tool call, used to match the
+        corresponding ``ToolResponsePart``.
+    tool_name : str
+        Name of the tool to invoke.
+    args : dict[str, Any]
+        Arguments to pass to the tool.
+    metadata : dict[str, Any]
+        Arbitrary key-value metadata (e.g. ``{"interactive": True}``).
+    """
 
     type: Literal["tool_call"] = "tool_call"
     tool_call_id: str
@@ -65,7 +103,23 @@ class ToolCallPart(BaseModel):
 
 
 class ToolResponsePart(BaseModel):
-    """A tool/function response part — result from a tool execution."""
+    """A tool/function response part — result from a tool execution.
+
+    Attributes
+    ----------
+    type : str
+        Part discriminator, always ``"tool_response"``.
+    tool_call_id : str
+        Identifier matching the originating ``ToolCallPart``.
+    tool_name : str
+        Name of the tool that produced this response.
+    result : str
+        Successful result text. Empty string when the call errored.
+    error : str, optional
+        Error message if the tool call failed.
+    metadata : dict[str, Any]
+        Arbitrary key-value metadata attached to this part.
+    """
 
     type: Literal["tool_response"] = "tool_response"
     tool_call_id: str

@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(xxd orxhestra/skills/load_skill_tool.py)"
+      "Bash(xxd orxhestra/skills/load_skill_tool.py)",
+      "Bash(python -m pytest)",
+      "Bash(gh run:*)",
+      "Bash(git pull:*)"
     ]
   }
 }
