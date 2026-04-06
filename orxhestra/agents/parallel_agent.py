@@ -88,6 +88,7 @@ class ParallelAgent(BaseAgent):
             for agent in self.sub_agents
         ]
 
+        _span_err: BaseException | None = None
         try:
             done_count = 0
             while done_count < len(tasks):
@@ -99,10 +100,12 @@ class ParallelAgent(BaseAgent):
 
             await asyncio.gather(*tasks)
         except BaseException as exc:
-            await error_agent_span(_run_mgr, exc)
+            _span_err = exc
             raise
-        else:
-            await end_agent_span(_run_mgr)
         finally:
             for t in tasks:
                 t.cancel()
+            if _span_err is not None:
+                await error_agent_span(_run_mgr, _span_err)
+            else:
+                await end_agent_span(_run_mgr)

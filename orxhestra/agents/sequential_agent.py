@@ -79,6 +79,7 @@ class SequentialAgent(BaseAgent):
 
         current_input = input
 
+        _span_err: BaseException | None = None
         try:
             for sub_agent in self.sub_agents:
                 if ctx.end_invocation:
@@ -90,7 +91,10 @@ class SequentialAgent(BaseAgent):
                     if event.is_final_response():
                         current_input = event.text
         except BaseException as exc:
-            await error_agent_span(_run_mgr, exc)
+            _span_err = exc
             raise
-        else:
-            await end_agent_span(_run_mgr)
+        finally:
+            if _span_err is not None:
+                await error_agent_span(_run_mgr, _span_err)
+            else:
+                await end_agent_span(_run_mgr)

@@ -211,7 +211,6 @@ class LlmAgent(BaseAgent):
             else None
         )
 
-
     @property
     def before_model_callback(self) -> Callable[..., Any] | None:
         """Before-model callback."""
@@ -237,7 +236,6 @@ class LlmAgent(BaseAgent):
         """After-tool callback."""
         return self._callbacks.after_tool
 
-
     async def _resolve_instructions(self, ctx: InvocationContext) -> str:
         """Resolve the system prompt.
 
@@ -255,7 +253,6 @@ class LlmAgent(BaseAgent):
             The fully resolved system prompt.
         """
         return await self._message_builder.resolve_instructions(ctx)
-
 
     def _build_bound_llm(self) -> BaseChatModel:
         """Return the LLM with tools bound."""
@@ -279,7 +276,6 @@ class LlmAgent(BaseAgent):
             tools_dict=dict(self._tools),
             output_schema=self._output_schema,
         )
-
 
     async def _call_llm(
         self,
@@ -370,7 +366,6 @@ class LlmAgent(BaseAgent):
             if recovery is not None:
                 return AIMessage(content=recovery.text or "")
         return None
-
 
     async def _handle_final_response(
         self,
@@ -463,6 +458,7 @@ class LlmAgent(BaseAgent):
             ctx, self.name, "LlmAgent", {"input": input},
         )
 
+        _span_err: BaseException | None = None
         try:
             system_prompt, messages = (
                 await self._message_builder.build_conversation_history(ctx, input)
@@ -470,6 +466,7 @@ class LlmAgent(BaseAgent):
             llm: BaseChatModel = self._build_bound_llm()
 
             for _ in range(self.max_iterations):
+                # External kill switch — stop immediately without yielding.
                 if ctx.end_invocation:
                     return
 
@@ -564,7 +561,10 @@ class LlmAgent(BaseAgent):
                 metadata={"error": True},
             )
         except BaseException as exc:
-            await error_agent_span(_run_mgr, exc)
+            _span_err = exc
             raise
-        else:
-            await end_agent_span(_run_mgr)
+        finally:
+            if _span_err is not None:
+                await error_agent_span(_run_mgr, _span_err)
+            else:
+                await end_agent_span(_run_mgr)

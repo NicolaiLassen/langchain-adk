@@ -201,6 +201,7 @@ class Runner:
 
         current_agent = self.agent
 
+        _span_err: BaseException | None = None
         try:
             while True:
                 transfer_target: str | None = None
@@ -222,10 +223,13 @@ class Runner:
                 current_agent = target
                 ctx = ctx.model_copy(update={"agent_name": target.name})
         except BaseException as exc:
-            await error_agent_span(run_manager, exc)
+            _span_err = exc
             raise
-        else:
-            await end_agent_span(run_manager)
+        finally:
+            if _span_err is not None:
+                await error_agent_span(run_manager, _span_err)
+            else:
+                await end_agent_span(run_manager)
 
         # Run compaction after all events are yielded from the agent.
         # Only compact at the end of an invocation, never mid-stream.

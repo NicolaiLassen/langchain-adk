@@ -251,6 +251,7 @@ class ReActAgent(LlmAgent):
             ctx, self.name, "ReActAgent", {"input": input},
         )
 
+        _span_err: BaseException | None = None
         try:
             system_prompt = await self._build_react_system_prompt(ctx)
             messages: list[BaseMessage] = [
@@ -367,7 +368,10 @@ class ReActAgent(LlmAgent):
                 metadata={"error": True},
             )
         except BaseException as exc:
-            await error_agent_span(_run_mgr, exc)
+            _span_err = exc
             raise
-        else:
-            await end_agent_span(_run_mgr)
+        finally:
+            if _span_err is not None:
+                await error_agent_span(_run_mgr, _span_err)
+            else:
+                await end_agent_span(_run_mgr)
