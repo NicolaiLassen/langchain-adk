@@ -5,17 +5,50 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>orxhestra - Multi-Agent Orchestration Framework</title>
   <meta name="description" content="Open-source Python framework for orchestrating multi-agent AI systems. Async streaming, composable agent hierarchies, and first-class MCP & A2A integration.">
+  <meta name="keywords" content="multi-agent, AI agents, Python, orchestration, MCP, A2A, LLM, LangChain, async, streaming">
+  <meta name="author" content="Nicolai M. T. Lassen">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="robots" content="index, follow">
+  <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+  <link rel="canonical" href="https://orxhestra.com">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+
   <meta property="og:title" content="orxhestra - Multi-Agent Orchestration Framework">
-  <meta property="og:description" content="Compose multi-agent AI systems with async event streaming, agent hierarchies, and built-in MCP & A2A support.">
-  <meta property="og:image" content="https://orxhestra.netlify.app/og-image.png">
+  <meta property="og:description" content="Open-source Python framework for orchestrating multi-agent AI systems. Async streaming, composable agent hierarchies, and first-class MCP & A2A integration.">
+  <meta property="og:url" content="https://orxhestra.com">
+  <meta property="og:image" content="https://orxhestra.com/og-image.png">
+  <meta property="og:image:alt" content="orxhestra - Multi-Agent Orchestration Framework for Python">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="orxhestra">
+  <meta property="og:locale" content="en_US">
+
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="orxhestra - Multi-Agent Orchestration Framework">
-  <meta name="twitter:description" content="Compose multi-agent AI systems with async event streaming, agent hierarchies, and built-in MCP & A2A support.">
-  <meta name="twitter:image" content="https://orxhestra.netlify.app/og-image.png">
+  <meta name="twitter:description" content="Open-source Python framework for orchestrating multi-agent AI systems. Async streaming, composable agent hierarchies, and first-class MCP & A2A integration.">
+  <meta name="twitter:image" content="https://orxhestra.com/og-image.png">
+  <meta name="twitter:image:alt" content="orxhestra - Multi-Agent Orchestration Framework for Python">
+
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 100 100' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0%25' stop-color='%233b82f6'/%3E%3Cstop offset='50%25' stop-color='%238b5cf6'/%3E%3Cstop offset='100%25' stop-color='%2338bdf8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M5 50L20 50C30 50,35 10,50 50C65 90,70 50,80 50L95 50' stroke='url(%23g)' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M5 50L20 50C30 50,35 90,50 50C65 10,70 50,80 50L95 50' stroke='url(%23g)' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" href="https://orxhestra.com/og-image.png">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareSourceCode",
+    "name": "orxhestra",
+    "description": "Open-source Python framework for orchestrating multi-agent AI systems. Async streaming, composable agent hierarchies, and first-class MCP & A2A integration.",
+    "url": "https://orxhestra.com",
+    "codeRepository": "https://github.com/NicolaiLassen/orxhestra",
+    "programmingLanguage": "Python",
+    "license": "https://opensource.org/licenses/Apache-2.0",
+    "author": {
+      "@type": "Person",
+      "name": "Nicolai M. T. Lassen"
+    }
+  }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,800&display=swap" rel="stylesheet">
@@ -547,7 +580,7 @@
       </svg>
     </div>
     <h1>ORXHESTRA</h1>
-    <span style="display:inline-block;background:rgba(59,130,246,0.15);color:#93c5fd;font-size:0.85rem;font-weight:600;padding:0.2em 0.7em;border-radius:999px;border:1px solid rgba(59,130,246,0.3);margin-bottom:0.5rem;letter-spacing:0.02em;">v0.0.38</span><a href="https://github.com/NicolaiLassen/orxhestra" style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;vertical-align:middle;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:999px;padding:0.25em 0.8em;font-size:0.85rem;color:#e2e8f0;text-decoration:none;transition:border-color 0.2s,background 0.2s;" onmouseover="this.style.borderColor='rgba(59,130,246,0.4)';this.style.background='rgba(59,130,246,0.1)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.background='rgba(255,255,255,0.06)'"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg><svg width="14" height="14" fill="#f0c14b" viewBox="0 0 16 16" style="margin-left:2px;"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25z"/></svg> <span id="star-count">...</span></a>
+    <span style="display:inline-block;background:rgba(59,130,246,0.15);color:#93c5fd;font-size:0.85rem;font-weight:600;padding:0.2em 0.7em;border-radius:999px;border:1px solid rgba(59,130,246,0.3);margin-bottom:0.5rem;letter-spacing:0.02em;">v0.0.39</span><a href="https://github.com/NicolaiLassen/orxhestra" style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;vertical-align:middle;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:999px;padding:0.25em 0.8em;font-size:0.85rem;color:#e2e8f0;text-decoration:none;transition:border-color 0.2s,background 0.2s;" onmouseover="this.style.borderColor='rgba(59,130,246,0.4)';this.style.background='rgba(59,130,246,0.1)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.background='rgba(255,255,255,0.06)'"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg><svg width="14" height="14" fill="#f0c14b" viewBox="0 0 16 16" style="margin-left:2px;"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25z"/></svg> <span id="star-count">...</span></a>
 <script>fetch('https://api.github.com/repos/NicolaiLassen/orxhestra').then(r=>r.json()).then(d=>{document.getElementById('star-count').textContent=d.stargazers_count||'★'})</script>
     <p style="color:var(--text-dim);font-size:1.1rem;margin-bottom:0.5rem;font-weight:500;">Multi-agent AI is complex. orxhestra makes it declarative.</p>
     <p>Compose multi-agent AI systems with async event streaming, composable agent hierarchies, and built-in MCP & A2A integration.</p>
