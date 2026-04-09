@@ -120,6 +120,11 @@ def detect_terminal_theme() -> str:
     if explicit in ("dark", "light"):
         return explicit
 
+    # Check persisted theme preference (~/.orx/theme).
+    saved = _load_saved_theme()
+    if saved in ("dark", "light"):
+        return saved
+
     # $COLORFGBG is "fg;bg" — bg < 8 means dark, bg >= 8 means light.
     colorfgbg = os.environ.get("COLORFGBG", "")
     if ";" in colorfgbg:
@@ -130,6 +135,38 @@ def detect_terminal_theme() -> str:
             pass
 
     return "dark"
+
+
+def _load_saved_theme() -> str:
+    """Read the persisted theme from ``~/.orx/theme``.
+
+    Returns
+    -------
+    str
+        ``"dark"``, ``"light"``, or ``""`` if no saved preference.
+    """
+    from pathlib import Path
+
+    theme_file = Path.home() / ".orx" / "theme"
+    try:
+        return theme_file.read_text().strip().lower()
+    except (OSError, ValueError):
+        return ""
+
+
+def save_theme(theme: str) -> None:
+    """Persist the theme preference to ``~/.orx/theme``.
+
+    Parameters
+    ----------
+    theme : str
+        ``"dark"`` or ``"light"``.
+    """
+    from pathlib import Path
+
+    orx_dir = Path.home() / ".orx"
+    orx_dir.mkdir(parents=True, exist_ok=True)
+    (orx_dir / "theme").write_text(theme + "\n")
 
 
 def make_console(theme: str = "auto") -> Console:

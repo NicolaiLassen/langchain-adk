@@ -348,21 +348,22 @@ async def _cmd_theme(
     **_kw: object,
 ) -> None:
     """Switch between dark and light themes."""
+    import os
+
+    from orxhestra.cli.theme import save_theme
+
     if cmd_arg and cmd_arg.lower() in ("dark", "light"):
         new_theme = cmd_arg.lower()
     else:
         # Toggle current theme.
-        import os
-
         current = os.environ.get("ORX_THEME", "dark")
         new_theme = "light" if current == "dark" else "dark"
 
-    import os
-
     os.environ["ORX_THEME"] = new_theme
+    save_theme(new_theme)
     console.print(
         f"[orx.status]Theme set to {new_theme}. "
-        f"Restart orx to apply fully.[/orx.status]"
+        f"Restart orx to apply.[/orx.status]"
     )
 
 
