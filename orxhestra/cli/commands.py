@@ -395,6 +395,11 @@ _DISPATCH: dict[str, Callable[..., object]] = {
 }
 
 
+def get_command_names() -> list[str]:
+    """Return all registered slash command names (for autocomplete)."""
+    return sorted(_DISPATCH.keys())
+
+
 async def handle_slash_command(
     cmd: str,
     cmd_arg: str | None,

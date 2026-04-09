@@ -129,12 +129,21 @@ async def _repl(
     prompt_style: Any = None
     try:
         from prompt_toolkit import PromptSession
+        from prompt_toolkit.completion import WordCompleter
         from prompt_toolkit.formatted_text import ANSI
         from prompt_toolkit.history import FileHistory
 
+        from orxhestra.cli.commands import get_command_names
+
         HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+        command_completer = WordCompleter(
+            get_command_names(),
+            sentence=True,
+        )
         prompt_session = PromptSession(
-            history=FileHistory(str(HISTORY_FILE))
+            history=FileHistory(str(HISTORY_FILE)),
+            completer=command_completer,
+            complete_while_typing=False,
         )
         # Colored prompt using ANSI escape codes.
         prompt_style = ANSI("\033[38;5;67morx\033[0m\033[90m>\033[0m ")
