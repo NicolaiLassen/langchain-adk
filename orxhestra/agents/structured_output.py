@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import BaseMessage
 from langchain_core.output_parsers import PydanticOutputParser
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from orxhestra.agents.invocation_context import InvocationContext
@@ -79,14 +82,14 @@ class StructuredOutputParser:
         if answer_text:
             try:
                 return parser.parse(answer_text)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Structured output parse failed: %s", exc)
         structured_llm: Any | None = self.build_structured_llm()
         if structured_llm is not None:
             try:
                 return await structured_llm.ainvoke(
                     messages, config=ctx.run_config,
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Structured output fallback LLM call failed: %s", exc)
         return None

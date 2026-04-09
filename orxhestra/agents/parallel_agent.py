@@ -91,8 +91,8 @@ class ParallelAgent(BaseAgent):
                     done_count += 1
                 else:
                     yield event
-
-            await asyncio.gather(*tasks)
         finally:
             for t in tasks:
                 t.cancel()
+            # Suppress CancelledError from already-finished tasks.
+            await asyncio.gather(*tasks, return_exceptions=True)

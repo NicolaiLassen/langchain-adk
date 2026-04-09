@@ -125,8 +125,10 @@ def render_tool_response(
 
 
 def render_todos(todo_list: TodoList, console: Console) -> None:
-    """Render the todo list if it has items."""
+    """Render the todo list if it has pending items."""
     if todo_list is None or not todo_list.todos:
+        return
+    if not todo_list.has_pending():
         return
     rendered: str = todo_list.render()
     if rendered:

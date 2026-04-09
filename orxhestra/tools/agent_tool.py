@@ -154,7 +154,8 @@ class AgentTool(BaseTool):
                 final_answer = event.text
 
         if after_cb is not None:
-            result = after_cb(final_answer, child_ctx)
+            last_event = event if event is not None else None
+            result = after_cb(last_event, child_ctx)
             if asyncio.iscoroutine(result):
                 await result
 
