@@ -107,10 +107,10 @@ class ToolExecutor:
 
             if hasattr(tool, "inject_context"):
                 tool.inject_context(tool_ctx)
-            if self._callbacks.before_tool:
-                await self._callbacks.before_tool(ctx, t_name, t_args)
 
             try:
+                if self._callbacks.before_tool:
+                    await self._callbacks.before_tool(ctx, t_name, t_args)
                 result = await tool.ainvoke(t_args, config=ctx.run_config)
                 if self._callbacks.after_tool:
                     await self._callbacks.after_tool(ctx, t_name, result)

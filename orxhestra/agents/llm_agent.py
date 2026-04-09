@@ -347,17 +347,47 @@ class LlmAgent(BaseAgent):
         Yields partial ``Event`` objects during streaming, then yields
         the final ``AIMessage`` as the last item.  Yields ``None`` as
         the last item if an unrecoverable error occurred.
+
+        Retries once on transient errors (rate limits, overloaded, timeouts).
         """
-        try:
-            async for item in self._call_llm(llm, messages, ctx):
-                yield item
-        except Exception as exc:
-            self._last_llm_error = exc
-            recovered: AIMessage | None = await self._handle_llm_error(ctx, request, exc)
-            if recovered is not None:
-                yield recovered
-            else:
-                yield None
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                async for item in self._call_llm(llm, messages, ctx):
+                    yield item
+                return  # success
+            except Exception as exc:
+                self._last_llm_error = exc
+                # Retry on transient errors.
+                if attempt < max_retries - 1 and self._is_retryable(exc):
+                    import asyncio
+                    wait = 2 ** attempt
+                    logger.warning(
+                        "LLM call failed (attempt %d/%d), retrying in %ds: %s",
+                        attempt + 1, max_retries, wait, exc,
+                    )
+                    await asyncio.sleep(wait)
+                    continue
+                recovered: AIMessage | None = await self._handle_llm_error(
+                    ctx, request, exc,
+                )
+                if recovered is not None:
+                    yield recovered
+                else:
+                    yield None
+                return
+
+    @staticmethod
+    def _is_retryable(exc: Exception) -> bool:
+        """Check if an exception is a transient error worth retrying."""
+        exc_str = str(exc).lower()
+        retryable_patterns = (
+            "rate_limit", "rate limit", "429",
+            "overloaded", "503", "502",
+            "timeout", "timed out",
+            "connection", "temporarily unavailable",
+        )
+        return any(p in exc_str for p in retryable_patterns)
 
     async def _handle_llm_error(
         self,
@@ -474,8 +504,17 @@ class LlmAgent(BaseAgent):
                     if messages and isinstance(messages[0], SystemMessage):
                         messages[0] = SystemMessage(content=effective_prompt)
 
-            if self._callbacks.before_model:
-                await self._callbacks.before_model(ctx, request)
+            try:
+                if self._callbacks.before_model:
+                    await self._callbacks.before_model(ctx, request)
+            except Exception as exc:
+                yield self._emit_event(
+                    ctx,
+                    EventType.AGENT_MESSAGE,
+                    content=Content.from_text(str(exc)),
+                    metadata={"error": True, "exception_type": type(exc).__name__},
+                )
+                return
 
             # Log context size at debug level only.
             total_chars: int = sum(len(str(m.content)) for m in messages)
@@ -514,8 +553,11 @@ class LlmAgent(BaseAgent):
             if self._planner_adapter is not None:
                 llm_response = self._planner_adapter.process_response(ctx, llm_response)
 
-            if self._callbacks.after_model:
-                await self._callbacks.after_model(ctx, llm_response)
+            try:
+                if self._callbacks.after_model:
+                    await self._callbacks.after_model(ctx, llm_response)
+            except Exception as exc:
+                logger.warning("after_model callback failed: %s", exc)
 
             messages.append(raw_response)
 

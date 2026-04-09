@@ -79,15 +79,41 @@ class CompactionConfig:
 
 
 _SUMMARIZE_PROMPT = """\
-Summarize the following conversation events into a concise prose summary.
-Preserve key facts, decisions, tool results, and any important data.
-Remove redundant or irrelevant information.
-Keep the summary under 500 words.
+You are a conversation summarizer. Create a structured summary of these \
+conversation events. This summary will replace the original events in the \
+agent's context, so it MUST preserve all actionable information.
+
+## Required sections (include ALL that apply):
+
+### Primary Request
+What the user originally asked for. Include exact requirements.
+
+### Key Technical Context
+Languages, frameworks, patterns, architecture decisions discovered.
+
+### Files and Code
+List ALL files read, created, or modified with their paths. For modified \
+files, note WHAT was changed and WHY.
+
+### Decisions Made
+Any choices, trade-offs, or approaches that were selected and why.
+
+### Current State
+What has been completed so far, what is in progress, what remains.
+
+### Pending Tasks
+If there are outstanding items, list them clearly.
+
+## Rules
+- Preserve ALL file paths, function names, error messages, and command outputs.
+- Include specific code snippets only if they are essential context.
+- Do NOT include conversational filler or repeated information.
+- Keep the summary under 1000 words but be thorough.
 
 Events:
 {events_text}
 
-Summary:"""
+Structured summary:"""
 
 
 def _events_to_text(events: list[Event]) -> str:
@@ -99,13 +125,14 @@ def _events_to_text(events: list[Event]) -> str:
             prefix += f" ({event.agent_name})"
 
         if event.text:
-            lines.append(f"{prefix}: {event.text[:500]}")
+            lines.append(f"{prefix}: {event.text[:2000]}")
         elif event.has_tool_calls:
             for tc in event.tool_calls:
-                lines.append(f"{prefix} tool_call: {tc.tool_name}({tc.args})")
+                args_str = str(tc.args)[:500]
+                lines.append(f"{prefix} tool_call: {tc.tool_name}({args_str})")
         elif event.type == EventType.TOOL_RESPONSE:
             for tr in event.content.tool_responses:
-                result = tr.result[:200] if tr.result else ""
+                result = tr.result[:1000] if tr.result else ""
                 lines.append(f"{prefix} tool_response: {tr.tool_name} → {result}")
 
     return "\n".join(lines)

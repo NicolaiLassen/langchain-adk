@@ -125,10 +125,10 @@ def test_events_to_text_with_tool_response() -> None:
 
 
 def test_events_to_text_truncates_long_text() -> None:
-    long_text = "x" * 1000
+    long_text = "x" * 5000
     events = [_make_event(long_text)]
     result = _events_to_text(events)
-    assert len(result) < 1000
+    assert len(result) < 5000
 
 
 def test_events_to_text_empty_list() -> None:
