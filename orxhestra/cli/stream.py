@@ -79,6 +79,7 @@ class _StreamState:
     completion_tokens: int = 0
     interactive_tool_ids: set[str] = field(default_factory=set)
     confirmation_tool_ids: set[str] = field(default_factory=set)
+    pending_tool_ids: set[str] = field(default_factory=set)
 
     def stop_status(self) -> None:
         """Stop and clear the spinner and phrase rotation."""
@@ -295,6 +296,7 @@ async def stream_response(
                 has_interactive: bool = False
                 has_confirmation: bool = False
                 for tc in event.tool_calls:
+                    s.pending_tool_ids.add(tc.tool_call_id)
                     if tc.metadata.get("interactive"):
                         s.interactive_tool_ids.add(tc.tool_call_id)
                         has_interactive = True
@@ -330,6 +332,7 @@ async def stream_response(
                 tool_call_id: str = ""
                 if event.content.tool_responses:
                     tool_call_id = event.content.tool_responses[0].tool_call_id
+                s.pending_tool_ids.discard(tool_call_id)
                 if tool_call_id in s.interactive_tool_ids:
                     s.interactive_tool_ids.discard(tool_call_id)
                     s.tool_start = 0.0
@@ -337,16 +340,21 @@ async def stream_response(
                 # Confirmation tools render normally (unlike interactive).
                 if tool_call_id in s.confirmation_tool_ids:
                     s.confirmation_tool_ids.discard(tool_call_id)
+
+                # Only render "done" on the LAST response of a batch.
+                # This prevents "done, done, done" for parallel tool calls.
+                is_last = len(s.pending_tool_ids) == 0
                 elapsed: float | None = None
-                if s.tool_start > 0:
+                if is_last and s.tool_start > 0:
                     elapsed = time.monotonic() - s.tool_start
-                render_tool_response(event, console, elapsed=elapsed)
+                if is_last:
+                    render_tool_response(event, console, elapsed=elapsed)
 
                 if event.tool_name == "write_todos" and todo_list is not None:
                     render_todos(todo_list, console)
 
                 # Restart spinner — shows active task name if available.
-                if Status is not None and s.status is None:
+                if is_last and Status is not None and s.status is None:
                     await _start_spinner(s)
                 continue
 
