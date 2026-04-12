@@ -39,19 +39,19 @@ def _spinner_text(todo_list: TodoList | None) -> str:
 
 _THINKING_PHRASES: list[str] = [
     "Thinking",
-    "Analyzing code",
-    "Reading files",
-    "Searching codebase",
-    "Planning approach",
+    "Pondering",
+    "Considering",
+    "Reflecting",
     "Reasoning",
-    "Evaluating options",
-    "Structuring solution",
-    "Breaking it down",
-    "Checking patterns",
-    "Tracing logic",
-    "Reviewing context",
-    "Connecting dots",
-    "Working through it",
+    "Analyzing",
+    "Processing",
+    "Evaluating",
+    "Examining",
+    "Synthesizing",
+    "Formulating",
+    "Deliberating",
+    "Contemplating",
+    "Interpreting",
 ]
 
 
