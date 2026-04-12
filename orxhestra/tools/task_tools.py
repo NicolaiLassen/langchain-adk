@@ -79,7 +79,7 @@ class TaskStore:
 
 
 def make_task_tool(
-    llm: Any,
+    model: Any,
     tools: list[BaseTool],
     workspace: str,
 ) -> BaseTool:
@@ -90,7 +90,7 @@ def make_task_tool(
 
     Parameters
     ----------
-    llm : BaseChatModel
+    model : BaseChatModel
         LLM for the sub-agent.
     tools : list[BaseTool]
         Tools available to the sub-agent.
@@ -113,7 +113,7 @@ def make_task_tool(
 
         sub_agent = LlmAgent(
             name="sub-task",
-            llm=llm,
+            model=model,
             tools=list(tools),
             instructions=(
                 f"You are a sub-agent handling a specific task. "
@@ -142,7 +142,7 @@ def make_task_tool(
 
 
 def make_background_task_tools(
-    llm: Any,
+    model: Any,
     tools: list[BaseTool],
     workspace: str,
     store: TaskStore | None = None,
@@ -151,7 +151,7 @@ def make_background_task_tools(
 
     Parameters
     ----------
-    llm : BaseChatModel
+    model : BaseChatModel
         LLM for spawned sub-agents.
     tools : list[BaseTool]
         Tools available to sub-agents.
@@ -176,7 +176,7 @@ def make_background_task_tools(
 
         agent = LlmAgent(
             name=f"task-{task.id[:8]}",
-            llm=llm,
+            model=model,
             tools=list(tools),
             instructions=(
                 f"You are a background sub-agent. Workspace: {workspace}\n\n"

@@ -86,7 +86,7 @@ runner = Runner(
     compaction_config=CompactionConfig(
         char_threshold=100_000,  # compact when content exceeds ~25k tokens
         retention_chars=20_000,  # keep ~5k tokens of recent events raw
-        llm=llm,                 # optional: LLM for summarization
+        model=model,                 # optional: LLM for summarization
     ),
 )
 ```
@@ -99,7 +99,7 @@ After each invocation, the Runner estimates the total character count of non-com
 
 Compaction is **non-destructive**. Raw events are never deleted. Instead, `LlmAgent` applies `apply_compaction()` at the view layer to swap compacted ranges for their summaries when building LLM context.
 
-If `llm` is provided, the summary is generated via an LLM call. Otherwise, a simple text extraction fallback is used.
+If `model` is provided, the summary is generated via an LLM call. Otherwise, a simple text extraction fallback is used.
 
 ### Safety
 

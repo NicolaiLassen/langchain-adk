@@ -31,7 +31,7 @@ async def handle_error(
 
 agent = LlmAgent(
     name="monitored",
-    llm=llm,
+    model=model,
     before_model_callback=log_before_model,
     after_model_callback=log_after_model,
     on_model_error_callback=handle_error,
@@ -51,7 +51,7 @@ async def log_tool_end(ctx: Context, tool_name: str, result: Any) -> None:
 
 agent = LlmAgent(
     name="tracked",
-    llm=llm,
+    model=model,
     tools=[search],
     before_tool_callback=log_tool_start,
     after_tool_callback=log_tool_end,

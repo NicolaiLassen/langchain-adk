@@ -27,7 +27,7 @@ prompt = build_system_prompt(PromptContext(
     ),
 ))
 
-agent = LlmAgent(name="WriterAgent", llm=llm, instructions=prompt)
+agent = LlmAgent(name="WriterAgent", model=model, instructions=prompt)
 ```
 
 Sections are only included when non-empty - no boilerplate padding.

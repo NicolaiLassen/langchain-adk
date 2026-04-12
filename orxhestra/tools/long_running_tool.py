@@ -33,7 +33,7 @@ class LongRunningFunctionTool:
             return f"Deployed to {env}"
 
         tool = LongRunningFunctionTool(deploy_service)
-        agent = LlmAgent(name="deployer", llm=llm, tools=[tool.as_tool()])
+        agent = LlmAgent(name="deployer", model=model, tools=[tool.as_tool()])
 
     Parameters
     ----------

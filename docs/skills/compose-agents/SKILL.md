@@ -14,8 +14,8 @@ Each agent's final answer becomes the next agent's input.
 ```python
 from orxhestra import SequentialAgent, LlmAgent
 
-researcher = LlmAgent(name="researcher", llm=llm, instructions="Research the topic.")
-writer = LlmAgent(name="writer", llm=llm, instructions="Write an article from the research.")
+researcher = LlmAgent(name="researcher", model=model, instructions="Research the topic.")
+writer = LlmAgent(name="writer", model=model, instructions="Write an article from the research.")
 
 pipeline = SequentialAgent(
     name="pipeline",
@@ -34,8 +34,8 @@ All agents run simultaneously. Each gets a derived context with branch isolation
 ```python
 from orxhestra import ParallelAgent, LlmAgent
 
-analyst_a = LlmAgent(name="market", llm=llm, instructions="Analyze market trends.")
-analyst_b = LlmAgent(name="tech", llm=llm, instructions="Analyze tech trends.")
+analyst_a = LlmAgent(name="market", model=model, instructions="Analyze market trends.")
+analyst_b = LlmAgent(name="tech", model=model, instructions="Analyze tech trends.")
 
 parallel = ParallelAgent(
     name="analysis",
@@ -51,10 +51,10 @@ Repeats sub-agents until `escalate=True` (via `exit_loop_tool`) or `max_iteratio
 from orxhestra import LoopAgent, LlmAgent
 from orxhestra.tools import exit_loop_tool
 
-writer = LlmAgent(name="writer", llm=llm, instructions="Write a draft.")
+writer = LlmAgent(name="writer", model=model, instructions="Write a draft.")
 reviewer = LlmAgent(
     name="reviewer",
-    llm=llm,
+    model=model,
     instructions="Review the draft. Call exit_loop if approved.",
     tools=[exit_loop_tool],
 )
@@ -86,7 +86,7 @@ loop = LoopAgent(
 ```python
 # Research in parallel, then write sequentially, then review in a loop
 research = ParallelAgent(name="research", agents=[market_analyst, tech_analyst])
-write = LlmAgent(name="writer", llm=llm, instructions="Synthesize research into article.")
+write = LlmAgent(name="writer", model=model, instructions="Synthesize research into article.")
 review_loop = LoopAgent(name="review", agents=[editor, fact_checker], max_iterations=3)
 
 full_pipeline = SequentialAgent(
@@ -101,12 +101,12 @@ full_pipeline = SequentialAgent(
 from orxhestra import LlmAgent
 from orxhestra.tools import make_transfer_tool
 
-sales = LlmAgent(name="sales", llm=llm, description="Handles orders.", instructions="...")
-support = LlmAgent(name="support", llm=llm, description="Technical help.", instructions="...")
+sales = LlmAgent(name="sales", model=model, description="Handles orders.", instructions="...")
+support = LlmAgent(name="support", model=model, description="Technical help.", instructions="...")
 
 triage = LlmAgent(
     name="triage",
-    llm=llm,
+    model=model,
     instructions="Route the user to the right specialist.",
     tools=[make_transfer_tool([sales, support])],
 )

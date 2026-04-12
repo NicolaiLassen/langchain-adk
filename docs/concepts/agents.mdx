@@ -53,7 +53,7 @@ sequenceDiagram
     loop ReAct loop (max_iterations)
         A->>P: build_planning_instruction(ctx, request)
         P-->>A: instruction string
-        A->>L: llm.bind_tools().invoke(messages)
+        A->>L: model.bind_tools().invoke(messages)
         L-->>A: AIMessage
 
         alt tool_calls present
@@ -75,7 +75,7 @@ from orxhestra import LlmAgent
 
 agent = LlmAgent(
     name="MyAgent",
-    llm=llm,
+    model=model,
     tools=[search_tool, calculator_tool],
     instructions="You are a research assistant.",   # or a Callable[[ReadonlyContext], str]
     description="Searches and calculates things.",
@@ -98,7 +98,7 @@ def my_instructions(ctx: ReadonlyContext) -> str:
     user_name = ctx.state.get("user_name", "user")
     return f"You are helping {user_name}. Be concise."
 
-agent = LlmAgent(name="Agent", llm=llm, instructions=my_instructions)
+agent = LlmAgent(name="Agent", model=model, instructions=my_instructions)
 ```
 
 ## ReActAgent
@@ -110,7 +110,7 @@ from orxhestra import ReActAgent
 
 agent = ReActAgent(
     name="ThinkingAgent",
-    llm=llm,
+    model=model,
     tools=[search_tool],
     instructions="You are a research assistant. Always cite your sources.",
     max_iterations=10,

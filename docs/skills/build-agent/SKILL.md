@@ -21,7 +21,7 @@ async def search(query: str) -> str:
 
 agent = LlmAgent(
     name="assistant",
-    llm=ChatOpenAI(model="gpt-5.4"),
+    model=ChatOpenAI(model="gpt-5.4"),
     tools=[search],
     instructions="You are a helpful assistant.",
     max_iterations=10,
@@ -42,7 +42,7 @@ print(result.text)
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `name` | `str` | Unique agent name |
-| `llm` | `BaseChatModel` | Any LangChain chat model |
+| `model` | `BaseChatModel` | Any LangChain chat model |
 | `tools` | `list[BaseTool]` | Tools available to the agent |
 | `instructions` | `str \| Callable` | System prompt (static or dynamic) |
 | `planner` | `BasePlanner` | Optional planning strategy |
@@ -57,7 +57,7 @@ async def dynamic_instructions(ctx):
 
 agent = LlmAgent(
     name="dynamic",
-    llm=llm,
+    model=model,
     instructions=dynamic_instructions,
 )
 ```
@@ -71,7 +71,7 @@ from orxhestra import ReActAgent
 
 agent = ReActAgent(
     name="reasoner",
-    llm=ChatOpenAI(model="gpt-5.4"),
+    model=ChatOpenAI(model="gpt-5.4"),
     tools=[search],
     instructions="Think step by step.",  # appended to ReAct prompt
     max_iterations=10,

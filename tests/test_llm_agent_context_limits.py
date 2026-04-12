@@ -168,8 +168,8 @@ def test_build_previous_context_deduplicates_by_agent():
 
 def test_default_limits():
     """Default limits match expected values."""
-    llm = FakeChatModel(responses=[AIMessage(content="hi")])
-    agent = LlmAgent(name="agent", llm=llm)
+    model = FakeChatModel(responses=[AIMessage(content="hi")])
+    agent = LlmAgent(name="agent", model=model)
     assert agent.tool_response_max_chars == 30_000
     assert agent.context_max_chars == 5000
     assert agent.context_total_max_chars == 10_000
@@ -177,10 +177,10 @@ def test_default_limits():
 
 def test_custom_limits():
     """Custom limits are stored on the agent."""
-    llm = FakeChatModel(responses=[AIMessage(content="hi")])
+    model = FakeChatModel(responses=[AIMessage(content="hi")])
     agent = LlmAgent(
         name="agent",
-        llm=llm,
+        model=model,
         tool_response_max_chars=50_000,
         context_max_chars=8000,
         context_total_max_chars=20_000,
@@ -205,18 +205,18 @@ async def test_tool_response_truncated_in_history():
         tool_calls=[{"id": "tc1", "name": "big_search", "args": {"query": "test"}}],
     )
     final_msg = AIMessage(content="Summary")
-    llm = FakeChatModel(responses=[tool_msg, final_msg])
+    model = FakeChatModel(responses=[tool_msg, final_msg])
 
     agent = LlmAgent(
         name="agent",
-        llm=llm,
+        model=model,
         tools=[big_search],
         tool_response_max_chars=5000,
     )
     _ = [e async for e in agent.astream("search", ctx=_ctx())]
 
     # The LLM should have received truncated tool output in its messages
-    tool_msgs = [m for m in llm.received_messages if isinstance(m, ToolMessage)]
+    tool_msgs = [m for m in model.received_messages if isinstance(m, ToolMessage)]
     assert len(tool_msgs) == 1
     assert len(tool_msgs[0].content) <= 5100  # small overhead
 
@@ -224,10 +224,10 @@ async def test_tool_response_truncated_in_history():
 @pytest.mark.asyncio
 async def test_context_budget_warning(caplog):
     """Warning is logged when message context exceeds 200k chars."""
-    llm = FakeChatModel(responses=[AIMessage(content="ok")])
+    model = FakeChatModel(responses=[AIMessage(content="ok")])
     agent = LlmAgent(
         name="agent",
-        llm=llm,
+        model=model,
         instructions="x" * 250_000,
     )
 
@@ -262,18 +262,18 @@ async def test_planner_pending_tasks_continues_loop():
 
     # First response: text only (no tools) → planner says pending → continue
     # Second response: text only → planner says done → final
-    llm = FakeChatModel(responses=[
+    model = FakeChatModel(responses=[
         AIMessage(content="Working on it..."),
         AIMessage(content="All done!"),
     ])
 
-    agent = LlmAgent(name="agent", llm=llm, planner=planner)
+    agent = LlmAgent(name="agent", model=model, planner=planner)
     events = [e async for e in agent.astream("do tasks", ctx=_ctx())]
 
     finals = [e for e in events if e.is_final_response()]
     assert len(finals) == 1
     assert finals[0].text == "All done!"
-    assert llm.call_count == 2  # called twice because planner continued
+    assert model.call_count == 2  # called twice because planner continued
 
 
 @pytest.mark.asyncio
@@ -288,11 +288,11 @@ async def test_planner_no_pending_returns_immediately():
         def has_pending_tasks(self, ctx):
             return False
 
-    llm = FakeChatModel(responses=[AIMessage(content="Done")])
-    agent = LlmAgent(name="agent", llm=llm, planner=DonePlanner())
+    model = FakeChatModel(responses=[AIMessage(content="Done")])
+    agent = LlmAgent(name="agent", model=model, planner=DonePlanner())
     events = [e async for e in agent.astream("hi", ctx=_ctx())]
 
     finals = [e for e in events if e.is_final_response()]
     assert len(finals) == 1
     assert finals[0].text == "Done"
-    assert llm.call_count == 1
+    assert model.call_count == 1

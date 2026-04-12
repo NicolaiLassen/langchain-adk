@@ -28,12 +28,12 @@ Make any agent callable as a tool by a parent agent.
 ```python
 from orxhestra.tools import AgentTool
 
-researcher = LlmAgent(name="researcher", llm=llm, description="Research topics.", instructions="...")
+researcher = LlmAgent(name="researcher", model=model, description="Research topics.", instructions="...")
 
 # Parent agent can call researcher as a tool
 manager = LlmAgent(
     name="manager",
-    llm=llm,
+    model=model,
     tools=[AgentTool(agent=researcher)],
     instructions="Use the researcher tool when you need information.",
 )
@@ -45,7 +45,7 @@ manager = LlmAgent(
 from orxhestra.tools import make_transfer_tool
 
 transfer = make_transfer_tool([sales_agent, support_agent])
-triage = LlmAgent(name="triage", llm=llm, tools=[transfer], instructions="Route requests.")
+triage = LlmAgent(name="triage", model=model, tools=[transfer], instructions="Route requests.")
 ```
 
 ## exit_loop_tool — Break out of LoopAgent
@@ -55,7 +55,7 @@ from orxhestra.tools import exit_loop_tool
 
 reviewer = LlmAgent(
     name="reviewer",
-    llm=llm,
+    model=model,
     tools=[exit_loop_tool],
     instructions="Call exit_loop when the draft is approved.",
 )
@@ -88,7 +88,7 @@ client = MCPClient("http://localhost:8001/mcp")
 adapter = MCPToolAdapter(client)
 tools = await adapter.load_tools()
 
-agent = LlmAgent(name="agent", llm=llm, tools=tools)
+agent = LlmAgent(name="agent", model=model, tools=tools)
 
 # In-memory FastMCP server
 from mcp_server import mcp  # FastMCP instance

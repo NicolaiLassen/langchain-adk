@@ -24,14 +24,14 @@ class StructuredOutputParser:
 
     Parameters
     ----------
-    llm : BaseChatModel
+    model : BaseChatModel
         The LangChain chat model (used for the fallback extraction).
     output_schema : type
         Pydantic model class defining the expected structure.
     """
 
-    def __init__(self, llm: BaseChatModel, output_schema: type) -> None:
-        self._llm = llm
+    def __init__(self, model: BaseChatModel, output_schema: type) -> None:
+        self._model = model
         self._output_schema = output_schema
 
     def build_structured_llm(self) -> Any | None:
@@ -46,7 +46,7 @@ class StructuredOutputParser:
         """
         for method in ("json_schema", "json_mode"):
             try:
-                return self._llm.with_structured_output(
+                return self._model.with_structured_output(
                     self._output_schema, method=method
                 )
             except (NotImplementedError, TypeError, ValueError):

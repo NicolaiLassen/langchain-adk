@@ -11,7 +11,7 @@ description: Expose orxhestra agents as A2A protocol endpoints or connect to rem
 from orxhestra import LlmAgent, InMemorySessionService
 from orxhestra.a2a import A2AServer, AgentSkill
 
-agent = LlmAgent(name="MyAgent", llm=llm, tools=[...])
+agent = LlmAgent(name="MyAgent", model=model, tools=[...])
 
 server = A2AServer(
     agent=agent,

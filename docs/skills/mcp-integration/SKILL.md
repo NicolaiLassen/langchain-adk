@@ -22,7 +22,7 @@ mcp_tools = await adapter.load_tools()
 
 agent = LlmAgent(
     name="MCPAgent",
-    llm=llm,
+    model=model,
     tools=mcp_tools,
     instructions="Use the available tools to answer questions.",
 )

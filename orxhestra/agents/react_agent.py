@@ -98,7 +98,7 @@ class ReActAgent(LlmAgent):
     ----------
     name : str
         Unique name identifying this agent.
-    llm : BaseChatModel
+    model : BaseChatModel
         The LangChain chat model to use.
     tools : list[BaseTool], optional
         Tools available to the agent.
@@ -114,7 +114,7 @@ class ReActAgent(LlmAgent):
     def __init__(
         self,
         name: str,
-        llm: BaseChatModel,
+        model: BaseChatModel,
         tools: list[BaseTool] | None = None,
         *,
         description: str = "",
@@ -125,18 +125,18 @@ class ReActAgent(LlmAgent):
         kwargs.setdefault("instructions", "")
         super().__init__(
             name=name,
-            llm=llm,
+            model=model,
             tools=tools,
             description=description,
             max_iterations=max_iterations,
             **kwargs,
         )
         try:
-            self._structured_llm = llm.with_structured_output(
+            self._structured_llm = model.with_structured_output(
                 schema=ReActStep, include_raw=False, method="json_mode",
             )
         except (NotImplementedError, TypeError, ValueError):
-            self._structured_llm = llm.with_structured_output(
+            self._structured_llm = model.with_structured_output(
                 schema=ReActStep, include_raw=False,
             )
 
@@ -160,8 +160,8 @@ class ReActAgent(LlmAgent):
             from orxhestra.models.llm_request import LlmRequest
 
             request = LlmRequest(
-                model=getattr(self._llm, "model_name", None)
-                or getattr(self._llm, "model", None),
+                model=getattr(self._model, "model_name", None)
+                or getattr(self._model, "model", None),
                 system_instruction=base,
                 messages=[],
                 tools=list(self._tools.values()),

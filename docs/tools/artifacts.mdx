@@ -17,7 +17,7 @@ artifact_tools = make_artifact_tools()
 
 agent = LlmAgent(
     name="Coder",
-    llm=llm,
+    model=model,
     tools=artifact_tools,
     instructions="Use save_artifact to persist files. Use load_artifact to read them back.",
 )

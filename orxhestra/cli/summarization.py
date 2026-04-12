@@ -84,7 +84,7 @@ def _events_to_text(events: list[Event]) -> str:
 
 
 async def summarize_session(
-    llm: BaseChatModel,
+    model: BaseChatModel,
     events: list[Event],
     char_threshold: int = DEFAULT_CHAR_THRESHOLD,
     retention_chars: int = RETENTION_CHARS,
@@ -93,7 +93,7 @@ async def summarize_session(
 
     Parameters
     ----------
-    llm : BaseChatModel
+    model : BaseChatModel
         LLM to generate the summary.
     events : list[Event]
         The session's event list.
@@ -142,7 +142,7 @@ async def summarize_session(
     ]
 
     try:
-        response = await llm.ainvoke(messages)
+        response = await model.ainvoke(messages)
         summary_text: str = (
             response.content
             if isinstance(response.content, str)

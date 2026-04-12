@@ -33,7 +33,7 @@ from orxhestra import PlanReActPlanner, LlmAgent
 
 agent = LlmAgent(
     name="PlanningAgent",
-    llm=llm,
+    model=model,
     tools=[...],
     planner=PlanReActPlanner(),
 )
@@ -50,7 +50,7 @@ planner = TaskPlanner()
 
 agent = LlmAgent(
     name="ProjectAgent",
-    llm=llm,
+    model=model,
     tools=[planner.get_manage_tasks_tool()],
     planner=planner,
     instructions=(

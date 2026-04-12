@@ -20,7 +20,7 @@ class ReplState(BaseModel):
         Name of the LLM model in use.
     todo_list : TodoList, optional
         Active todo list for task tracking.
-    llm : BaseChatModel, optional
+    model : BaseChatModel, optional
         LangChain LLM instance.
     turn_count : int
         Number of completed REPL turns.
@@ -38,7 +38,7 @@ class ReplState(BaseModel):
     todo_list: TodoList | None = Field(
         default=None, description="Active todo list for task tracking."
     )
-    llm: BaseChatModel | None = Field(
+    model: BaseChatModel | None = Field(
         default=None, description="LangChain LLM instance."
     )
     turn_count: int = Field(

@@ -29,7 +29,7 @@ async def log_tool(ctx: InvocationContext, name: str, args: dict) -> None:
 
 agent = LlmAgent(
     name="TrackedAgent",
-    llm=llm,
+    model=model,
     before_model_callback=log_llm_call,
     after_model_callback=track_usage,
     on_model_error_callback=handle_llm_error,

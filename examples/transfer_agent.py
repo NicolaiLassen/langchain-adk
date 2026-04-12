@@ -39,16 +39,16 @@ def search_docs(query: str) -> str:
 async def main() -> None:
     # --- Replace with a real LLM ---
     # from langchain_openai import ChatOpenAI
-    # llm = ChatOpenAI(model="gpt-5.4")
+    # model = ChatOpenAI(model="gpt-5.4")
     raise NotImplementedError(
-        "Replace the llm= line below with a real LangChain chat model "
+        "Replace the model= line below with a real LangChain chat model "
         "and comment out this raise."
     )
 
     # --- Specialist agents ---
     sales_agent = LlmAgent(
         name="SalesAgent",
-        llm=llm,  # noqa: F821
+        model=model,  # noqa: F821
         tools=[lookup_order],
         description="Handles order inquiries, shipping, and returns.",
         instructions="You are a sales specialist. Help with order-related questions.",
@@ -56,7 +56,7 @@ async def main() -> None:
 
     billing_agent = LlmAgent(
         name="BillingAgent",
-        llm=llm,  # noqa: F821
+        model=model,  # noqa: F821
         tools=[check_billing],
         description="Handles billing, payments, and subscription questions.",
         instructions="You are a billing specialist. Help with payment and subscription questions.",
@@ -64,7 +64,7 @@ async def main() -> None:
 
     support_agent = LlmAgent(
         name="SupportAgent",
-        llm=llm,  # noqa: F821
+        model=model,  # noqa: F821
         tools=[search_docs],
         description="Handles technical support and documentation questions.",
         instructions="You are a technical support specialist. Help with product and API questions.",
@@ -76,7 +76,7 @@ async def main() -> None:
 
     triage_agent = LlmAgent(
         name="TriageAgent",
-        llm=llm,  # noqa: F821
+        model=model,  # noqa: F821
         tools=[transfer_tool],
         instructions=(
             "You are a customer service triage agent. "

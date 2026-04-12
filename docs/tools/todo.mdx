@@ -19,7 +19,7 @@ planner = TaskPlanner(todo_list=todo_list)
 
 agent = LlmAgent(
     name="ProjectAgent",
-    llm=llm,
+    model=model,
     tools=[todo_tool],
     planner=planner,
     instructions="Use write_todos to track your work on multi-step tasks.",

@@ -82,7 +82,7 @@ class MCPToolAdapter:
     >>> client = MCPClient("http://localhost:8001/mcp")
     >>> adapter = MCPToolAdapter(client)
     >>> tools = await adapter.load_tools()
-    >>> agent = LlmAgent("agent", llm=llm, tools=tools)
+    >>> agent = LlmAgent("agent", model=model, tools=tools)
     """
 
     def __init__(self, client: MCPClient) -> None:

@@ -74,8 +74,8 @@ async def test_react_direct_answer():
         thought="I know the answer",
         answer="42",
     )
-    llm = FakeStructuredModel(steps=[step])
-    agent = ReActAgent(name="react", llm=llm)
+    model = FakeStructuredModel(steps=[step])
+    agent = ReActAgent(name="react", model=model)
 
     events = [e async for e in agent.astream("what is 6*7?", ctx=_ctx())]
 
@@ -111,8 +111,8 @@ async def test_react_tool_call_then_answer():
         thought="Now I have the answer",
         answer="The value is value_for_test_key",
     )
-    llm = FakeStructuredModel(steps=[step1, step2])
-    agent = ReActAgent(name="react", llm=llm, tools=[lookup])
+    model = FakeStructuredModel(steps=[step1, step2])
+    agent = ReActAgent(name="react", model=model, tools=[lookup])
 
     events = [e async for e in agent.astream("look up test_key", ctx=_ctx())]
 
@@ -140,8 +140,8 @@ async def test_react_tool_not_found():
         thought="No such tool",
         answer="Cannot find tool",
     )
-    llm = FakeStructuredModel(steps=[step1, step2])
-    agent = ReActAgent(name="react", llm=llm)
+    model = FakeStructuredModel(steps=[step1, step2])
+    agent = ReActAgent(name="react", model=model)
 
     events = [e async for e in agent.astream("test", ctx=_ctx())]
 
@@ -161,8 +161,8 @@ async def test_react_max_iterations():
         action="nonexistent",
         action_input="test",
     )
-    llm = FakeStructuredModel(steps=[step])
-    agent = ReActAgent(name="react", llm=llm, max_iterations=2)
+    model = FakeStructuredModel(steps=[step])
+    agent = ReActAgent(name="react", model=model, max_iterations=2)
 
     events = [e async for e in agent.astream("loop forever", ctx=_ctx())]
 
@@ -183,10 +183,10 @@ def test_react_is_subclass_of_llm_agent():
 
 def test_react_inherits_llm_agent_attributes():
     """ReActAgent should accept all LlmAgent keyword arguments."""
-    llm = FakeStructuredModel(steps=[])
+    model = FakeStructuredModel(steps=[])
     agent = ReActAgent(
         name="react",
-        llm=llm,
+        model=model,
         instructions="Custom instructions here.",
         description="A react agent",
         max_iterations=5,
@@ -199,8 +199,8 @@ def test_react_inherits_llm_agent_attributes():
 
 def test_react_default_instructions_empty():
     """ReActAgent defaults to empty instructions (ReAct prompt is the base)."""
-    llm = FakeStructuredModel(steps=[])
-    agent = ReActAgent(name="react", llm=llm)
+    model = FakeStructuredModel(steps=[])
+    agent = ReActAgent(name="react", model=model)
     assert agent._instructions == ""
 
 
@@ -208,9 +208,9 @@ def test_react_accepts_planner():
     """ReActAgent should accept a planner kwarg via LlmAgent inheritance."""
     from unittest.mock import MagicMock
 
-    llm = FakeStructuredModel(steps=[])
+    model = FakeStructuredModel(steps=[])
     mock_planner = MagicMock()
-    agent = ReActAgent(name="react", llm=llm, planner=mock_planner)
+    agent = ReActAgent(name="react", model=model, planner=mock_planner)
     assert agent._planner is mock_planner
 
 
@@ -218,12 +218,12 @@ def test_react_accepts_callbacks():
     """ReActAgent should accept callback kwargs via LlmAgent inheritance."""
     from unittest.mock import AsyncMock
 
-    llm = FakeStructuredModel(steps=[])
+    model = FakeStructuredModel(steps=[])
     before_cb = AsyncMock()
     after_cb = AsyncMock()
     agent = ReActAgent(
         name="react",
-        llm=llm,
+        model=model,
         before_model_callback=before_cb,
         after_model_callback=after_cb,
     )
@@ -234,10 +234,10 @@ def test_react_accepts_callbacks():
 @pytest.mark.asyncio
 async def test_react_custom_instructions_in_system_prompt():
     """Custom instructions should appear in the ReAct system prompt."""
-    llm = FakeStructuredModel(steps=[])
+    model = FakeStructuredModel(steps=[])
     agent = ReActAgent(
         name="react",
-        llm=llm,
+        model=model,
         instructions="Always respond in French.",
     )
     ctx = _ctx()
@@ -249,8 +249,8 @@ async def test_react_custom_instructions_in_system_prompt():
 @pytest.mark.asyncio
 async def test_react_no_custom_instructions_clean_prompt():
     """Without custom instructions, the prompt should not have 'Additional instructions'."""
-    llm = FakeStructuredModel(steps=[])
-    agent = ReActAgent(name="react", llm=llm)
+    model = FakeStructuredModel(steps=[])
+    agent = ReActAgent(name="react", model=model)
     ctx = _ctx()
     prompt = await agent._build_react_system_prompt(ctx)
     assert "ReAct pattern" in prompt
@@ -265,12 +265,12 @@ async def test_react_with_instructions_and_tools():
         """Evaluate a math expression."""
         return str(eval(expression))
 
-    llm = FakeStructuredModel(steps=[
+    model = FakeStructuredModel(steps=[
         ReActStep(scratchpad="", thought="I know", answer="done"),
     ])
     agent = ReActAgent(
         name="react",
-        llm=llm,
+        model=model,
         tools=[calculator],
         instructions="Show your work step by step.",
     )

@@ -263,10 +263,10 @@ async def test_planner_continues_until_todos_done():
                 )]
             )
 
-    llm = ProgressLlm(responses=[AIMessage(content="x")])
+    model = ProgressLlm(responses=[AIMessage(content="x")])
     agent = LlmAgent(
         name="agent",
-        llm=llm,
+        model=model,
         planner=planner,
         tools=[make_todo_tool(tl)],
     )

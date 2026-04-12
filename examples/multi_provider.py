@@ -36,19 +36,19 @@ def add(a: int, b: int) -> int:
     return a + b
 
 
-def build_agent(llm: BaseChatModel) -> LlmAgent:
+def build_agent(model: BaseChatModel) -> LlmAgent:
     """Build a simple math agent with the given LLM."""
     return LlmAgent(
         name="MathAgent",
-        llm=llm,
+        model=model,
         tools=[add],
         instructions="You are a helpful math assistant. Use the add tool.",
     )
 
 
-async def run_agent(llm: BaseChatModel, label: str) -> None:
+async def run_agent(model: BaseChatModel, label: str) -> None:
     """Run the agent and print the final answer."""
-    agent: LlmAgent = build_agent(llm)
+    agent: LlmAgent = build_agent(model)
     print(f"\n--- {label} ---")
     async for event in agent.astream("What is 17 + 25?"):
         if event.has_tool_calls:

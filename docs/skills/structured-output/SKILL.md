@@ -22,7 +22,7 @@ class CompanyAnalysis(BaseModel):
 
 agent = LlmAgent(
     name="AnalystAgent",
-    llm=llm,
+    model=model,
     tools=[get_financials, get_news_sentiment],
     output_schema=CompanyAnalysis,
     instructions="You are a financial analyst.",

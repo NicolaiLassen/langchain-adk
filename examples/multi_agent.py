@@ -24,9 +24,9 @@ from orxhestra.tools.agent_tool import AgentTool
 async def main() -> None:
     # --- Replace with a real LLM ---
     # from langchain_openai import ChatOpenAI
-    # llm = ChatOpenAI(model="gpt-5.4")
+    # model = ChatOpenAI(model="gpt-5.4")
     raise NotImplementedError(
-        "Replace the llm= line below with a real LangChain chat model "
+        "Replace the model= line below with a real LangChain chat model "
         "and comment out this raise."
     )
 
@@ -51,7 +51,7 @@ async def main() -> None:
 
     research_agent = LlmAgent(
         name="ResearchAgent",
-        llm=llm,  # noqa: F821
+        model=model,  # noqa: F821
         instructions=research_prompt,
         tools=[
             make_list_skills_tool(skill_store),
@@ -69,7 +69,7 @@ async def main() -> None:
 
     writer_agent = LlmAgent(
         name="WriterAgent",
-        llm=llm,  # noqa: F821
+        model=model,  # noqa: F821
         instructions=writer_prompt,
         tools=[AgentTool(research_agent)],
     )

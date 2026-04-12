@@ -15,7 +15,7 @@ async def deploy_service(env: str) -> str:
     return f"Deployed to {env}"
 
 tool = LongRunningFunctionTool(deploy_service)
-agent = LlmAgent(name="deployer", llm=llm, tools=[tool.as_tool()])
+agent = LlmAgent(name="deployer", model=model, tools=[tool.as_tool()])
 ```
 
 The tool description is automatically appended with:

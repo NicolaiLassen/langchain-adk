@@ -28,7 +28,7 @@ store = InMemorySkillStore([
 
 agent = LlmAgent(
     name="SkillfulAgent",
-    llm=llm,
+    model=model,
     tools=[
         make_list_skills_tool(store),   # lets agent discover available skills
         make_load_skill_tool(store),    # lets agent load a skill's full content

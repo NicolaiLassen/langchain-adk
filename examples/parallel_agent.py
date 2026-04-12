@@ -47,16 +47,16 @@ def search_arxiv(query: str) -> str:
 async def main() -> None:
     # --- Replace with a real LLM ---
     # from langchain_openai import ChatOpenAI
-    # llm = ChatOpenAI(model="gpt-5.4")
+    # model = ChatOpenAI(model="gpt-5.4")
     raise NotImplementedError(
-        "Replace the llm= line below with a real LangChain chat model "
+        "Replace the model= line below with a real LangChain chat model "
         "and comment out this raise."
     )
 
     # Three research agents, each with a different source
     wiki_agent = LlmAgent(
         name="WikiResearcher",
-        llm=llm,  # noqa: F821
+        model=model,  # noqa: F821
         tools=[search_wikipedia],
         description="Researches topics using Wikipedia.",
         instructions="Search Wikipedia for the given topic and summarize findings.",
@@ -64,7 +64,7 @@ async def main() -> None:
 
     news_agent = LlmAgent(
         name="NewsResearcher",
-        llm=llm,  # noqa: F821
+        model=model,  # noqa: F821
         tools=[search_news],
         description="Researches topics using recent news.",
         instructions="Search news for the given topic and summarize findings.",
@@ -72,7 +72,7 @@ async def main() -> None:
 
     arxiv_agent = LlmAgent(
         name="ArxivResearcher",
-        llm=llm,  # noqa: F821
+        model=model,  # noqa: F821
         tools=[search_arxiv],
         description="Researches topics using academic papers.",
         instructions="Search arXiv for the given topic and summarize findings.",

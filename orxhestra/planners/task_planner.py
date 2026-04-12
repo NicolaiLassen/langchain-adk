@@ -15,7 +15,7 @@ Usage::
 
     agent = LlmAgent(
         name="coder",
-        llm=llm,
+        model=model,
         tools=[make_todo_tool(todo_list)],
         planner=planner,
     )

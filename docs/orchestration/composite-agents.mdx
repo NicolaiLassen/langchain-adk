@@ -88,7 +88,7 @@ from orxhestra import LoopAgent, exit_loop_tool
 
 refine_agent = LlmAgent(
     name="RefineAgent",
-    llm=llm,
+    model=model,
     tools=[edit_tool, exit_loop_tool],
     instructions=(
         "Improve the draft. Call exit_loop when the quality is acceptable. "

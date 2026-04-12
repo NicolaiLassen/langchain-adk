@@ -53,11 +53,11 @@ Wrap a `BaseAgent` so it can be called as a tool by a parent agent:
 from orxhestra import LlmAgent
 from orxhestra.tools.agent_tool import AgentTool
 
-research_agent = LlmAgent(name="ResearchAgent", llm=llm, tools=[search_tool])
+research_agent = LlmAgent(name="ResearchAgent", model=model, tools=[search_tool])
 
 parent = LlmAgent(
     name="Coordinator",
-    llm=llm,
+    model=model,
     tools=[AgentTool(research_agent)],
     instructions="Delegate research to ResearchAgent.",
 )
@@ -139,7 +139,7 @@ from orxhestra.tools import make_filesystem_tools
 tools = make_filesystem_tools(workspace="/tmp/my-workspace")
 # or use $AGENT_WORKSPACE env var / default /tmp/agent-workspace
 
-agent = LlmAgent(name="coder", llm=llm, tools=tools)
+agent = LlmAgent(name="coder", model=model, tools=tools)
 ```
 
 | Tool | Description |

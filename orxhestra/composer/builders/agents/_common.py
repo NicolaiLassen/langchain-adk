@@ -52,14 +52,14 @@ async def resolve_llm_kwargs(
     }
     if model_cfg.model_extra:
         model_kwargs.update(model_cfg.model_extra)
-    llm = create(model_cfg.provider, model_cfg.name, **model_kwargs)
+    model = create(model_cfg.provider, model_cfg.name, **model_kwargs)
 
     tools = await helpers.resolve_tools(agent_def)
     max_iter = agent_def.max_iterations or spec.defaults.max_iterations
 
     kwargs: dict[str, Any] = {
         "name": name,
-        "llm": llm,
+        "model": model,
         "tools": tools or None,
         "description": agent_def.description,
         "max_iterations": max_iter,

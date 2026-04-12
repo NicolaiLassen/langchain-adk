@@ -46,15 +46,15 @@ def send_email(to: str, subject: str, body: str) -> str:
 async def main() -> None:
     # --- Replace with a real LLM ---
     # from langchain_openai import ChatOpenAI
-    # llm = ChatOpenAI(model="gpt-5.4")
+    # model = ChatOpenAI(model="gpt-5.4")
     raise NotImplementedError(
-        "Replace the llm= line below with a real LangChain chat model "
+        "Replace the model= line below with a real LangChain chat model "
         "and comment out this raise."
     )
 
     agent = LlmAgent(
         name="AssistantWithHumanInput",
-        llm=llm,  # noqa: F821
+        model=model,  # noqa: F821
         tools=[ask_human, book_meeting, send_email],
         instructions=(
             "You are a helpful assistant that can book meetings and send emails. "

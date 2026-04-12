@@ -57,7 +57,7 @@ def _llm(*texts: str) -> FakeChatModel:
 
 @pytest.mark.asyncio
 async def test_simple_text_response():
-    agent = LlmAgent(name="agent", llm=_llm("Hello world"))
+    agent = LlmAgent(name="agent", model=_llm("Hello world"))
     events = [e async for e in agent.astream("hi", ctx=_ctx())]
     finals = [e for e in events if e.is_final_response()]
     assert len(finals) == 1
@@ -79,9 +79,9 @@ async def test_tool_call_and_result():
         tool_calls=[{"id": "tc1", "name": "add", "args": {"a": 2, "b": 3}}],
     )
     final_msg = AIMessage(content="The answer is 5")
-    llm = FakeChatModel(responses=[tool_msg, final_msg])
+    model = FakeChatModel(responses=[tool_msg, final_msg])
 
-    agent = LlmAgent(name="agent", llm=llm, tools=[add])
+    agent = LlmAgent(name="agent", model=model, tools=[add])
     events = [e async for e in agent.astream("add 2+3", ctx=_ctx())]
 
     tool_calls = [e for e in events if e.has_tool_calls]
@@ -103,9 +103,9 @@ async def test_tool_not_found():
         tool_calls=[{"id": "tc1", "name": "nonexistent", "args": {}}],
     )
     final_msg = AIMessage(content="ok")
-    llm = FakeChatModel(responses=[tool_msg, final_msg])
+    model = FakeChatModel(responses=[tool_msg, final_msg])
 
-    agent = LlmAgent(name="agent", llm=llm)
+    agent = LlmAgent(name="agent", model=model)
     events = [e async for e in agent.astream("call bad tool", ctx=_ctx())]
 
     results = [e for e in events if e.type == EventType.TOOL_RESPONSE]
@@ -120,9 +120,9 @@ async def test_max_iterations_error():
         content="",
         tool_calls=[{"id": "tc1", "name": "nonexistent", "args": {}}],
     )
-    llm = FakeChatModel(responses=[tool_msg])
+    model = FakeChatModel(responses=[tool_msg])
 
-    agent = LlmAgent(name="agent", llm=llm, max_iterations=2)
+    agent = LlmAgent(name="agent", model=model, max_iterations=2)
     events = [e async for e in agent.astream("loop", ctx=_ctx())]
 
     errors = [e for e in events if e.metadata.get("error")]
@@ -144,9 +144,9 @@ async def test_transfer_sentinel():
         tool_calls=[{"id": "tc1", "name": "transfer", "args": {"agent_name": "TargetAgent"}}],
     )
     final_msg = AIMessage(content="transferred")
-    llm = FakeChatModel(responses=[tool_msg, final_msg])
+    model = FakeChatModel(responses=[tool_msg, final_msg])
 
-    agent = LlmAgent(name="agent", llm=llm, tools=[transfer])
+    agent = LlmAgent(name="agent", model=model, tools=[transfer])
     events = [e async for e in agent.astream("transfer", ctx=_ctx())]
 
     results = [e for e in events if e.type == EventType.TOOL_RESPONSE]
@@ -168,9 +168,9 @@ async def test_exit_loop_sentinel():
         tool_calls=[{"id": "tc1", "name": "exit_loop", "args": {}}],
     )
     final_msg = AIMessage(content="done")
-    llm = FakeChatModel(responses=[tool_msg, final_msg])
+    model = FakeChatModel(responses=[tool_msg, final_msg])
 
-    agent = LlmAgent(name="agent", llm=llm, tools=[exit_loop])
+    agent = LlmAgent(name="agent", model=model, tools=[exit_loop])
     events = [e async for e in agent.astream("exit", ctx=_ctx())]
 
     results = [e for e in events if e.type == EventType.TOOL_RESPONSE]
@@ -190,7 +190,7 @@ async def test_before_after_model_callbacks():
 
     agent = LlmAgent(
         name="agent",
-        llm=_llm("done"),
+        model=_llm("done"),
         before_model_callback=before,
         after_model_callback=after,
     )
@@ -203,7 +203,7 @@ async def test_before_after_model_callbacks():
 async def test_custom_instructions():
     agent = LlmAgent(
         name="agent",
-        llm=_llm("response"),
+        model=_llm("response"),
         instructions="You are a pirate.",
     )
     events = [e async for e in agent.astream("hi", ctx=_ctx())]
@@ -218,7 +218,7 @@ async def test_callable_instructions():
 
     agent = LlmAgent(
         name="agent",
-        llm=_llm("response"),
+        model=_llm("response"),
         instructions=get_instructions,
     )
     events = [e async for e in agent.astream("hi", ctx=_ctx())]
@@ -256,8 +256,8 @@ async def test_multi_turn_history_from_session():
             received_messages.extend(messages)
             return super()._generate(messages, stop, **kwargs)
 
-    llm = SpyLlm(responses=[AIMessage(content="Your name is Alice")])
-    agent = LlmAgent(name="agent", llm=llm)
+    model = SpyLlm(responses=[AIMessage(content="Your name is Alice")])
+    agent = LlmAgent(name="agent", model=model)
 
     ctx = _ctx(session=session)
     _ = [e async for e in agent.astream("What is my name?", ctx=ctx)]
@@ -289,9 +289,9 @@ async def test_tool_call_id_in_parts():
         tool_calls=[{"id": "call_123", "name": "greet", "args": {"name": "Bob"}}],
     )
     final_msg = AIMessage(content="Done")
-    llm = FakeChatModel(responses=[tool_msg, final_msg])
+    model = FakeChatModel(responses=[tool_msg, final_msg])
 
-    agent = LlmAgent(name="agent", llm=llm, tools=[greet])
+    agent = LlmAgent(name="agent", model=model, tools=[greet])
     events = [e async for e in agent.astream("greet Bob", ctx=_ctx())]
 
     tool_calls = [e for e in events if e.has_tool_calls]
@@ -310,7 +310,7 @@ async def test_tool_callback_events_stream_before_tool_completion():
         tool_calls=[{"id": "tc1", "name": "streamer", "args": {"request": "go"}}],
     )
     final_msg = AIMessage(content="done")
-    llm = FakeChatModel(responses=[tool_msg, final_msg])
+    model = FakeChatModel(responses=[tool_msg, final_msg])
 
     finished = asyncio.Event()
 
@@ -352,7 +352,7 @@ async def test_tool_callback_events_stream_before_tool_completion():
 
     agent = LlmAgent(
         name="agent",
-        llm=llm,
+        model=model,
         tools=[StreamingTool(finished_event=finished)],
     )
 
@@ -378,7 +378,7 @@ async def test_concurrent_tools_stream_events_interleaved():
         ],
     )
     final_msg = AIMessage(content="all done")
-    llm = FakeChatModel(responses=[tool_msg, final_msg])
+    model = FakeChatModel(responses=[tool_msg, final_msg])
 
     class ConcurrentWorker(BaseTool):
         name: str
@@ -412,7 +412,7 @@ async def test_concurrent_tools_stream_events_interleaved():
 
     agent = LlmAgent(
         name="agent",
-        llm=llm,
+        model=model,
         tools=[
             ConcurrentWorker(name="worker_a", delay=0.05),
             ConcurrentWorker(name="worker_b", delay=0.02),
@@ -459,10 +459,10 @@ async def test_instruction_templating_from_state():
             received_messages.extend(messages)
             return super()._generate(messages, stop, **kwargs)
 
-    llm = SpyLlm(responses=[AIMessage(content="Hi Alice")])
+    model = SpyLlm(responses=[AIMessage(content="Hi Alice")])
     agent = LlmAgent(
         name="agent",
-        llm=llm,
+        model=model,
         instructions="Hello {user_name}, you are in {city}.",
     )
     ctx = _ctx(state={"user_name": "Alice", "city": "Copenhagen"})
@@ -487,10 +487,10 @@ async def test_instruction_templating_missing_key_left_as_is():
             received_messages.extend(messages)
             return super()._generate(messages, stop, **kwargs)
 
-    llm = SpyLlm(responses=[AIMessage(content="ok")])
+    model = SpyLlm(responses=[AIMessage(content="ok")])
     agent = LlmAgent(
         name="agent",
-        llm=llm,
+        model=model,
         instructions="Hello {user_name}, unknown {missing_key}.",
     )
     ctx = _ctx(state={"user_name": "Bob"})
@@ -506,8 +506,8 @@ async def test_instruction_templating_missing_key_left_as_is():
 @pytest.mark.asyncio
 async def test_output_key_saves_to_state():
     """When output_key is set, the final answer should be saved to ctx.state."""
-    llm = _llm("The capital is Copenhagen")
-    agent = LlmAgent(name="agent", llm=llm, output_key="answer")
+    model = _llm("The capital is Copenhagen")
+    agent = LlmAgent(name="agent", model=model, output_key="answer")
 
     ctx = _ctx()
     events = [e async for e in agent.astream("What is the capital?", ctx=ctx)]
@@ -521,8 +521,8 @@ async def test_output_key_saves_to_state():
 @pytest.mark.asyncio
 async def test_output_key_not_set_no_state_delta():
     """Without output_key, no state_delta should be emitted on final answer."""
-    llm = _llm("Hello")
-    agent = LlmAgent(name="agent", llm=llm)
+    model = _llm("Hello")
+    agent = LlmAgent(name="agent", model=model)
 
     ctx = _ctx()
     events = [e async for e in agent.astream("hi", ctx=ctx)]

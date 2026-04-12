@@ -71,12 +71,12 @@ async def main() -> None:
         print("Set OPENAI_API_KEY to run this example.")
         return
 
-    llm = ChatOpenAI(model="gpt-5.4", api_key=api_key)
+    model = ChatOpenAI(model="gpt-5.4", api_key=api_key)
 
     # Sub-agent 1: weather expert
     weather_agent = LlmAgent(
         name="WeatherAgent",
-        llm=llm,
+        model=model,
         tools=[get_weather],
         instructions="You are a weather assistant. Use the get_weather tool to answer.",
     )
@@ -84,7 +84,7 @@ async def main() -> None:
     # Sub-agent 2: travel guide
     travel_agent = LlmAgent(
         name="TravelAgent",
-        llm=llm,
+        model=model,
         tools=[get_attractions],
         instructions="You are a travel guide. Use the get_attractions tool to answer.",
     )
@@ -92,7 +92,7 @@ async def main() -> None:
     # Parent agent with AgentTool-wrapped sub-agents
     planner = LlmAgent(
         name="TripPlanner",
-        llm=llm,
+        model=model,
         tools=[
             AgentTool(weather_agent),
             AgentTool(travel_agent),

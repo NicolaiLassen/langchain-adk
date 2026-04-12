@@ -103,8 +103,8 @@ async def build_from_orx(
         sys.exit(1)
 
     os.environ["AGENT_WORKSPACE"] = workspace
-    llm = create_llm(model_name)
-    register_cli_builtins(workspace, llm)
+    model = create_llm(model_name)
+    register_cli_builtins(workspace, model)
 
     with open(orx_path) as f:
         raw: dict = yaml.safe_load(f)
@@ -162,7 +162,7 @@ async def build_from_orx(
             compaction_config=CompactionConfig(
                 char_threshold=40_000,
                 retention_chars=8_000,
-                llm=llm,
+                model=model,
             ),
         )
 
@@ -171,5 +171,5 @@ async def build_from_orx(
         session_id=str(uuid4()),
         model_name=model_name,
         todo_list=get_todo_list(),
-        llm=llm,
+        model=model,
     )

@@ -20,7 +20,7 @@ When `request_confirmation()` is called from a `before_tool_callback`, the tool 
 ```python
 agent = LlmAgent(
     name="SafeAgent",
-    llm=llm,
+    model=model,
     tools=[delete_file, drop_table, search],
     before_tool_callback=confirm_dangerous,
 )

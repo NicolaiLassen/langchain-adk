@@ -27,12 +27,12 @@ Sub-agent events stream through the parent in real-time. Events carry `branch` a
 from orxhestra import LlmAgent
 from orxhestra.tools.agent_tool import AgentTool
 
-weather_agent = LlmAgent(name="WeatherAgent", llm=llm, tools=[get_weather])
-travel_agent = LlmAgent(name="TravelAgent", llm=llm, tools=[get_attractions])
+weather_agent = LlmAgent(name="WeatherAgent", model=model, tools=[get_weather])
+travel_agent = LlmAgent(name="TravelAgent", model=model, tools=[get_attractions])
 
 planner = LlmAgent(
     name="TripPlanner",
-    llm=llm,
+    model=model,
     tools=[AgentTool(weather_agent), AgentTool(travel_agent)],
     instructions="Use the sub-agents to plan a trip.",
 )

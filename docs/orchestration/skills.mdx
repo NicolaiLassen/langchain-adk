@@ -41,7 +41,7 @@ store = InMemorySkillStore([
 
 agent = LlmAgent(
     name="SkillfulAgent",
-    llm=llm,
+    model=model,
     tools=[
         make_list_skills_tool(store),   # L1: discover available skills
         make_load_skill_tool(store),    # L2: load a skill's instructions
@@ -118,7 +118,7 @@ store = InMemorySkillStore(skills)
 
 agent = LlmAgent(
     name="SkillfulAgent",
-    llm=llm,
+    model=model,
     tools=[
         make_list_skills_tool(store),          # L1: catalog
         make_load_skill_tool(store),           # L2: instructions + resource listing

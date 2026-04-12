@@ -68,14 +68,14 @@ class CompactionConfig:
         Always keep the most recent events totalling at least this
         many characters as raw (uncompacted).  Default 20,000
         (~5k tokens).
-    llm : BaseChatModel, optional
+    model : BaseChatModel, optional
         LLM to use for summarization.  If ``None``, the compactor
         will use a simple text-based extraction instead of an LLM call.
     """
 
     char_threshold: int = 100_000
     retention_chars: int = 20_000
-    llm: BaseChatModel | None = field(default=None, repr=False)
+    model: BaseChatModel | None = field(default=None, repr=False)
 
 
 _SUMMARIZE_PROMPT = """\
@@ -233,10 +233,10 @@ async def compact_session(
     if not events_text.strip():
         return False
 
-    if config.llm is not None:
+    if config.model is not None:
         prompt = _SUMMARIZE_PROMPT.format(events_text=events_text)
         try:
-            response = await config.llm.ainvoke(prompt)
+            response = await config.model.ainvoke(prompt)
             summary = response.content if hasattr(response, "content") else str(response)
         except Exception as exc:
             logger.debug("Compaction LLM call failed: %s", exc)

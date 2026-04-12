@@ -58,15 +58,15 @@ async def confirm_dangerous(ctx, tool_name: str, tool_args: dict) -> None:
 async def main() -> None:
     # --- Replace with a real LLM ---
     # from langchain_openai import ChatOpenAI
-    # llm = ChatOpenAI(model="gpt-5.4")
+    # model = ChatOpenAI(model="gpt-5.4")
     raise NotImplementedError(
-        "Replace the llm= line below with a real LangChain chat model "
+        "Replace the model= line below with a real LangChain chat model "
         "and comment out this raise."
     )
 
     agent = LlmAgent(
         name="SafeDBAgent",
-        llm=llm,  # noqa: F821
+        model=model,  # noqa: F821
         tools=[search_database, delete_records, drop_table],
         before_tool_callback=confirm_dangerous,
         instructions=(

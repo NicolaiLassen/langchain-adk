@@ -64,16 +64,16 @@ def get_news_sentiment(company: str) -> str:
 async def main() -> None:
     # --- Replace with a real LLM ---
     # from langchain_openai import ChatOpenAI
-    # llm = ChatOpenAI(model="gpt-5.4")
+    # model = ChatOpenAI(model="gpt-5.4")
     raise NotImplementedError(
-        "Replace the llm= line below with a real LangChain chat model "
+        "Replace the model= line below with a real LangChain chat model "
         "and comment out this raise."
     )
 
     # Just pass the Pydantic schema — the agent handles JSON parsing automatically
     agent = LlmAgent(
         name="AnalystAgent",
-        llm=llm,  # noqa: F821
+        model=model,  # noqa: F821
         tools=[get_financials, get_news_sentiment],
         output_schema=CompanyAnalysis,
         instructions=(

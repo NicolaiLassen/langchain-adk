@@ -10,7 +10,7 @@ The loop:
      current_branch=True)``).  Events are further processed by
      visibility filtering and compaction.
   3. If a planner is attached, append its planning instruction.
-  4. Call ``llm.bind_tools(tools).astream(messages)``.
+  4. Call ``model.bind_tools(tools).astream(messages)``.
   5. If response has tool_calls → execute in parallel → append
      ToolMessages → loop.
   6. Yield typed events throughout (partial tokens, tool calls,
@@ -96,7 +96,7 @@ class LlmAgent(BaseAgent):
 
     Attributes
     ----------
-    llm : BaseChatModel
+    model : BaseChatModel
         The LangChain chat model to use.
     tools : list[BaseTool]
         Tools available to the agent.
@@ -130,7 +130,7 @@ class LlmAgent(BaseAgent):
     def __init__(
         self,
         name: str,
-        llm: BaseChatModel,
+        model: BaseChatModel,
         tools: list[BaseTool] | None = None,
         *,
         instructions: InstructionProvider | None = None,
@@ -172,7 +172,7 @@ class LlmAgent(BaseAgent):
             signing_did=signing_did,
         )
 
-        self._llm = llm
+        self._model = model
         self._tools: dict[str, BaseTool] = {t.name: t for t in (tools or [])}
         self._instructions = instructions
         self._output_key = output_key
@@ -215,7 +215,7 @@ class LlmAgent(BaseAgent):
         # Keep raw reference for subclass access (e.g. ReActAgent).
         self._planner = planner
         self._structured_parser: StructuredOutputParser | None = (
-            StructuredOutputParser(llm, output_schema) if output_schema else None
+            StructuredOutputParser(model, output_schema) if output_schema else None
         )
 
     @property
@@ -263,10 +263,10 @@ class LlmAgent(BaseAgent):
 
     def _build_bound_llm(self) -> BaseChatModel:
         """Return the LLM with tools bound."""
-        llm: BaseChatModel = self._llm
+        model: BaseChatModel = self._model
         if self._tools:
-            llm = llm.bind_tools(list(self._tools.values()))
-        return llm
+            model = model.bind_tools(list(self._tools.values()))
+        return model
 
     def _build_request(
         self,
@@ -275,7 +275,7 @@ class LlmAgent(BaseAgent):
     ) -> LlmRequest:
         """Package the current turn into an ``LlmRequest``."""
         return LlmRequest(
-            model=getattr(self._llm, "model_name", None) or getattr(self._llm, "model", None),
+            model=getattr(self._model, "model_name", None) or getattr(self._model, "model", None),
             system_instruction=system_instruction,
             messages=list(messages),
             tools=list(self._tools.values()),
@@ -285,7 +285,7 @@ class LlmAgent(BaseAgent):
 
     async def _call_llm(
         self,
-        llm: BaseChatModel,
+        model: BaseChatModel,
         messages: list[BaseMessage],
         ctx: InvocationContext,
     ) -> AsyncIterator[Event | AIMessage]:
@@ -298,7 +298,7 @@ class LlmAgent(BaseAgent):
         chunks: list[AIMessageChunk] = []
         has_tool_calls: bool = False
 
-        async for chunk in llm.astream(messages, config=ctx.run_config):
+        async for chunk in model.astream(messages, config=ctx.run_config):
             chunks.append(chunk)
 
             if not has_tool_calls and (
@@ -337,7 +337,7 @@ class LlmAgent(BaseAgent):
 
     async def _call_llm_with_recovery(
         self,
-        llm: BaseChatModel,
+        model: BaseChatModel,
         messages: list[BaseMessage],
         ctx: InvocationContext,
         request: LlmRequest,
@@ -353,7 +353,7 @@ class LlmAgent(BaseAgent):
         max_retries = 2
         for attempt in range(max_retries):
             try:
-                async for item in self._call_llm(llm, messages, ctx):
+                async for item in self._call_llm(model, messages, ctx):
                     yield item
                 return  # success
             except Exception as exc:
@@ -487,7 +487,7 @@ class LlmAgent(BaseAgent):
             tokens, tool call/response events, and the final answer.
         """
         system_prompt, messages = await self._message_builder.build_conversation_history(ctx, input)
-        llm: BaseChatModel = self._build_bound_llm()
+        model: BaseChatModel = self._build_bound_llm()
 
         for _ in range(self.max_iterations):
             # External kill switch — stop immediately without yielding.
@@ -527,7 +527,7 @@ class LlmAgent(BaseAgent):
 
             # Call LLM with error recovery.
             raw_response: AIMessage | None = None
-            async for item in self._call_llm_with_recovery(llm, messages, ctx, request):
+            async for item in self._call_llm_with_recovery(model, messages, ctx, request):
                 if isinstance(item, AIMessage):
                     raw_response = item
                 elif item is None:

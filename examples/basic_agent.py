@@ -29,16 +29,16 @@ def get_weather(city: str) -> str:
 
 async def main() -> None:
     # --- Replace with a real LLM ---
-    # llm = ChatOpenAI(model="gpt-5.4")
-    # llm = ChatAnthropic(model="claude-3-5-haiku-latest")
+    # model = ChatOpenAI(model="gpt-5.4")
+    # model = ChatAnthropic(model="claude-3-5-haiku-latest")
     raise NotImplementedError(
-        "Replace the llm= line below with a real LangChain chat model "
+        "Replace the model= line below with a real LangChain chat model "
         "and comment out this raise."
     )
 
     agent = LlmAgent(
         name="WeatherAgent",
-        llm=llm,  # noqa: F821
+        model=model,  # noqa: F821
         tools=[get_weather],
         instructions="You are a helpful weather assistant. Use the get_weather tool.",
     )

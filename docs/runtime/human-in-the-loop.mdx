@@ -17,7 +17,7 @@ def ask_human(question: str) -> str:
 
 agent = LlmAgent(
     name="Assistant",
-    llm=llm,
+    model=model,
     tools=[ask_human, book_meeting, send_email],
     instructions=(
         "When you don't have enough information to complete a task, "

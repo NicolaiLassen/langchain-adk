@@ -17,15 +17,15 @@ from orxhestra import LlmAgent, LoopAgent
 async def main() -> None:
     # --- Replace with a real LLM ---
     # from langchain_openai import ChatOpenAI
-    # llm = ChatOpenAI(model="gpt-5.4")
+    # model = ChatOpenAI(model="gpt-5.4")
     raise NotImplementedError(
-        "Replace the llm= line below with a real LangChain chat model "
+        "Replace the model= line below with a real LangChain chat model "
         "and comment out this raise."
     )
 
     writer = LlmAgent(
         name="Writer",
-        llm=llm,  # noqa: F821
+        model=model,  # noqa: F821
         description="Writes and revises copy based on feedback.",
         instructions=(
             "You are a copywriter. Write a short tagline (1-2 sentences) for "
@@ -36,7 +36,7 @@ async def main() -> None:
 
     reviewer = LlmAgent(
         name="Reviewer",
-        llm=llm,  # noqa: F821
+        model=model,  # noqa: F821
         description="Reviews copy and provides feedback or approves.",
         instructions=(
             "You are a senior copywriter reviewing a tagline. "

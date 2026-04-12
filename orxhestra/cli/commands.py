@@ -72,7 +72,7 @@ async def _cmd_compact(
     **_kw: object,
 ) -> None:
     """Summarize old messages to free context."""
-    if state.llm is None:
+    if state.model is None:
         console.print("[orx.status]Compact not available.[/orx.status]")
         return
 
@@ -82,7 +82,7 @@ async def _cmd_compact(
     session = await state.runner.get_or_create_session(
         user_id=DEFAULT_USER_ID, session_id=state.session_id
     )
-    result = await summarize_session(state.llm, session.events)
+    result = await summarize_session(state.model, session.events)
     if result is not None:
         session.events[:] = result
         console.print("[orx.status]Conversation compacted.[/orx.status]")
@@ -121,7 +121,7 @@ async def _cmd_model(
         )
         state.runner = new_state.runner
         state.todo_list = new_state.todo_list
-        state.llm = new_state.llm
+        state.model = new_state.model
         state.model_name = cmd_arg
         state.turn_count = 0
 

@@ -70,7 +70,7 @@ def test_compaction_config_defaults() -> None:
     config = CompactionConfig()
     assert config.char_threshold == 100_000
     assert config.retention_chars == 20_000
-    assert config.llm is None
+    assert config.model is None
 
 
 def test_compaction_config_custom_values() -> None:
@@ -266,7 +266,7 @@ async def test_compaction_with_llm() -> None:
     mock_llm.ainvoke.return_value = mock_response
 
     session = _make_session(60, chars_per_event=100)
-    config = CompactionConfig(char_threshold=5000, retention_chars=1000, llm=mock_llm)
+    config = CompactionConfig(char_threshold=5000, retention_chars=1000, model=mock_llm)
 
     result = await compact_session(session, InMemorySessionService(), config)
 
@@ -283,7 +283,7 @@ async def test_compaction_llm_failure_returns_false() -> None:
 
     session = _make_session(60, chars_per_event=100)
     original_count = len(session.events)
-    config = CompactionConfig(char_threshold=5000, retention_chars=1000, llm=mock_llm)
+    config = CompactionConfig(char_threshold=5000, retention_chars=1000, model=mock_llm)
 
     result = await compact_session(session, InMemorySessionService(), config)
 

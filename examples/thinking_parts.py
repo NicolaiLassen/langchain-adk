@@ -32,18 +32,18 @@ def calculate(expression: str) -> str:
 async def main() -> None:
     # --- Replace with a real LLM that supports thinking ---
     # from langchain_anthropic import ChatAnthropic
-    # llm = ChatAnthropic(
+    # model = ChatAnthropic(
     #     model="claude-sonnet-4-6",
     #     thinking={"type": "enabled", "budget_tokens": 5000},
     # )
     raise NotImplementedError(
-        "Replace the llm= line below with a real LangChain chat model "
+        "Replace the model= line below with a real LangChain chat model "
         "and comment out this raise."
     )
 
     agent = LlmAgent(
         name="ThinkingAgent",
-        llm=llm,  # noqa: F821
+        model=model,  # noqa: F821
         tools=[calculate],
         instructions="You are a math assistant. Think through problems step by step.",
     )

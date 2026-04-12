@@ -23,7 +23,7 @@ _shared_todo_list: TodoList | None = None
 
 def register_cli_builtins(
     workspace: str,
-    llm: BaseChatModel | None = None,
+    model: BaseChatModel | None = None,
 ) -> None:
     """Register CLI builtins into the composer tool registry.
 
@@ -62,8 +62,8 @@ def register_cli_builtins(
 
     register_builtin("sleep", _sleep_factory)
 
-    if llm is not None:
-        _llm = llm
+    if model is not None:
+        _model = model
         _ws = workspace
 
         def _task_factory() -> list:
@@ -76,7 +76,7 @@ def register_cli_builtins(
             sh = make_shell_tools(
                 workspace=_ws, timeout=120, max_output_bytes=200_000,
             )
-            return [make_task_tool(_llm, [*fs, *sh], _ws)]
+            return [make_task_tool(_model, [*fs, *sh], _ws)]
 
         register_builtin("task", _task_factory)
 
@@ -90,7 +90,7 @@ def register_cli_builtins(
             sh = make_shell_tools(
                 workspace=_ws, timeout=120, max_output_bytes=200_000,
             )
-            return make_background_task_tools(_llm, [*fs, *sh], _ws)
+            return make_background_task_tools(_model, [*fs, *sh], _ws)
 
         register_builtin("background_tasks", _bg_tasks_factory)
 
