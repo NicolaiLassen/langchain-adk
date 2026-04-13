@@ -245,6 +245,26 @@ class Runner:
         # Run compaction after all events are yielded from the agent.
         # Only compact at the end of an invocation, never mid-stream.
         if self.compaction_config is not None:
+            # Check if compaction is needed before starting.
+            events = session.events
+            from orxhestra.sessions.compaction import _estimate_event_chars, _find_compaction_boundary
+            boundary = _find_compaction_boundary(events)
+            candidate_chars = sum(
+                _estimate_event_chars(e)
+                for e in events
+                if e.timestamp > boundary and e.actions.compaction is None
+            )
+            if candidate_chars > self.compaction_config.char_threshold:
+                # Signal the CLI to show a spinner/status.
+                yield Event(
+                    type=EventType.AGENT_MESSAGE,
+                    session_id=session.id,
+                    invocation_id=ctx.invocation_id,
+                    agent_name=self.agent.name,
+                    content=Content.from_text("Compacting context..."),
+                    metadata={"compacting": True},
+                )
+
             compacted = await compact_session(
                 session, self.session_service, self.compaction_config,
             )

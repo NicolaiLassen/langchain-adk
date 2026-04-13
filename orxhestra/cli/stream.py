@@ -403,7 +403,20 @@ async def stream_response(
                     console.print(markdown_cls(event.text))
                 continue
 
+            if event.metadata.get("compacting"):
+                # Show a spinner while compaction is in progress.
+                if Status is not None:
+                    s.status = Status(
+                        "  [orx.muted]Compacting context...[/orx.muted]",
+                        console=console,
+                        spinner="orx_music",
+                        spinner_style=ACCENT,
+                    )
+                    s.status.start()
+                continue
+
             if event.metadata.get("compaction"):
+                s.stop_status()
                 console.print(
                     "  [orx.muted]context compacted[/orx.muted]"
                 )
