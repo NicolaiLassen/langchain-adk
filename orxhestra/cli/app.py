@@ -127,13 +127,11 @@ async def _repl(
 
     prompt_session: Any = None
     prompt_style: Any = None
-    patch_ctx: Any = None
     try:
         from prompt_toolkit import PromptSession
         from prompt_toolkit.completion import WordCompleter
         from prompt_toolkit.formatted_text import ANSI
         from prompt_toolkit.history import FileHistory
-        from prompt_toolkit.patch_stdout import patch_stdout
 
         from orxhestra.cli.commands import get_command_names
 
@@ -148,15 +146,10 @@ async def _repl(
             complete_while_typing=False,
         )
         prompt_style = ANSI("\033[38;5;67morx\033[0m\033[90m>\033[0m ")
-        # patch_stdout ensures Rich output appears above the prompt
-        # without disrupting the input line.
-        patch_ctx = patch_stdout()
-        patch_ctx.__enter__()
     except ImportError:
         pass
 
-    try:
-        while True:
+    while True:
             try:
                 if prompt_session:
                     user_input: str = await prompt_session.prompt_async(
@@ -211,9 +204,6 @@ async def _repl(
             )
             state.turn_count += 1
             console.print()
-    finally:
-        if patch_ctx is not None:
-            patch_ctx.__exit__(None, None, None)
 
 
 async def _read_multiline(
