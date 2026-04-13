@@ -64,7 +64,7 @@ from orxhestra.agents.tool_executor import ToolExecutor
 from orxhestra.agents.tracing import trace
 from orxhestra.events.event import Event, EventType
 from orxhestra.events.event_actions import EventActions
-from orxhestra.models.content_parser import is_accumulated_content, parse_content_blocks
+from orxhestra.models.content_parser import parse_content_blocks
 from orxhestra.models.llm_request import LlmRequest
 from orxhestra.models.llm_response import LlmResponse
 from orxhestra.models.part import Content, DataPart, TextPart
