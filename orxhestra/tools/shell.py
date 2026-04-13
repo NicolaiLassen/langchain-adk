@@ -122,10 +122,12 @@ def make_shell_tools(
 
         proc = await asyncio.create_subprocess_shell(
             command,
+            stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
             cwd=ws,
             env=merged_env,
+            start_new_session=True,
         )
         return f"Started background process (pid={proc.pid})"
 
