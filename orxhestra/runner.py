@@ -247,7 +247,10 @@ class Runner:
         if self.compaction_config is not None:
             # Check if compaction is needed before starting.
             events = session.events
-            from orxhestra.sessions.compaction import _estimate_event_chars, _find_compaction_boundary
+            from orxhestra.sessions.compaction import (
+                _estimate_event_chars,
+                _find_compaction_boundary,
+            )
             boundary = _find_compaction_boundary(events)
             candidate_chars = sum(
                 _estimate_event_chars(e)
