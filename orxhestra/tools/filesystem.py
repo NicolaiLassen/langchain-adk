@@ -36,7 +36,7 @@ def _default_workspace() -> str:
 
 
 def _resolve_path(path: str, workspace: str) -> Path:
-    """Resolve and validate a path within the workspace."""
+    """Resolve and validate a path within the workspace (writes)."""
     ws = Path(workspace).resolve()
     ws.mkdir(parents=True, exist_ok=True)
     target = (ws / path).resolve()
@@ -44,6 +44,20 @@ def _resolve_path(path: str, workspace: str) -> Path:
         msg = f"Path '{path}' is outside the workspace"
         raise ValueError(msg)
     return target
+
+
+def _resolve_read_path(path: str, workspace: str) -> Path:
+    """Resolve a path for reading — allows absolute paths.
+
+    Like Claude Code, read operations are not sandboxed to the
+    workspace. Absolute paths are resolved directly; relative
+    paths are resolved within the workspace.
+    """
+    p = Path(path)
+    if p.is_absolute():
+        return p.resolve()
+    ws = Path(workspace).resolve()
+    return (ws / path).resolve()
 
 
 def _add_line_numbers(text: str, offset: int = 0) -> str:
@@ -72,7 +86,7 @@ def make_filesystem_tools(workspace: str | None = None) -> list[BaseTool]:
 
     async def ls(path: str = ".") -> str:
         """List files and directories at the given path."""
-        target = _resolve_path(path, ws)
+        target = _resolve_read_path(path, ws)
         if not target.exists():
             return f"Error: '{path}' does not exist"
         if not target.is_dir():
@@ -101,7 +115,7 @@ def make_filesystem_tools(workspace: str | None = None) -> list[BaseTool]:
         limit : int
             Max number of lines to read. Default 2000.
         """
-        target = _resolve_path(path, ws)
+        target = _resolve_read_path(path, ws)
         if not target.exists():
             return f"Error: '{path}' does not exist"
         if not target.is_file():
@@ -240,7 +254,7 @@ def make_filesystem_tools(workspace: str | None = None) -> list[BaseTool]:
         max_results : int
             Maximum number of matching lines. Default 50.
         """
-        target = _resolve_path(path, ws)
+        target = _resolve_read_path(path, ws)
         if not target.exists():
             return f"Error: '{path}' does not exist"
 
