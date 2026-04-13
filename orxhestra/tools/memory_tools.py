@@ -30,7 +30,8 @@ def make_memory_tools(memory_dir: Path) -> list[BaseTool]:
     Returns
     -------
     list[BaseTool]
-        Three tools: ``save_memory``, ``list_memories``, ``delete_memory``.
+        Four tools: ``save_memory``, ``load_memory``, ``list_memories``,
+        ``delete_memory``.
     """
 
     async def save_memory(
@@ -82,6 +83,24 @@ def make_memory_tools(memory_dir: Path) -> list[BaseTool]:
             lines.append(f"  {type_tag} {h.name}{desc}")
         return "\n".join(lines)
 
+    async def load_memory(name: str) -> str:
+        """Read the full content of a saved memory by name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the memory to load.
+        """
+        # Find the file by scanning for a matching name.
+        headers = scan_memory_files(memory_dir)
+        for h in headers:
+            if h.name == name:
+                try:
+                    return h.filepath.read_text(encoding="utf-8")
+                except OSError:
+                    return f"Error: could not read memory file for '{name}'."
+        return f"Error: memory '{name}' not found."
+
     async def delete_memory(name: str) -> str:
         """Delete a saved memory by name.
 
@@ -102,6 +121,14 @@ def make_memory_tools(memory_dir: Path) -> list[BaseTool]:
                 "Use for user preferences, feedback, project context, "
                 "or references to external systems. "
                 "Types: user, feedback, project, reference."
+            ),
+        ),
+        StructuredTool.from_function(
+            coroutine=load_memory,
+            name="load_memory",
+            description=(
+                "Read the full content of a saved memory by name. "
+                "Use list_memories first to see available names."
             ),
         ),
         StructuredTool.from_function(
