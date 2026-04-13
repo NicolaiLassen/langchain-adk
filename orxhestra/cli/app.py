@@ -349,16 +349,12 @@ async def _async_main() -> None:
         )
         return
 
-    # Launch Textual TUI.
-    from orxhestra.cli.tui_app import OrxTuiApp
-
-    app = OrxTuiApp(
-        runner=state.runner,
-        session_id=state.session_id,
-        model_name=state.model_name,
+    await _repl(
+        orx_path,
+        state,
+        args.workspace,
         auto_approve=args.auto_approve,
     )
-    await app.run_async()
 
 
 def _graceful_shutdown() -> None:
