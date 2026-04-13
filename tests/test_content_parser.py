@@ -1,6 +1,6 @@
-"""Tests for parse_content_blocks — unified content block parser."""
+"""Tests for content parser — parse_content_blocks and is_accumulated_content."""
 
-from orxhestra.models.content_parser import parse_content_blocks
+from orxhestra.models.content_parser import is_accumulated_content, parse_content_blocks
 
 
 class TestParseContentBlocks:
@@ -108,3 +108,33 @@ class TestParseContentBlocks:
         content = [{"text": "no type key"}]
         # type defaults to "", doesn't match any handler, skipped
         assert parse_content_blocks(content) == ("", "")
+
+
+class TestIsAccumulatedContent:
+    def test_plain_string(self):
+        assert is_accumulated_content("hello") is False
+
+    def test_empty_list(self):
+        assert is_accumulated_content([]) is False
+
+    def test_chat_completions_text_block(self):
+        content = [{"type": "text", "text": "hello"}]
+        assert is_accumulated_content(content) is False
+
+    def test_response_api_text_block_with_index(self):
+        content = [{"type": "text", "text": "hello", "index": 0}]
+        assert is_accumulated_content(content) is True
+
+    def test_response_api_reasoning_with_index(self):
+        content = [{"type": "reasoning", "id": "rs_1", "summary": [], "index": 0}]
+        assert is_accumulated_content(content) is True
+
+    def test_mixed_blocks_one_has_index(self):
+        content = [
+            {"type": "text", "text": "no index"},
+            {"type": "text", "text": "has index", "index": 1},
+        ]
+        assert is_accumulated_content(content) is True
+
+    def test_non_dict_items(self):
+        assert is_accumulated_content(["plain string"]) is False

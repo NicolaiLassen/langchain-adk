@@ -64,7 +64,7 @@ from orxhestra.agents.tool_executor import ToolExecutor
 from orxhestra.agents.tracing import trace
 from orxhestra.events.event import Event, EventType
 from orxhestra.events.event_actions import EventActions
-from orxhestra.models.content_parser import parse_content_blocks
+from orxhestra.models.content_parser import is_accumulated_content, parse_content_blocks
 from orxhestra.models.llm_request import LlmRequest
 from orxhestra.models.llm_response import LlmResponse
 from orxhestra.models.part import Content, DataPart, TextPart
@@ -298,9 +298,10 @@ class LlmAgent(BaseAgent):
         chunks: list[AIMessageChunk] = []
         has_tool_calls: bool = False
 
-        # Track previously emitted text to compute deltas.
-        # Some APIs (OpenAI Responses) return accumulated text per chunk
-        # rather than just the new delta.
+        # Some APIs (OpenAI Responses) return accumulated text per
+        # chunk rather than just the new delta.  Detect the format
+        # once from the first content chunk, then extract deltas.
+        _accumulated: bool | None = None
         _prev_text: str = ""
         _prev_thinking: str = ""
 
@@ -317,21 +318,20 @@ class LlmAgent(BaseAgent):
 
             chunk_text, chunk_thinking = parse_content_blocks(chunk.content)
 
-            # Detect accumulated (non-delta) content: if the new text
-            # starts with the previous text, extract just the delta.
-            if chunk_text and chunk_text.startswith(_prev_text) and len(chunk_text) > len(_prev_text):
-                delta_text = chunk_text[len(_prev_text):]
-                _prev_text = chunk_text
-                chunk_text = delta_text
-            elif chunk_text:
-                _prev_text = chunk_text
+            # Detect format on first content chunk.
+            if _accumulated is None and (chunk_text or chunk_thinking):
+                _accumulated = is_accumulated_content(chunk.content)
 
-            if chunk_thinking and chunk_thinking.startswith(_prev_thinking) and len(chunk_thinking) > len(_prev_thinking):
-                delta_thinking = chunk_thinking[len(_prev_thinking):]
-                _prev_thinking = chunk_thinking
-                chunk_thinking = delta_thinking
-            elif chunk_thinking:
-                _prev_thinking = chunk_thinking
+            # For accumulated APIs, extract only the new portion.
+            if _accumulated:
+                if chunk_text:
+                    delta = chunk_text[len(_prev_text):]
+                    _prev_text = chunk_text
+                    chunk_text = delta
+                if chunk_thinking:
+                    delta = chunk_thinking[len(_prev_thinking):]
+                    _prev_thinking = chunk_thinking
+                    chunk_thinking = delta
 
             if chunk_thinking:
                 yield self._emit_event(
