@@ -10,20 +10,6 @@ from __future__ import annotations
 from typing import Any
 
 
-def is_accumulated_content(content: str | list[Any]) -> bool:
-    """Return ``True`` if content uses accumulated format (Response API).
-
-    OpenAI Response API content blocks carry an ``index`` field that
-    Chat Completions blocks do not.  This can be checked once on the
-    first chunk to determine the streaming strategy.
-    """
-    if isinstance(content, list):
-        for block in content:
-            if isinstance(block, dict) and "index" in block:
-                return True
-    return False
-
-
 def parse_content_blocks(content: str | list[Any]) -> tuple[str, str]:
     """Extract text and thinking from any LangChain content format.
 
