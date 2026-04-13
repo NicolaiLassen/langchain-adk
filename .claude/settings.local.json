@@ -8,7 +8,22 @@
       "Bash(pip install:*)",
       "Bash(python -m pytest tests/test_tracing.py -v)",
       "Bash(python -m pytest tests/ -v)",
-      "Bash(gh pr:*)"
+      "Bash(gh pr:*)",
+      "Bash(npx netlify:*)",
+      "Bash(sed -i '' 's/self._structured_llm = llm\\\\.with_structured_output/self._structured_llm = model.with_structured_output/' orxhestra/agents/react_agent.py)",
+      "Bash(sed -i '' 's/    llm : BaseChatModel/    model : BaseChatModel/' orxhestra/agents/structured_output.py)",
+      "Bash(sed -i '' 's/def __init__\\(self, llm: BaseChatModel/def __init__\\(self, model: BaseChatModel/' orxhestra/agents/structured_output.py)",
+      "Bash(sed -i '' 's/self._model = llm/self._model = model/' orxhestra/agents/structured_output.py)",
+      "Bash(sed -i '' 's/\"llm\": model/\"model\": model/' orxhestra/composer/builders/agents/_common.py)",
+      "Bash(sed -i '' 's/def build_agent\\(llm: BaseChatModel\\)/def build_agent\\(model: BaseChatModel\\)/' examples/multi_provider.py)",
+      "Bash(sed -i '' 's/async def run_agent\\(llm: BaseChatModel/async def run_agent\\(model: BaseChatModel/' examples/multi_provider.py)",
+      "Bash(sed -i '' 's/build_agent\\(llm\\)/build_agent\\(model\\)/' examples/multi_provider.py)",
+      "Bash(sed -i '' 's/    llm = ChatOpenAI\\(/    model = ChatOpenAI\\(/' examples/streaming_agent.py)",
+      "Bash(sed -i '' 's/async for chunk in llm\\\\.astream/async for chunk in model.astream/' orxhestra/agents/llm_agent.py)",
+      "Bash(sed -i '' 's/Call ``llm\\\\.bind_tools/Call ``model.bind_tools/' orxhestra/agents/llm_agent.py)",
+      "Bash(sed -i '' '219s/llm\\\\./model./' tests/test_llm_agent_context_limits.py)",
+      "Bash(sed -i '' '298s/llm\\\\./model./' tests/test_llm_agent_context_limits.py)",
+      "Bash(git stash:*)"
     ]
   }
 }
