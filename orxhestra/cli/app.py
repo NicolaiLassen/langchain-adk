@@ -31,7 +31,13 @@ _DEFAULT_ORX: Path = _CLI_DIR / "orx.yaml"
 
 
 def _parse_args() -> argparse.Namespace:
-    """Parse CLI arguments."""
+    """Parse CLI arguments.
+
+    Returns
+    -------
+    argparse.Namespace
+        Parsed arguments including model, workspace, command, etc.
+    """
     parser = argparse.ArgumentParser(
         prog="orx",
         description="Orx — terminal agent powered by any LLM.",
@@ -143,7 +149,17 @@ async def _serve(orx_path: Path, port: int) -> None:
 
 
 async def _async_main() -> None:
-    """Async entry point."""
+    """Async entry point.
+
+    Handles ``--version``, ``--serve``, and ``-c`` modes inline.
+    For the interactive REPL, returns ``(orx_path, state, workspace)``
+    so ``main()`` can launch the pyink app outside the asyncio loop.
+
+    Returns
+    -------
+    tuple or None
+        ``(orx_path, state, workspace)`` for REPL mode, ``None`` otherwise.
+    """
     args = _parse_args()
     logging.basicConfig(level=getattr(logging, args.log_level))
 
@@ -223,7 +239,11 @@ def _graceful_shutdown() -> None:
 
 
 def main() -> None:
-    """Entry point for the ``orx`` command."""
+    """Entry point for the ``orx`` command.
+
+    Runs ``_async_main`` for setup, then launches the pyink REPL
+    outside the asyncio loop if in interactive mode.
+    """
     try:
         result = asyncio.run(_async_main())
     except KeyboardInterrupt:

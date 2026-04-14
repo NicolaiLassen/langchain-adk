@@ -109,7 +109,7 @@ def _register_defaults() -> None:
             return make_artifact_tools()
 
         def _human_input() -> BaseTool:
-            from orxhestra.tools.human_input import make_human_input_tool
+            from orxhestra.cli.tools.human_input import make_human_input_tool
 
             return make_human_input_tool()
 

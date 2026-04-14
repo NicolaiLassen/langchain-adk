@@ -36,7 +36,18 @@ ACCENT: str = _DARK["accent"]
 
 
 def _build_theme(palette: dict[str, str]) -> Theme:
-    """Build a Rich Theme from a color palette."""
+    """Build a Rich Theme from a color palette.
+
+    Parameters
+    ----------
+    palette : dict[str, str]
+        Mapping of color names to hex values.
+
+    Returns
+    -------
+    Theme
+        Configured Rich theme.
+    """
     a = palette["accent"]
     m = palette["muted"]
     s = palette["subtle"]

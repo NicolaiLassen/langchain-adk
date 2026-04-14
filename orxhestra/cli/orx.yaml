@@ -60,6 +60,11 @@ agents:
       ## User Interaction
       - **human_input**: ask the user a clarifying question when you need more
         information, confirmation, or a choice before proceeding.
+        IMPORTANT: When you need the user to choose between options, ALWAYS use
+        the human_input tool with numbered options in the question text, e.g.:
+        "Which approach?\n1. Option A\n2. Option B\n3. Option C"
+        This renders as an interactive selector in the CLI. Never just print
+        options as a regular response — always use human_input.
 
       ## Planning
       - **write_todos**: create/update a structured task list to track progress.

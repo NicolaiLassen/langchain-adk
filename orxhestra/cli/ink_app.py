@@ -3,24 +3,54 @@
 from __future__ import annotations
 
 import asyncio
+import re as _re
+import shutil as _shutil
 import threading
 from typing import TYPE_CHECKING, Any
 
 from pyink import Box, Spacer, Static, Text, component, render
-from pyink.hooks import use_animation, use_app, use_input, use_ref, use_state, use_window_size
+from pyink.hooks import (
+    use_animation,
+    use_app,
+    use_input,
+    use_ref,
+    use_state,
+    use_window_size,
+)
 
 if TYPE_CHECKING:
     from rich.console import Console
 
     from orxhestra.cli.state import ReplState
 
-import shutil as _shutil
-
 _ACCENT = "#6C8EBF"
 _MUTED = "#6c6c6c"
-_SEPARATOR = "─" * (_shutil.get_terminal_size().columns - 1)
+_SEPARATOR = "\u2500" * (_shutil.get_terminal_size().columns - 1)
 
-APPROVAL_OPTIONS = ["Yes", "Yes, allow all edits during this session (shift+tab)", "No"]
+APPROVAL_OPTIONS = [
+    "Yes",
+    "Yes, allow all edits during this session",
+    "No",
+]
+APPROVAL_RESULTS = ["y", "a", "n"]
+
+_OPTION_RE = _re.compile(r"^\s*(\d+)\.\s+(.+)$", _re.MULTILINE)
+
+
+def _parse_options(text: str) -> tuple[str, list[str]]:
+    """Parse numbered options from a question string.
+
+    Returns (question_text, options_list). If no options found,
+    options_list is empty.
+    """
+    matches = _OPTION_RE.findall(text)
+    if len(matches) < 2:
+        return text, []
+    # Extract the question (text before the first option).
+    first_match = _OPTION_RE.search(text)
+    question = text[:first_match.start()].strip() if first_match else text
+    options = [m[1].strip() for m in matches]
+    return question, options
 
 
 def _history_item(item, _index=0):
@@ -41,35 +71,40 @@ def _history_item(item, _index=0):
             Text(ansi),
             flex_direction="row",
         )
-    if t == "response":
-        return Box(
-            Text("\u25cf ", color=_ACCENT),
-            Text(ansi),
-            flex_direction="row",
-        )
     if t == "rich":
         return Text(ansi)
     if t == "tool_done":
         return Box(Text(ansi), margin_bottom=1)
     if t == "plain":
-        return Text(ansi, color=item.get("color"), dim=item.get("dim", False))
+        return Text(
+            ansi, color=item.get("color"), dim=item.get("dim", False),
+        )
     if t == "separator":
         return Text(_SEPARATOR, color=_MUTED, dim=True)
     return Text(str(item))
 
 
 @component
-def _selector(prompt_text, options, selected_idx):
-    """Approval selector (like Claude Code's permission prompt)."""
-    rows = [
-        Text(prompt_text, bold=True, color="#E5C07B"),
-    ]
+def _selector_view(prompt_text, options, selected_idx, show_type_option):
+    """Numbered selector for approval prompts and human_input questions."""
+    rows = [Text(prompt_text, bold=True, color="#E5C07B")]
     rows.append(Text(""))
     for i, opt in enumerate(options):
         is_sel = i == selected_idx
         prefix = "\u276f" if is_sel else " "
-        label = f"  {prefix} {i + 1}. {opt}"
-        rows.append(Text(label, color="white" if is_sel else _MUTED, bold=is_sel))
+        rows.append(Text(
+            f"  {prefix} {i + 1}. {opt}",
+            color="white" if is_sel else _MUTED,
+            bold=is_sel,
+        ))
+    if show_type_option:
+        is_sel = selected_idx == len(options)
+        prefix = "\u276f" if is_sel else " "
+        rows.append(Text(
+            f"  {prefix} {len(options) + 1}. Type something...",
+            color="white" if is_sel else _MUTED,
+            bold=is_sel,
+        ))
     rows.append(Text(""))
     rows.append(Text("  Esc to cancel", color=_MUTED, dim=True))
     return Box(*rows, flex_direction="column", margin_top=1)
@@ -83,9 +118,12 @@ def _autocomplete_menu(suggestions, selected_idx):
     items = []
     for i, cmd in enumerate(suggestions):
         is_sel = i == selected_idx
-        items.append(
-            Text(f"  {cmd}", color="white" if is_sel else _MUTED, bold=is_sel, inverse=is_sel)
-        )
+        items.append(Text(
+            f"  {cmd}",
+            color="white" if is_sel else _MUTED,
+            bold=is_sel,
+            inverse=is_sel,
+        ))
     return Box(*items, flex_direction="column")
 
 
@@ -98,6 +136,7 @@ def orx_repl(
     console_ref,
     orx_path_ref,
     workspace_ref,
+    selector_state_ref=None,
 ):
     win = use_window_size()
 
@@ -107,12 +146,18 @@ def orx_repl(
     phase, set_phase = use_state("idle")
     spinner_text, set_spinner_text = use_state("")
     stream_buf, set_stream = use_state("")
-    # Approval selector state.
-    approval_active, set_approval_active = use_state(False)
-    approval_prompt, set_approval_prompt = use_state("")
-    approval_sel, set_approval_sel = use_state(0)
-    approval_event_ref = use_ref(None)
-    approval_result_ref = use_ref(None)
+
+    # Selector state (approval + human_input questions).
+    sel_active, set_sel_active = use_state(False)
+    sel_prompt, set_sel_prompt = use_state("")
+    sel_options, set_sel_options = use_state([])
+    sel_idx, set_sel_idx = use_state(0)
+    sel_mode = use_ref("approval")  # "approval" | "human_input"
+    sel_show_type = use_ref(False)
+    sel_event = use_ref(None)
+    sel_result = use_ref(None)
+    # Free-text input mode (when user picks "Type something").
+    freetext, set_freetext = use_state(False)
 
     cmd_hist = use_ref([])
     hist_idx = use_ref(-1)
@@ -122,9 +167,14 @@ def orx_repl(
 
     app = use_app()
 
-    # Build writer once.
     if writer_ref.current is None:
         from orxhestra.cli.writer import InkWriter
+
+        selector_cb = _make_selector_callback(
+            set_sel_active, set_sel_prompt, set_sel_options,
+            set_sel_idx, sel_mode, sel_show_type,
+            sel_event, sel_result,
+        )
 
         writer_ref.current = InkWriter(
             set_history=set_history,
@@ -132,45 +182,86 @@ def orx_repl(
             set_stream=set_stream,
             set_phase=set_phase,
             console=console_ref.current,
-            approval_callback=_make_approval_callback(
-                set_approval_active, set_approval_prompt, set_approval_sel,
-                approval_event_ref, approval_result_ref,
-            ),
+            approval_callback=selector_cb,
         )
+
+        # Register the callback so human_input tool uses the selector too.
+        if selector_state_ref and selector_state_ref.current is not None:
+            selector_state_ref.current["callback"] = selector_cb
 
     # Spinner animation.
     anim = use_animation(interval=200, is_active=(phase == "spinning"))
-    frame_idx = anim.frame % len(spinner_frames) if spinner_frames else 0
-    frame_char = spinner_frames[frame_idx] if spinner_frames else ""
+    fi = anim.frame % len(spinner_frames) if spinner_frames else 0
+    frame_char = spinner_frames[fi] if spinner_frames else ""
 
     # Autocomplete suggestions.
     suggestions = []
-    if buf.lstrip().startswith("/") and phase == "idle" and not approval_active:
+    if (buf.lstrip().startswith("/")
+            and phase == "idle"
+            and not sel_active
+            and not freetext):
         prefix = buf.lstrip()
-        suggestions = [c for c in command_names if c.startswith(prefix) and c != prefix]
-    sel_idx = min(ac_idx.current, max(0, len(suggestions) - 1))
+        suggestions = [
+            c for c in command_names
+            if c.startswith(prefix) and c != prefix
+        ]
+    ac_sel = min(ac_idx.current, max(0, len(suggestions) - 1))
+
+    # Total options count (including "Type something" if applicable).
+    total_opts = len(sel_options) + (1 if sel_show_type.current else 0)
 
     def on_key(ch, key):
-        # ── Approval mode ──
-        if approval_active:
-            if key.up_arrow:
-                set_approval_sel(lambda i: max(0, i - 1))
-                return
-            if key.down_arrow:
-                set_approval_sel(lambda i: min(len(APPROVAL_OPTIONS) - 1, i + 1))
-                return
+        # ── Free-text input mode (answering human_input) ──
+        if freetext:
             if key.return_key:
-                result = ["y", "a", "n"][approval_sel]
-                approval_result_ref.current = result
-                set_approval_active(False)
-                if approval_event_ref.current:
-                    approval_event_ref.current.set()
+                answer = buf.strip()
+                if answer:
+                    sel_result.current = answer
+                    set_freetext(False)
+                    set_buf("")
+                    set_cursor(0)
+                    if sel_event.current:
+                        sel_event.current.set()
                 return
             if key.escape:
-                approval_result_ref.current = "n"
-                set_approval_active(False)
-                if approval_event_ref.current:
-                    approval_event_ref.current.set()
+                set_freetext(False)
+                return
+            # Fall through to normal text editing below.
+            pass
+        # ── Selector mode ──
+        elif sel_active:
+            if key.up_arrow:
+                set_sel_idx(lambda i: max(0, i - 1))
+                return
+            if key.down_arrow:
+                set_sel_idx(lambda i: min(total_opts - 1, i + 1))
+                return
+            if key.return_key:
+                idx = sel_idx
+                if sel_mode.current == "approval":
+                    sel_result.current = APPROVAL_RESULTS[
+                        min(idx, len(APPROVAL_RESULTS) - 1)
+                    ]
+                elif idx < len(sel_options):
+                    sel_result.current = sel_options[idx]
+                else:
+                    # "Type something" selected.
+                    set_sel_active(False)
+                    set_freetext(True)
+                    set_buf("")
+                    set_cursor(0)
+                    return
+                set_sel_active(False)
+                if sel_event.current:
+                    sel_event.current.set()
+                return
+            if key.escape:
+                sel_result.current = (
+                    "n" if sel_mode.current == "approval" else ""
+                )
+                set_sel_active(False)
+                if sel_event.current:
+                    sel_event.current.set()
                 return
             return
 
@@ -186,24 +277,29 @@ def orx_repl(
                 set_spinner_text("")
                 set_stream("")
                 set_history(lambda h: [
-                    *h, {"type": "plain", "ansi": "  Interrupted.", "color": _MUTED},
+                    *h,
+                    {"type": "plain", "ansi": "  Interrupted.",
+                     "color": _MUTED},
                 ])
             return
 
         # Tab — accept autocomplete.
         if key.tab:
             if suggestions:
-                set_buf(suggestions[sel_idx] + " ")
+                completed = suggestions[ac_sel] + " "
+                set_buf(completed)
+                set_cursor(len(completed))
                 ac_idx.current = 0
             return
 
         # Enter.
         if key.return_key:
             if suggestions:
-                set_buf(suggestions[sel_idx] + " ")
+                completed = suggestions[ac_sel] + " "
+                set_buf(completed)
+                set_cursor(len(completed))
                 ac_idx.current = 0
                 return
-
             msg = buf.strip()
             if not msg:
                 return
@@ -221,11 +317,14 @@ def orx_repl(
             elif not running.current:
                 _dispatch_agent(
                     msg, state_ref.current, writer_ref.current,
-                    set_history, set_phase, running, console_ref.current,
+                    set_history, set_phase, running,
                 )
             else:
                 set_history(lambda h: [
-                    *h, {"type": "plain", "ansi": "  Agent is still running.", "color": _MUTED},
+                    *h,
+                    {"type": "plain",
+                     "ansi": "  Agent is still running.",
+                     "color": _MUTED},
                 ])
             return
 
@@ -245,6 +344,7 @@ def orx_repl(
                 i = len(h) - 1 if i == -1 else max(0, i - 1)
                 hist_idx.current = i
                 set_buf(h[i])
+                set_cursor(len(h[i]))
             return
         if key.down_arrow:
             i = hist_idx.current
@@ -253,21 +353,20 @@ def orx_repl(
                 if i < len(h) - 1:
                     hist_idx.current = i + 1
                     set_buf(h[i + 1])
+                    set_cursor(len(h[i + 1]))
                 else:
                     hist_idx.current = -1
                     set_buf("")
                     set_cursor(0)
             return
 
-        # Left/right cursor movement.
+        # Cursor movement.
         if key.left_arrow:
             set_cursor(lambda c: max(0, c - 1))
             return
         if key.right_arrow:
             set_cursor(lambda c: min(len(buf), c + 1))
             return
-
-        # Home/End.
         if key.home:
             set_cursor(0)
             return
@@ -275,6 +374,7 @@ def orx_repl(
             set_cursor(len(buf))
             return
 
+        # Backspace.
         if key.backspace or key.delete:
             ac_idx.current = 0
             if cursor > 0:
@@ -283,6 +383,7 @@ def orx_repl(
                 set_cursor(lambda c: max(0, c - 1))
             return
 
+        # Regular character.
         if ch and not key.ctrl and not key.meta and not key.escape:
             ac_idx.current = 0
             pos = cursor
@@ -296,7 +397,9 @@ def orx_repl(
 
     # Spinner.
     if phase == "spinning" and spinner_text:
-        children.append(Text(f"{frame_char} {spinner_text}", color=_ACCENT))
+        children.append(
+            Text(f"{frame_char} {spinner_text}", color=_ACCENT),
+        )
 
     # Streaming response.
     if phase == "streaming" and stream_buf:
@@ -306,36 +409,39 @@ def orx_repl(
             flex_direction="row",
         ))
 
-    # Approval selector.
-    if approval_active:
-        children.append(_selector(
-            prompt_text=approval_prompt,
-            options=APPROVAL_OPTIONS,
-            selected_idx=approval_sel,
+    # Selector (approval or human_input).
+    if sel_active:
+        children.append(_selector_view(
+            prompt_text=sel_prompt,
+            options=sel_options,
+            selected_idx=sel_idx,
+            show_type_option=sel_show_type.current,
         ))
 
     # Push input to the bottom.
     children.append(Spacer())
 
-    # Input area with border above and below.
-    # Render input with cursor overlaying the character at position.
+    # Input area with border + cursor.
     before = buf[:cursor]
     char_at = buf[cursor] if cursor < len(buf) else " "
     after = buf[cursor + 1:] if cursor < len(buf) else ""
+
+    prompt_label = "?" if freetext else "\u276f"
+
     input_children = [
         Text(_SEPARATOR, color=_MUTED, dim=True),
         Box(
-            Text("  \u276f ", color=_ACCENT, bold=True),
+            Text(f"  {prompt_label} ", color=_ACCENT, bold=True),
             Text(before, bold=True),
             Text(char_at, bold=True, inverse=True),
             Text(after, bold=True),
             flex_direction="row",
         ),
     ]
-    if suggestions and not approval_active:
+    if suggestions and not sel_active and not freetext:
         input_children.append(_autocomplete_menu(
             suggestions=suggestions[:8],
-            selected_idx=sel_idx,
+            selected_idx=ac_sel,
         ))
     input_children.append(Text(_SEPARATOR, color=_MUTED, dim=True))
     children.append(Box(*input_children, flex_direction="column"))
@@ -343,21 +449,38 @@ def orx_repl(
     return Box(*children, flex_direction="column", min_height=win.rows)
 
 
-def _make_approval_callback(
-    set_approval_active, set_approval_prompt, set_approval_sel,
-    approval_event_ref, approval_result_ref,
+def _make_selector_callback(
+    set_sel_active, set_sel_prompt, set_sel_options,
+    set_sel_idx, sel_mode, sel_show_type,
+    sel_event, sel_result,
 ):
-    """Create an approval callback for the InkWriter."""
-    def request_approval(label: str) -> str:
+    """Create a callback for the InkWriter's prompt_input."""
+    def request_input(label: str) -> str:
+        # Parse numbered options from the label.
+        question, options = _parse_options(label)
+
         evt = threading.Event()
-        approval_event_ref.current = evt
-        approval_result_ref.current = "n"
-        set_approval_sel(0)
-        set_approval_prompt(label)
-        set_approval_active(True)
+        sel_event.current = evt
+        sel_result.current = ""
+        set_sel_idx(0)
+
+        if options:
+            # Human input with parsed options.
+            sel_mode.current = "human_input"
+            sel_show_type.current = True
+            set_sel_prompt(question)
+            set_sel_options(options)
+        else:
+            # Tool approval prompt.
+            sel_mode.current = "approval"
+            sel_show_type.current = False
+            set_sel_prompt(label)
+            set_sel_options(APPROVAL_OPTIONS)
+
+        set_sel_active(True)
         evt.wait()
-        return approval_result_ref.current or "n"
-    return request_approval
+        return sel_result.current or ""
+    return request_input
 
 
 def run_ink_app(
@@ -375,15 +498,43 @@ def run_ink_app(
     from orxhestra.cli.writer import rich_to_ansi
 
     banner_ansi = rich_to_ansi(
-        console, render_banner(orx_path, state.model_name, workspace)
+        console, render_banner(orx_path, state.model_name, workspace),
     )
 
     initial_history = [
         {"type": "rich", "ansi": banner_ansi},
-        {"type": "plain", "ansi": "  type /help for commands, Ctrl+D to exit",
+        {"type": "plain",
+         "ansi": "  type /help for commands, Ctrl+D to exit",
          "color": _MUTED, "dim": True},
         {"type": "separator"},
     ]
+
+    # Create the selector callback before render so we can rewire human_input.
+    sel_state = {
+        "set_sel_active": None,
+        "set_sel_prompt": None,
+        "set_sel_options": None,
+        "set_sel_idx": None,
+        "sel_mode": None,
+        "sel_show_type": None,
+        "sel_event": None,
+        "sel_result": None,
+    }
+
+    def _human_input_via_selector(question: str) -> str:
+        """Blocking callback for the human_input tool."""
+        cb = sel_state.get("callback")
+        if cb:
+            return cb(question)
+        return input(f"\n  ? {question}\n  > ")
+
+    # Rewire the human_input tool callbacks to use our selector.
+    from orxhestra.cli.builder import _set_human_input_callbacks
+
+    async def _async_human_input(question: str) -> str:
+        return _human_input_via_selector(question)
+
+    _set_human_input_callbacks(state.runner.agent, _async_human_input)
 
     vnode = orx_repl(
         initial_history=initial_history,
@@ -393,17 +544,21 @@ def run_ink_app(
         console_ref=Ref(console),
         orx_path_ref=Ref(orx_path),
         workspace_ref=Ref(workspace),
+        selector_state_ref=Ref(sel_state),
     )
 
     render(vnode)
 
 
-def _dispatch_slash(text, state, writer, orx_path, workspace, set_history, app):
+def _dispatch_slash(text, state, writer, orx_path, workspace,
+                    set_history, app):
     from orxhestra.cli.commands import handle_slash_command
 
     parts = text.split(maxsplit=1)
     cmd_arg = parts[1].strip() if len(parts) > 1 else None
-    set_history(lambda h: [*h, {"type": "plain", "ansi": f"  {text}", "color": _MUTED}])
+    set_history(lambda h: [
+        *h, {"type": "plain", "ansi": f"  {text}", "color": _MUTED},
+    ])
 
     def run():
         loop = asyncio.new_event_loop()
@@ -418,7 +573,8 @@ def _dispatch_slash(text, state, writer, orx_path, workspace, set_history, app):
     threading.Thread(target=run, daemon=True).start()
 
 
-def _dispatch_agent(message, state, writer, set_history, set_phase, running_ref, console):
+def _dispatch_agent(message, state, writer, set_history,
+                    set_phase, running_ref):
     set_history(lambda h: [*h, {"type": "user", "text": message}])
     running_ref.current = True
 
@@ -426,7 +582,9 @@ def _dispatch_agent(message, state, writer, set_history, set_phase, running_ref,
         try:
             from rich.markdown import Markdown
         except ImportError:
-            set_history(lambda h: [*h, {"type": "plain", "ansi": "Error: rich required."}])
+            set_history(lambda h: [
+                *h, {"type": "plain", "ansi": "Error: rich required."},
+            ])
             running_ref.current = False
             return
 
@@ -443,7 +601,9 @@ def _dispatch_agent(message, state, writer, set_history, set_phase, running_ref,
             state.turn_count += 1
         except Exception as exc:
             err_msg = str(exc)
-            set_history(lambda h: [*h, {"type": "plain", "ansi": f"  Error: {err_msg}"}])
+            set_history(lambda h: [
+                *h, {"type": "plain", "ansi": f"  Error: {err_msg}"},
+            ])
         finally:
             running_ref.current = False
             set_phase("idle")

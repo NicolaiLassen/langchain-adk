@@ -90,7 +90,13 @@ class _StreamState:
     pending_tool_ids: set[str] = field(default_factory=set)
 
     def stop_spinner(self, writer: Writer) -> None:
-        """Stop and clear the spinner and phrase rotation."""
+        """Stop and clear the spinner and phrase rotation.
+
+        Parameters
+        ----------
+        writer : Writer
+            Output writer used to stop the spinner handle.
+        """
         if self._phrase_task is not None:
             self._phrase_task.cancel()
             self._phrase_task = None
@@ -99,7 +105,15 @@ class _StreamState:
             self.spinner = None
 
     def end_stream(self, writer: Writer, markdown_cls: type) -> None:
-        """Stop live preview and clear buffer."""
+        """Stop live preview and clear buffer.
+
+        Parameters
+        ----------
+        writer : Writer
+            Output writer.
+        markdown_cls : type
+            Rich ``Markdown`` class for final rendering.
+        """
         if self.in_stream:
             if self.live_handle is not None:
                 if self.buffer:
@@ -112,7 +126,13 @@ class _StreamState:
             self.buffer = ""
 
     def accumulate_usage(self, event: Event) -> None:
-        """Extract token usage from the event's LLM response."""
+        """Extract token usage from the event's LLM response.
+
+        Parameters
+        ----------
+        event : Event
+            Streaming event that may contain ``llm_response`` with token counts.
+        """
         if event.llm_response:
             self.prompt_tokens += event.llm_response.input_tokens or 0
             self.completion_tokens += event.llm_response.output_tokens or 0

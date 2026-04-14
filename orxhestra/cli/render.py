@@ -32,7 +32,18 @@ _SHELL_TOOLS: frozenset[str] = frozenset({
 
 
 def _tool_style(tool_name: str) -> str:
-    """Return theme style name for a tool category."""
+    """Return the Rich theme style name for a tool category.
+
+    Parameters
+    ----------
+    tool_name : str
+        Name of the tool.
+
+    Returns
+    -------
+    str
+        Rich style name (e.g. ``"orx.tool.read"``).
+    """
     if tool_name in _READ_TOOLS:
         return "orx.tool.read"
     if tool_name in _WRITE_TOOLS:
@@ -43,7 +54,20 @@ def _tool_style(tool_name: str) -> str:
 
 
 def _tool_arg_summary(tool_name: str, args: dict) -> str:
-    """Build a concise one-line summary of tool call arguments."""
+    """Build a concise one-line summary of tool call arguments.
+
+    Parameters
+    ----------
+    tool_name : str
+        Name of the tool.
+    args : dict
+        Arguments passed to the tool call.
+
+    Returns
+    -------
+    str
+        Short human-readable summary string.
+    """
     if "path" in args:
         return args["path"]
     if "command" in args:
@@ -67,7 +91,15 @@ def _timestamp() -> str:
 
 
 def render_tool_call(event: Event, writer: Writer) -> None:
-    """Render tool calls with boxed format and category coloring."""
+    """Render tool calls with boxed format and category coloring.
+
+    Parameters
+    ----------
+    event : Event
+        Event containing ``tool_calls``.
+    writer : Writer
+        Output writer.
+    """
     # Collapse consecutive read tools into one line.
     read_tools: list[str] = []
     other_tools: list[tuple[str, str, str]] = []
@@ -106,7 +138,17 @@ def render_tool_response(
     *,
     elapsed: float | None = None,
 ) -> None:
-    """Render a truncated tool response with optional timing."""
+    """Render a truncated tool response with optional timing.
+
+    Parameters
+    ----------
+    event : Event
+        Event containing the tool response text.
+    writer : Writer
+        Output writer.
+    elapsed : float, optional
+        Seconds the tool took to execute.
+    """
     text: str = (event.text or "")[:500]
     if elapsed is not None and elapsed < 0.1:
         elapsed_str = ""  # Don't show near-zero times — just noise.
@@ -129,7 +171,15 @@ def render_tool_response(
 
 
 def render_todos(todo_list: TodoList, writer: Writer) -> None:
-    """Render the todo list if it has pending items."""
+    """Render the todo list if it has pending items.
+
+    Parameters
+    ----------
+    todo_list : TodoList
+        The shared task list.
+    writer : Writer
+        Output writer.
+    """
     if todo_list is None or not todo_list.todos:
         return
     if not todo_list.has_pending():
@@ -146,7 +196,19 @@ def render_turn_summary(
     prompt_tokens: int = 0,
     completion_tokens: int = 0,
 ) -> None:
-    """Print a concise summary line after each agent turn."""
+    """Print a concise summary line after each agent turn.
+
+    Parameters
+    ----------
+    elapsed : float
+        Wall-clock seconds for the turn.
+    writer : Writer
+        Output writer.
+    prompt_tokens : int
+        Input token count from the LLM response.
+    completion_tokens : int
+        Output token count from the LLM response.
+    """
     ts: str = _timestamp()
     parts: list[str] = [f"{elapsed:.1f}s"]
     total: int = prompt_tokens + completion_tokens
