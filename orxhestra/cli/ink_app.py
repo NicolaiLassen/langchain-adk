@@ -8,7 +8,7 @@ import shutil as _shutil
 import threading
 from typing import TYPE_CHECKING, Any
 
-from pyink import Box, Spacer, Static, Text, component, render
+from pyink import Box, Static, Text, component, render
 from pyink.hooks import (
     use_animation,
     use_app,
@@ -423,8 +423,8 @@ def orx_repl(
             show_type_option=sel_show_type.current,
         ))
 
-    # Push input to the bottom.
-    children.append(Spacer())
+    # Flex-grow spacer pushes input to the bottom.
+    children.append(Box(flex_grow=1))
 
     # Input area with border + cursor.
     before = buf[:cursor]
