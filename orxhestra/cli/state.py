@@ -28,6 +28,8 @@ class ReplState(BaseModel):
         Whether the REPL loop should continue.
     retry_message : str, optional
         Message to retry on next turn.
+    auto_approve : bool
+        Whether tool calls are auto-approved without user confirmation.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -49,4 +51,7 @@ class ReplState(BaseModel):
     )
     retry_message: str | None = Field(
         default=None, repr=False, description="Message to retry on next turn."
+    )
+    auto_approve: bool = Field(
+        default=False, description="Whether tool calls are auto-approved without user confirmation."
     )

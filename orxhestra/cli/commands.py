@@ -10,9 +10,8 @@ from uuid import uuid4
 from orxhestra.cli.config import DEFAULT_USER_ID
 
 if TYPE_CHECKING:
-    from rich.console import Console
-
     from orxhestra.cli.state import ReplState
+    from orxhestra.cli.writer import Writer
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -41,11 +40,11 @@ async def _cmd_exit(
     state: ReplState,
     _cmd_arg: str | None,
     *,
-    console: Console,
+    writer: Writer,
     **_kw: object,
 ) -> None:
     """Exit the REPL."""
-    console.print("[orx.status]Goodbye![/orx.status]")
+    writer.print_rich("[orx.status]Goodbye![/orx.status]")
     state.should_continue = False
 
 
@@ -53,7 +52,7 @@ async def _cmd_clear(
     state: ReplState,
     _cmd_arg: str | None,
     *,
-    console: Console,
+    writer: Writer,
     **_kw: object,
 ) -> None:
     """Clear the session and reset state."""
@@ -61,22 +60,22 @@ async def _cmd_clear(
     if state.todo_list is not None:
         state.todo_list.todos = []
     state.turn_count = 0
-    console.print("[orx.status]Session cleared.[/orx.status]")
+    writer.print_rich("[orx.status]Session cleared.[/orx.status]")
 
 
 async def _cmd_compact(
     state: ReplState,
     _cmd_arg: str | None,
     *,
-    console: Console,
+    writer: Writer,
     **_kw: object,
 ) -> None:
     """Summarize old messages to free context."""
     if state.model is None:
-        console.print("[orx.status]Compact not available.[/orx.status]")
+        writer.print_rich("[orx.status]Compact not available.[/orx.status]")
         return
 
-    console.print("[orx.status]Compacting conversation...[/orx.status]")
+    writer.print_rich("[orx.status]Compacting conversation...[/orx.status]")
     from orxhestra.cli.summarization import summarize_session
 
     session = await state.runner.get_or_create_session(
@@ -85,16 +84,16 @@ async def _cmd_compact(
     result = await summarize_session(state.model, session.events)
     if result is not None:
         session.events[:] = result
-        console.print("[orx.status]Conversation compacted.[/orx.status]")
+        writer.print_rich("[orx.status]Conversation compacted.[/orx.status]")
     else:
-        console.print("[orx.status]Nothing to compact.[/orx.status]")
+        writer.print_rich("[orx.status]Nothing to compact.[/orx.status]")
 
 
 async def _cmd_model(
     state: ReplState,
     cmd_arg: str | None,
     *,
-    console: Console,
+    writer: Writer,
     orx_path: object,
     workspace: str,
     **_kw: object,
@@ -103,7 +102,7 @@ async def _cmd_model(
     from pathlib import Path
 
     if not cmd_arg:
-        console.print(
+        writer.print_rich(
             f"[orx.status]Current model: {state.model_name}[/orx.status]"
         )
         return
@@ -131,34 +130,34 @@ async def _cmd_model(
         new_session.events.extend(old_events)
 
         msg: str = f"Switched to {state.model_name} (history preserved)"
-        console.print(f"[orx.status]{msg}[/orx.status]")
+        writer.print_rich(f"[orx.status]{msg}[/orx.status]")
     except Exception as e:
-        console.print(f"[orx.error]Error: {e}[/orx.error]")
+        writer.print_rich(f"[orx.error]Error: {e}[/orx.error]")
 
 
 async def _cmd_todos(
     state: ReplState,
     _cmd_arg: str | None,
     *,
-    console: Console,
+    writer: Writer,
     **_kw: object,
 ) -> None:
     """Show the current task list."""
     from orxhestra.cli.render import render_todos
 
     if state.todo_list is not None:
-        render_todos(state.todo_list, console)
+        render_todos(state.todo_list, writer)
         if not state.todo_list.todos:
-            console.print("[orx.status]No tasks.[/orx.status]")
+            writer.print_rich("[orx.status]No tasks.[/orx.status]")
     else:
-        console.print("[orx.status]No tasks.[/orx.status]")
+        writer.print_rich("[orx.status]No tasks.[/orx.status]")
 
 
 async def _cmd_session(
     state: ReplState,
     _cmd_arg: str | None,
     *,
-    console: Console,
+    writer: Writer,
     **_kw: object,
 ) -> None:
     """Show session info (events, chars, turns)."""
@@ -172,12 +171,12 @@ async def _cmd_session(
         _estimate_event_chars(e) for e in session.events
     )
     chars_info: str = f"{total_chars:,} (~{total_chars // 4:,} tokens)"
-    console.print(
+    writer.print_rich(
         f"  [orx.status]session:  {state.session_id}[/orx.status]"
     )
-    console.print(f"  [orx.status]events:   {event_count}[/orx.status]")
-    console.print(f"  [orx.status]chars:    {chars_info}[/orx.status]")
-    console.print(
+    writer.print_rich(f"  [orx.status]events:   {event_count}[/orx.status]")
+    writer.print_rich(f"  [orx.status]chars:    {chars_info}[/orx.status]")
+    writer.print_rich(
         f"  [orx.status]turns:    {state.turn_count}[/orx.status]"
     )
 
@@ -186,7 +185,7 @@ async def _cmd_undo(
     state: ReplState,
     _cmd_arg: str | None,
     *,
-    console: Console,
+    writer: Writer,
     **_kw: object,
 ) -> None:
     """Remove the last conversation turn."""
@@ -204,18 +203,18 @@ async def _cmd_undo(
         removed: int = len(session.events) - last_user_idx
         session.events[:] = session.events[:last_user_idx]
         state.turn_count = max(0, state.turn_count - 1)
-        console.print(
+        writer.print_rich(
             f"[orx.status]Removed last turn ({removed} events).[/orx.status]"
         )
     else:
-        console.print("[orx.status]Nothing to undo.[/orx.status]")
+        writer.print_rich("[orx.status]Nothing to undo.[/orx.status]")
 
 
 async def _cmd_retry(
     state: ReplState,
     _cmd_arg: str | None,
     *,
-    console: Console,
+    writer: Writer,
     **_kw: object,
 ) -> None:
     """Re-run the last user message."""
@@ -234,19 +233,19 @@ async def _cmd_retry(
     if last_msg and last_user_idx >= 0:
         session.events[:] = session.events[:last_user_idx]
         state.turn_count = max(0, state.turn_count - 1)
-        console.print(
+        writer.print_rich(
             f"[orx.status]Retrying: {last_msg[:60]}[/orx.status]"
         )
         state.retry_message = last_msg
     else:
-        console.print("[orx.status]Nothing to retry.[/orx.status]")
+        writer.print_rich("[orx.status]Nothing to retry.[/orx.status]")
 
 
 async def _cmd_copy(
     state: ReplState,
     _cmd_arg: str | None,
     *,
-    console: Console,
+    writer: Writer,
     **_kw: object,
 ) -> None:
     """Copy the last agent response to the clipboard."""
@@ -274,23 +273,23 @@ async def _cmd_copy(
                 input=last_response.encode(),
                 check=True,
             )
-            console.print(
+            writer.print_rich(
                 "[orx.status]Copied to clipboard.[/orx.status]"
             )
         except Exception:
             logger.debug("Clipboard copy failed", exc_info=True)
-            console.print(
+            writer.print_rich(
                 "[orx.status]Clipboard not available.[/orx.status]"
             )
     else:
-        console.print("[orx.status]No response to copy.[/orx.status]")
+        writer.print_rich("[orx.status]No response to copy.[/orx.status]")
 
 
 async def _cmd_memory(
     _state: ReplState,
     cmd_arg: str | None,
     *,
-    console: Console,
+    writer: Writer,
     workspace: str,
     **_kw: object,
 ) -> None:
@@ -305,46 +304,46 @@ async def _cmd_memory(
     if cmd_arg and cmd_arg.strip().lower() == "clear":
         headers = scan_memory_files(mem_dir)
         if not headers:
-            console.print("[orx.status]No memories to clear.[/orx.status]")
+            writer.print_rich("[orx.status]No memories to clear.[/orx.status]")
             return
         try:
-            confirm = input(
+            confirm = (await writer.prompt_input(
                 f"  Delete {len(headers)} memories? [y/n]: "
-            ).strip().lower()
+            )).strip().lower()
         except (EOFError, KeyboardInterrupt):
             return
         if confirm not in ("y", "yes"):
-            console.print("[orx.status]Cancelled.[/orx.status]")
+            writer.print_rich("[orx.status]Cancelled.[/orx.status]")
             return
         for h in headers:
             h.filepath.unlink(missing_ok=True)
         index_path = mem_dir / "MEMORY.md"
         index_path.unlink(missing_ok=True)
-        console.print(
+        writer.print_rich(
             f"[orx.success]Deleted {len(headers)} memories.[/orx.success]"
         )
         return
 
     headers = scan_memory_files(mem_dir)
     if not headers:
-        console.print(
+        writer.print_rich(
             "[orx.status]No memories saved. The agent can use "
             "save_memory to persist learnings.[/orx.status]"
         )
         return
 
-    console.print(f"[orx.accent]{len(headers)} memories:[/orx.accent]")
+    writer.print_rich(f"[orx.accent]{len(headers)} memories:[/orx.accent]")
     for h in headers:
         type_tag = f"[{h.memory_type}]" if h.memory_type else "[?]"
         desc = f" — {h.description}" if h.description else ""
-        console.print(f"  [orx.muted]{type_tag}[/orx.muted] {h.name}{desc}")
+        writer.print_rich(f"  [orx.muted]{type_tag}[/orx.muted] {h.name}{desc}")
 
 
 async def _cmd_theme(
     _state: ReplState,
     cmd_arg: str | None,
     *,
-    console: Console,
+    writer: Writer,
     **_kw: object,
 ) -> None:
     """Switch between dark and light themes."""
@@ -361,7 +360,7 @@ async def _cmd_theme(
 
     os.environ["ORX_THEME"] = new_theme
     save_theme(new_theme)
-    console.print(
+    writer.print_rich(
         f"[orx.status]Theme set to {new_theme}. "
         f"Restart orx to apply.[/orx.status]"
     )
@@ -371,11 +370,11 @@ async def _cmd_help(
     _state: ReplState,
     _cmd_arg: str | None,
     *,
-    console: Console,
+    writer: Writer,
     **_kw: object,
 ) -> None:
     """Show the help text."""
-    console.print(_HELP_TEXT)
+    writer.print_rich(_HELP_TEXT)
 
 
 _DISPATCH: dict[str, Callable[..., object]] = {
@@ -405,8 +404,8 @@ def register_command(
 
         # Decorator
         @register_command("/greet")
-        async def greet(state, cmd_arg, *, console, **kw):
-            console.print("Hello!")
+        async def greet(state, cmd_arg, *, writer, **kw):
+            writer.print_rich("Hello!")
 
         # Direct
         register_command("/greet", my_handler)
@@ -439,7 +438,7 @@ async def handle_slash_command(
     cmd_arg: str | None,
     state: ReplState,
     *,
-    console: Console,
+    writer: Writer,
     orx_path: object,
     workspace: str,
 ) -> None:
@@ -453,8 +452,8 @@ async def handle_slash_command(
         Optional argument following the command.
     state : ReplState
         Shared mutable REPL state.
-    console : Console
-        Rich console for output.
+    writer : Writer
+        Output writer.
     orx_path : object
         Path to the orx YAML file.
     workspace : str
@@ -462,14 +461,14 @@ async def handle_slash_command(
     """
     handler = _DISPATCH.get(cmd)
     if handler is None:
-        console.print(
+        writer.print_rich(
             f"[orx.status]Unknown command: {cmd}. Type /help[/orx.status]"
         )
         return
     await handler(
         state,
         cmd_arg,
-        console=console,
+        writer=writer,
         orx_path=orx_path,
         workspace=workspace,
     )

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from orxhestra.cli.theme import (
     SEP,
@@ -15,8 +15,7 @@ from orxhestra.cli.theme import (
 )
 
 if TYPE_CHECKING:
-    from rich.console import Console
-
+    from orxhestra.cli.writer import Writer
     from orxhestra.events.event import Event
     from orxhestra.tools.todo_tool import TodoList
 
@@ -67,7 +66,7 @@ def _timestamp() -> str:
     return time.strftime("%H:%M")
 
 
-def render_tool_call(event: Event, console: Console) -> None:
+def render_tool_call(event: Event, writer: Writer) -> None:
     """Render tool calls with boxed format and category coloring."""
     # Collapse consecutive read tools into one line.
     read_tools: list[str] = []
@@ -90,20 +89,20 @@ def render_tool_call(event: Event, console: Console) -> None:
         collapsed: str = ", ".join(read_tools[:4])
         if len(read_tools) > 4:
             collapsed += f" +{len(read_tools) - 4} more"
-        console.print(
+        writer.print_rich(
             f"  [orx.tool.read]{TOOL_TOP} {collapsed}[/orx.tool.read]"
         )
 
     # Render other tools normally.
     for tool_name, summary, style in other_tools:
-        console.print(f"  [{style}]{TOOL_TOP} {tool_name}[/{style}]")
+        writer.print_rich(f"  [{style}]{TOOL_TOP} {tool_name}[/{style}]")
         if summary:
-            console.print(f"  [{style}]{TOOL_MID} {summary}[/{style}]")
+            writer.print_rich(f"  [{style}]{TOOL_MID} {summary}[/{style}]")
 
 
 def render_tool_response(
     event: Event,
-    console: Console,
+    writer: Writer,
     *,
     elapsed: float | None = None,
 ) -> None:
@@ -120,16 +119,16 @@ def render_tool_response(
         first_line: str = lines[0][:200]
         if len(lines) > 1:
             first_line += f"  ({len(lines)} lines)"
-        console.print(
+        writer.print_rich(
             f"  [orx.muted]{TOOL_BOT} {first_line}{elapsed_str}[/orx.muted]"
         )
     else:
-        console.print(
+        writer.print_rich(
             f"  [orx.muted]{TOOL_BOT} done{elapsed_str}[/orx.muted]"
         )
 
 
-def render_todos(todo_list: TodoList, console: Console) -> None:
+def render_todos(todo_list: TodoList, writer: Writer) -> None:
     """Render the todo list if it has pending items."""
     if todo_list is None or not todo_list.todos:
         return
@@ -137,12 +136,12 @@ def render_todos(todo_list: TodoList, console: Console) -> None:
         return
     rendered: str = todo_list.render()
     if rendered:
-        console.print(f"\n[bold]Tasks:[/bold]\n{rendered}")
+        writer.print_rich(f"\n[bold]Tasks:[/bold]\n{rendered}")
 
 
 def render_turn_summary(
     elapsed: float,
-    console: Console,
+    writer: Writer,
     *,
     prompt_tokens: int = 0,
     completion_tokens: int = 0,
@@ -157,28 +156,39 @@ def render_turn_summary(
             f" ({prompt_tokens:,}\u2191 {completion_tokens:,}\u2193)"
         )
     summary: str = SEP.join(parts)
-    console.print(
+    writer.print_rich(
         f"  [orx.summary]{TURN_DOT} {summary}"
         f"  [orx.muted]{ts}[/orx.muted][/orx.summary]"
     )
 
 
-def print_banner(
+def render_banner(
     orx_path: Path,
     model_name: str,
     workspace: str,
-    console: Console,
-) -> None:
-    """Print a styled welcome banner."""
+) -> Any:
+    """Return a Rich renderable for the welcome banner.
+
+    Parameters
+    ----------
+    orx_path : Path
+        Path to the orx YAML file.
+    model_name : str
+        Name of the LLM model in use.
+    workspace : str
+        Workspace directory path.
+
+    Returns
+    -------
+    Any
+        A Rich ``Panel`` renderable (or plain string as fallback).
+    """
     import orxhestra
 
     try:
         from rich.panel import Panel
     except ImportError:
-        console.print(
-            f"\n  orx v{orxhestra.__version__}  model: {model_name}"
-        )
-        return
+        return f"\n  orx v{orxhestra.__version__}  model: {model_name}"
 
     try:
         import yaml
@@ -210,11 +220,31 @@ def print_banner(
         f"[{lbl}]agents:[/{lbl}]    {agent_names}"
     )
 
-    console.print()
-    console.print(
-        Panel(
-            content,
-            border_style="orx.accent",
-            padding=(0, 2),
-        )
+    return Panel(
+        content,
+        border_style="orx.accent",
+        padding=(0, 2),
     )
+
+
+def print_banner(
+    orx_path: Path,
+    model_name: str,
+    workspace: str,
+    writer: Writer,
+) -> None:
+    """Print a styled welcome banner.
+
+    Parameters
+    ----------
+    orx_path : Path
+        Path to the orx YAML file.
+    model_name : str
+        Name of the LLM model in use.
+    workspace : str
+        Workspace directory path.
+    writer : Writer
+        Output writer.
+    """
+    writer.print_rich()
+    writer.print_rich(render_banner(orx_path, model_name, workspace))

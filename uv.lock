@@ -3606,11 +3606,12 @@ wheels = [
 
 [[package]]
 name = "orxhestra"
-version = "0.0.64"
+version = "0.0.66"
 source = { editable = "." }
 dependencies = [
     { name = "langchain" },
     { name = "pydantic" },
+    { name = "pyinklib" },
 ]
 
 [package.optional-dependencies]
@@ -3626,7 +3627,7 @@ all = [
     { name = "langchain-anthropic" },
     { name = "langchain-google-genai" },
     { name = "langchain-openai" },
-    { name = "prompt-toolkit" },
+    { name = "pyinklib" },
     { name = "pyjwt" },
     { name = "pyyaml" },
     { name = "rich" },
@@ -3647,7 +3648,7 @@ azure-ai = [
     { name = "langchain-azure-ai" },
 ]
 cli = [
-    { name = "prompt-toolkit" },
+    { name = "pyinklib" },
     { name = "pyyaml" },
     { name = "rich" },
 ]
@@ -3759,9 +3760,10 @@ requires-dist = [
     { name = "langchain-together", marker = "extra == 'together'", specifier = ">=0.2.0" },
     { name = "langchain-upstage", marker = "extra == 'upstage'", specifier = ">=0.3.0" },
     { name = "langchain-xai", marker = "extra == 'xai'", specifier = ">=0.2.0" },
-    { name = "prompt-toolkit", marker = "extra == 'all'", specifier = ">=3.0" },
-    { name = "prompt-toolkit", marker = "extra == 'cli'", specifier = ">=3.0" },
     { name = "pydantic", specifier = ">=2.12.5" },
+    { name = "pyinklib", specifier = ">=0.0.3" },
+    { name = "pyinklib", marker = "extra == 'all'", specifier = ">=0.0.3" },
+    { name = "pyinklib", marker = "extra == 'cli'", specifier = ">=0.0.3" },
     { name = "pyjwt", marker = "extra == 'all'", specifier = ">=2.8" },
     { name = "pyjwt", marker = "extra == 'auth'", specifier = ">=2.8" },
     { name = "pyyaml", marker = "extra == 'all'", specifier = ">=6.0" },
@@ -3963,18 +3965,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538 },
-]
-
-[[package]]
-name = "prompt-toolkit"
-version = "3.0.52"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "wcwidth" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/a1/96/06e01a7b38dce6fe1db213e061a4602dd6032a8a97ef6c1a862537732421/prompt_toolkit-3.0.52.tar.gz", hash = "sha256:28cde192929c8e7321de85de1ddbe736f1375148b02f2e17edd840042b1be855", size = 434198 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/84/03/0d3ce49e2505ae70cf43bc5bb3033955d2fc9f932163e84dc0779cc47f48/prompt_toolkit-3.0.52-py3-none-any.whl", hash = "sha256:9aac639a3bbd33284347de5ad8d68ecc044b91a762dc39b7c21095fcd6a19955", size = 391431 },
 ]
 
 [[package]]
@@ -4400,6 +4390,18 @@ wheels = [
 ]
 
 [[package]]
+name = "pyinklib"
+version = "0.0.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyyoga" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9d/31/51893ce9db46c13744f1df506dd09ed19e9537c304fd73d5b9ab74f0deed/pyinklib-0.0.3.tar.gz", hash = "sha256:7b5f52c6beaca6685caa3698a9e1f385bb1fe79cf3fc58bcec4e2d442ac73d98", size = 79329 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b1/33/ac602831aeb26e4b9055fe6134eb703136c0766cda7a4b69c277404e9e16/pyinklib-0.0.3-py3-none-any.whl", hash = "sha256:b48b2fef08caff78cd056babf386eb083b1091367a3fa9e6295d71999f4ea32a", size = 61624 },
+]
+
+[[package]]
 name = "pyjwt"
 version = "2.11.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4671,6 +4673,29 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/da/92/1446574745d74df0c92e6aa4a7b0b3130706a4142b2d1a5869f2eaa423c6/pyyaml-6.0.3-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:16249ee61e95f858e83976573de0f5b2893b3677ba71c9dd36b9cf8be9ac6d65", size = 829923 },
     { url = "https://files.pythonhosted.org/packages/f0/7a/1c7270340330e575b92f397352af856a8c06f230aa3e76f86b39d01b416a/pyyaml-6.0.3-cp314-cp314t-win_amd64.whl", hash = "sha256:4ad1906908f2f5ae4e5a8ddfce73c320c2a1429ec52eafd27138b7f1cbe341c9", size = 174062 },
     { url = "https://files.pythonhosted.org/packages/f1/12/de94a39c2ef588c7e6455cfbe7343d3b2dc9d6b6b2f40c4c6565744c873d/pyyaml-6.0.3-cp314-cp314t-win_arm64.whl", hash = "sha256:ebc55a14a21cb14062aa4162f906cd962b28e2e9ea38f9b4391244cd8de4ae0b", size = 149341 },
+]
+
+[[package]]
+name = "pyyoga"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/2c/16/6d7891480a97b4306b01586df5463d5fb7a56ea8d9cc28170e96944da95f/pyyoga-0.1.0.tar.gz", hash = "sha256:0824abd8d8a7e9c732456e79200ee452d86db533b907829c11d7c297db8831f9", size = 14384 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b2/5a/5b47f5691c372a0569debea5a97e7af9b815d03343df39d66cb43d4ea90b/pyyoga-0.1.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:f6e98307bf0ad991cb35e2bf49193562c1bbfdf688e5caa45bd5935b7a6befef", size = 815925 },
+    { url = "https://files.pythonhosted.org/packages/51/a8/2ac35aeb7a80f167b3bf10c3edd6ec0bfb70a8be42a4cda2bd144f7b322d/pyyoga-0.1.0-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:ab6f3f1df5cba61685bad1ed8a2a94784dcb7e8f76d605eafbd42cceb51d996e", size = 994429 },
+    { url = "https://files.pythonhosted.org/packages/80/75/b4188468a728eb966bddeb70af7c1c7162318143aeff86476b7baba13fbd/pyyoga-0.1.0-cp310-cp310-win_amd64.whl", hash = "sha256:c28764256e0fb2b14bc4b28ebcf89fec2b99296487898e9fa63278f301ecdccf", size = 2181618 },
+    { url = "https://files.pythonhosted.org/packages/9a/70/90d24e248e0c2410ff1e6e8746fde50feb42e6e2fd60a70b05c1c27fc7df/pyyoga-0.1.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:13dc2cfde0cfd42a0b5a74ceb9456d31726b00f8821a06ef83eb8c57ed7ee919", size = 816962 },
+    { url = "https://files.pythonhosted.org/packages/eb/2b/6560c0116f2a34c596acd62294333f2abd335bfcf3c77536c0d55401e0e8/pyyoga-0.1.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:cc0b6b93a2882c69365292684e2b2f9a0d7465aab82a6cee21c93addc1debe30", size = 996172 },
+    { url = "https://files.pythonhosted.org/packages/2c/13/2e63ac9faea7aac77439da81afb8ddab211b1ba8a70a2e8dbb677d732f01/pyyoga-0.1.0-cp311-cp311-win_amd64.whl", hash = "sha256:050b5acc74e4b3c479277a1209ecf0464d104c783b4506a046970f8187a2e5dd", size = 2182265 },
+    { url = "https://files.pythonhosted.org/packages/78/01/943b2a2bbbd32ab6ec21a7587dadf988b19a628a815a243c6b2a047b4904/pyyoga-0.1.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:8cdb0f07e57658f57dbf29a07d05b40ea3089236815acbc42f8289d953ddf8ed", size = 818414 },
+    { url = "https://files.pythonhosted.org/packages/a4/5f/4eb1220e387f1346c9c7c306a51aa4fb170128de74079faa82883cb3b92d/pyyoga-0.1.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:323c5556ca2e295dda3673d9074d83a36c3b9a667897cbdb35fcd2bcba3c8517", size = 997326 },
+    { url = "https://files.pythonhosted.org/packages/14/d8/02f3fb212a62f87f47001a58ae262bea3191f147b9831587d6fbac010813/pyyoga-0.1.0-cp312-cp312-win_amd64.whl", hash = "sha256:515b20d0e1dd3df51a90acc231ec91f8795b87f075854c01c487061e5cd9fa04", size = 2182978 },
+    { url = "https://files.pythonhosted.org/packages/b2/65/6b7fb4d331697214a17fecbd96939f8cb808b49c720bec0cfb1af9464dcc/pyyoga-0.1.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:0ba0aa34cd9219421096e2350b829dc43eba31cfc89b10a7064bdbcce4ac3f68", size = 818459 },
+    { url = "https://files.pythonhosted.org/packages/b9/b2/db9e312a2438c675867092831b174fb25ed4b768c5cfe4e7d062d98401c2/pyyoga-0.1.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a45dee72b67d3cbb224b6524fe75ad135f3bf7cbb30d0fcb8b0f3d35942b7a55", size = 997131 },
+    { url = "https://files.pythonhosted.org/packages/d6/00/3d0e0b33ab1c43191595ef82d5dcc2a29bf5177ab5eaa30b8408088fc39c/pyyoga-0.1.0-cp313-cp313-win_amd64.whl", hash = "sha256:69655a8de80f2b5dc8a26cf7b5ac32dd284ecab81a4e599cbea596a58ae99c5f", size = 2182995 },
+    { url = "https://files.pythonhosted.org/packages/14/41/84c5aa2dfc80473ff944e0d54fa81e97a3ff31f8115490631aa2eda92c1e/pyyoga-0.1.0-pp310-pypy310_pp73-macosx_11_0_arm64.whl", hash = "sha256:684cfa6968b5d865a7cedf309fbbf8a5e9571d2deda91e05836c88e81c3e7ac8", size = 815808 },
+    { url = "https://files.pythonhosted.org/packages/c5/6c/7edf465646c42f2dd79c37e2d70390dac77d92408c22dd38c0f21d9ce59e/pyyoga-0.1.0-pp310-pypy310_pp73-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:188e70fffdee56e702a86d9e44e2d6819a65a084a9361879a25b3a1ea654813e", size = 993738 },
+    { url = "https://files.pythonhosted.org/packages/a0/60/09493de70f5ab08540e1971650f1939e69d794842635b38f1005faaa507d/pyyoga-0.1.0-pp310-pypy310_pp73-win_amd64.whl", hash = "sha256:7f7d83392043ba43f48a9ee1305136dac6f93aa7f0f00ece8310ae8f6c76a86d", size = 2181368 },
 ]
 
 [[package]]
@@ -5668,15 +5693,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/bd/95/615e72cd27b85b61eec764a5ca51bd94d40b5adea5ff47567d9ebc4d275a/watchfiles-1.1.1-pp311-pypy311_pp73-macosx_11_0_arm64.whl", hash = "sha256:89eef07eee5e9d1fda06e38822ad167a044153457e6fd997f8a858ab7564a336", size = 396117 },
     { url = "https://files.pythonhosted.org/packages/c9/81/e7fe958ce8a7fb5c73cc9fb07f5aeaf755e6aa72498c57d760af760c91f8/watchfiles-1.1.1-pp311-pypy311_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ce19e06cbda693e9e7686358af9cd6f5d61312ab8b00488bc36f5aabbaf77e24", size = 450493 },
     { url = "https://files.pythonhosted.org/packages/6e/d4/ed38dd3b1767193de971e694aa544356e63353c33a85d948166b5ff58b9e/watchfiles-1.1.1-pp311-pypy311_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3e6f39af2eab0118338902798b5aa6664f46ff66bc0280de76fca67a7f262a49", size = 457546 },
-]
-
-[[package]]
-name = "wcwidth"
-version = "0.6.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/35/a2/8e3becb46433538a38726c948d3399905a4c7cabd0df578ede5dc51f0ec2/wcwidth-0.6.0.tar.gz", hash = "sha256:cdc4e4262d6ef9a1a57e018384cbeb1208d8abbc64176027e2c2455c81313159", size = 159684 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/68/5a/199c59e0a824a3db2b89c5d2dade7ab5f9624dbf6448dc291b46d5ec94d3/wcwidth-0.6.0-py3-none-any.whl", hash = "sha256:1a3a1e510b553315f8e146c54764f4fb6264ffad731b3d78088cdb1478ffbdad", size = 94189 },
 ]
 
 [[package]]

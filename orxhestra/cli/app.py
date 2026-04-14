@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from orxhestra.cli.config import DEFAULT_MODEL, HISTORY_DIR, HISTORY_FILE
+from orxhestra.cli.config import DEFAULT_MODEL
 
 if TYPE_CHECKING:
     from rich.console import Console
@@ -85,160 +85,6 @@ def _parse_args() -> argparse.Namespace:
         help="Print version and exit.",
     )
     return parser.parse_args()
-
-
-async def _repl(
-    orx_path: Path,
-    state: ReplState,
-    workspace: str,
-    *,
-    auto_approve: bool = False,
-) -> None:
-    """Run the interactive REPL.
-
-    Parameters
-    ----------
-    orx_path : Path
-        Path to the orx YAML file.
-    state : ReplState
-        Shared mutable REPL state.
-    workspace : str
-        Workspace directory path.
-    auto_approve : bool
-        If True, skip approval prompts for destructive tools.
-    """
-    try:
-        from rich.markdown import Markdown
-    except ImportError:
-        print("Error: rich is required. Install with: pip install orxhestra[cli]")
-        sys.exit(1)
-
-    from orxhestra.cli.commands import handle_slash_command
-    from orxhestra.cli.render import print_banner
-    from orxhestra.cli.stream import stream_response
-    from orxhestra.cli.theme import make_console
-
-    console: Console = make_console()
-
-    print_banner(orx_path, state.model_name, workspace, console)
-    console.print(
-        "  [orx.status]type /help for commands, Ctrl+D to exit[/orx.status]\n"
-    )
-
-    prompt_session: Any = None
-    prompt_style: Any = None
-    try:
-        from prompt_toolkit import PromptSession
-        from prompt_toolkit.completion import WordCompleter
-        from prompt_toolkit.formatted_text import ANSI
-        from prompt_toolkit.history import FileHistory
-
-        from orxhestra.cli.commands import get_command_names
-
-        HISTORY_DIR.mkdir(parents=True, exist_ok=True)
-        command_completer = WordCompleter(
-            get_command_names(),
-            sentence=True,
-        )
-        prompt_session = PromptSession(
-            history=FileHistory(str(HISTORY_FILE)),
-            completer=command_completer,
-            complete_while_typing=False,
-        )
-        prompt_style = ANSI("\033[38;5;67morx\033[0m\033[90m>\033[0m ")
-    except ImportError:
-        pass
-
-    while True:
-        try:
-            if prompt_session:
-                user_input: str = await prompt_session.prompt_async(
-                    prompt_style or "orx> "
-                )
-            else:
-                user_input = input("orx> ")
-        except (EOFError, KeyboardInterrupt):
-            console.print("\n[orx.status]Goodbye![/orx.status]")
-            break
-
-        user_input = user_input.strip()
-        if not user_input:
-            continue
-
-        if user_input.startswith('"""') or user_input.startswith("'''"):
-            user_input = await _read_multiline(
-                user_input, prompt_session
-            )
-            if not user_input:
-                continue
-
-        if user_input.startswith("/"):
-            cmd_parts: list[str] = user_input.split(maxsplit=1)
-            cmd_arg: str | None = (
-                cmd_parts[1].strip() if len(cmd_parts) > 1 else None
-            )
-            await handle_slash_command(
-                cmd_parts[0].lower(),
-                cmd_arg,
-                state,
-                console=console,
-                orx_path=orx_path,
-                workspace=workspace,
-            )
-            if not state.should_continue:
-                break
-            if state.retry_message:
-                user_input = state.retry_message
-                state.retry_message = None
-            else:
-                continue
-
-        auto_approve = await stream_response(
-            state.runner,
-            state.session_id,
-            user_input,
-            console,
-            Markdown,
-            todo_list=state.todo_list,
-            auto_approve=auto_approve,
-        )
-        state.turn_count += 1
-        console.print()
-
-
-async def _read_multiline(
-    first_line: str,
-    prompt_session: Any,
-) -> str:
-    """Read multi-line input delimited by triple quotes.
-
-    Parameters
-    ----------
-    first_line : str
-        The initial line containing the opening triple-quote delimiter.
-    prompt_session : Any
-        A prompt_toolkit PromptSession, or None for plain input.
-
-    Returns
-    -------
-    str
-        The concatenated multi-line input with delimiters stripped.
-    """
-    delimiter: str = first_line[:3]
-    ml_lines: list[str] = [first_line[3:]]
-    while True:
-        try:
-            if prompt_session:
-                ml_line: str = await prompt_session.prompt_async("... ")
-            else:
-                ml_line = input("... ")
-        except (EOFError, KeyboardInterrupt):
-            break
-        if ml_line.rstrip().endswith(delimiter):
-            ml_lines.append(ml_line.rstrip().removesuffix(delimiter))
-            break
-        ml_lines.append(ml_line)
-    return "\n".join(ml_lines).strip()
 
 
 async def _serve(orx_path: Path, port: int) -> None:
@@ -322,6 +168,7 @@ async def _async_main() -> None:
     state: ReplState = await build_from_orx(
         orx_path, args.model, args.workspace
     )
+    state.auto_approve = args.auto_approve
 
     if args.command:
         try:
@@ -335,35 +182,24 @@ async def _async_main() -> None:
 
         from orxhestra.cli.stream import stream_response
         from orxhestra.cli.theme import make_console
+        from orxhestra.cli.writer import ConsoleWriter
 
         console: Console = make_console()
+        w = ConsoleWriter(console)
         await stream_response(
             state.runner,
             state.session_id,
             args.command,
-            console,
+            w,
             Markdown,
             todo_list=state.todo_list,
-            auto_approve=args.auto_approve,
+            auto_approve=state.auto_approve,
         )
         return
 
-    from orxhestra.cli.repl_app import ReplApp
-    from orxhestra.cli.render import print_banner
-    from orxhestra.cli.theme import make_console
-
-    console = make_console()
-    print_banner(orx_path, state.model_name, args.workspace, console)
-
-    repl = ReplApp(
-        state=state,
-        console=console,
-        orx_path=orx_path,
-        workspace=args.workspace,
-        auto_approve=args.auto_approve,
-    )
-    app = repl.build()
-    await app.run_async()
+    # Return state so main() can launch the pyink app
+    # outside the asyncio loop (pyink manages its own event loop).
+    return orx_path, state, args.workspace
 
 
 def _graceful_shutdown() -> None:
@@ -389,11 +225,24 @@ def _graceful_shutdown() -> None:
 def main() -> None:
     """Entry point for the ``orx`` command."""
     try:
-        asyncio.run(_async_main())
+        result = asyncio.run(_async_main())
     except KeyboardInterrupt:
-        pass
+        return
     finally:
         _graceful_shutdown()
+
+    if result is not None:
+        orx_path, state, workspace = result
+        from orxhestra.cli.ink_app import run_ink_app
+        from orxhestra.cli.theme import make_console
+
+        console = make_console()
+        try:
+            run_ink_app(state, console, orx_path, workspace)
+        except KeyboardInterrupt:
+            pass
+        finally:
+            _graceful_shutdown()
 
 
 if __name__ == "__main__":

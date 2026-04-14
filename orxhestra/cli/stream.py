@@ -16,12 +16,10 @@ from orxhestra.cli.render import (
     render_tool_response,
     render_turn_summary,
 )
-from orxhestra.cli.theme import ACCENT, RESPONSE_CONNECTOR
 from orxhestra.events.event import EventType
 
 if TYPE_CHECKING:
-    from rich.console import Console
-
+    from orxhestra.cli.writer import Writer
     from orxhestra.events.event import Event
     from orxhestra.runner import Runner
     from orxhestra.tools.todo_tool import TodoList
@@ -32,7 +30,6 @@ def _spinner_text(todo_list: TodoList | None) -> str:
     if todo_list is not None:
         active: str | None = todo_list.get_active_task()
         if active:
-            # Truncate long task names for the spinner.
             return active[:60] + "..." if len(active) > 60 else active
     return random.choice(_THINKING_PHRASES)
 
@@ -81,8 +78,8 @@ class _StreamState:
     buffer: str = ""
     in_stream: bool = False
     thinking_active: bool = False
-    live: Any = None
-    status: Any = None
+    live_handle: Any = None
+    spinner: Any = None
     tool_start: float = 0.0
     turn_start: float = field(default_factory=time.monotonic)
     _phrase_task: Any = field(default=None, repr=False)
@@ -92,35 +89,25 @@ class _StreamState:
     confirmation_tool_ids: set[str] = field(default_factory=set)
     pending_tool_ids: set[str] = field(default_factory=set)
 
-    def stop_status(self) -> None:
+    def stop_spinner(self, writer: Writer) -> None:
         """Stop and clear the spinner and phrase rotation."""
         if self._phrase_task is not None:
             self._phrase_task.cancel()
             self._phrase_task = None
-        if self.status is not None:
-            self.status.stop()
-            self.status = None
+        if self.spinner is not None:
+            writer.stop_spinner(self.spinner)
+            self.spinner = None
 
-    def end_stream(self, console: Console, markdown_cls: type) -> None:
-        """Stop live preview and clear buffer.
-
-        With ``transient=False`` the last Live frame stays on screen,
-        so we do NOT re-print the buffer — that would duplicate it.
-        """
+    def end_stream(self, writer: Writer, markdown_cls: type) -> None:
+        """Stop live preview and clear buffer."""
         if self.in_stream:
-            if self.live is not None:
-                # Do one final update so the last tokens are visible.
+            if self.live_handle is not None:
                 if self.buffer:
-                    self.live.update(markdown_cls(self.buffer))
-                self.live.stop()
-                self.live = None
+                    self.live_handle.update(markdown_cls(self.buffer))
+                writer.stop_live(self.live_handle, keep=True)
+                self.live_handle = None
             elif self.buffer:
-                # Fallback path (no Live available).
-                console.print(
-                    f"[orx.muted]{RESPONSE_CONNECTOR}[/orx.muted] ",
-                    end="",
-                )
-                console.print(markdown_cls(self.buffer))
+                writer.print_rich(markdown_cls(self.buffer))
             self.in_stream = False
             self.buffer = ""
 
@@ -134,7 +121,7 @@ class _StreamState:
 async def prompt_approval(
     tool_name: str,
     args: dict[str, Any],
-    console: Console,
+    writer: Writer,
     auto_approve: bool,
 ) -> bool:
     """Ask the user to approve a destructive tool call.
@@ -145,8 +132,8 @@ async def prompt_approval(
         Name of the tool requiring approval.
     args : dict[str, Any]
         Arguments passed to the tool call.
-    console : Console
-        Rich console for rendering the prompt.
+    writer : Writer
+        Output writer.
     auto_approve : bool
         If True, skip the prompt and approve automatically.
 
@@ -160,11 +147,17 @@ async def prompt_approval(
     if tool_name not in APPROVE_REQUIRED:
         return True
 
-    console.print(format_approval_prompt(tool_name, args))
+    # Build a compact label for the approval selector.
+    arg_summary = ""
+    if "command" in args:
+        arg_summary = f"\n  {args['command']}"
+    elif "path" in args:
+        arg_summary = f"\n  {args['path']}"
+    label = f"  {tool_name}{arg_summary}"
 
     try:
-        response: str = input("  approve? [y/n/a(ll)]: ").strip().lower()
-    except (EOFError, KeyboardInterrupt):
+        response: str = (await writer.prompt_input(label)).strip().lower()
+    except (EOFError, KeyboardInterrupt, asyncio.CancelledError):
         return False
 
     if response in ("a", "all"):
@@ -176,17 +169,13 @@ async def stream_response(
     runner: Runner,
     session_id: str,
     message: str,
-    console: Console,
+    writer: Writer,
     markdown_cls: type,
     *,
     todo_list: TodoList | None = None,
     auto_approve: bool = False,
 ) -> bool:
     """Stream a single agent turn, rendering events in real time.
-
-    Uses Rich Live with ``transient=True``: the live display shows a
-    Markdown preview during streaming, then disappears and is replaced
-    by a final static Markdown render.
 
     Parameters
     ----------
@@ -196,8 +185,8 @@ async def stream_response(
         Session identifier for the conversation.
     message : str
         User message to send to the agent.
-    console : Console
-        Rich console for rendering output.
+    writer : Writer
+        Output writer (TuiWriter or ConsoleWriter).
     markdown_cls : type
         Rich Markdown class used to render streamed text.
     todo_list : TodoList or None
@@ -212,46 +201,19 @@ async def stream_response(
     """
     s = _StreamState()
 
-    try:
-        from rich.live import Live
-    except ImportError:
-        Live = None
-
-    try:
-        from rich.spinner import SPINNERS
-        from rich.status import Status
-    except ImportError:
-        SPINNERS = None
-        Status = None
-
-    # Register the custom orxhestra spinner.
-    if SPINNERS is not None:
-        from orxhestra.cli.theme import ORX_SPINNER
-
-        SPINNERS["orx_music"] = ORX_SPINNER
-
     async def _start_spinner(state: _StreamState) -> None:
         """Start the spinner with rotating phrase text."""
-        if Status is None:
-            return
         phrase = _spinner_text(todo_list)
-        state.status = Status(
-            f"  [orx.accent]{phrase}...[/orx.accent]",
-            console=console,
-            spinner="orx_music",
-            spinner_style=ACCENT,
-        )
-        state.status.start()
+        state.spinner = writer.start_spinner(f"{phrase}...")
 
         async def _rotate() -> None:
-            """Rotate the phrase text on an interval."""
             try:
                 while True:
                     await asyncio.sleep(_PHRASE_ROTATE_INTERVAL)
-                    if state.status is None:
+                    if state.spinner is None:
                         break
                     new_phrase = _spinner_text(todo_list)
-                    state.status.update(f"  [orx.accent]{new_phrase}...[/orx.accent]")
+                    state.spinner.update_text(f"{new_phrase}...")
             except asyncio.CancelledError:
                 pass
 
@@ -268,52 +230,35 @@ async def stream_response(
             s.accumulate_usage(event)
 
             if event.partial and event.type == EventType.AGENT_MESSAGE and event.thinking:
-                s.stop_status()
+                s.stop_spinner(writer)
                 if not s.thinking_active:
                     s.thinking_active = True
-                    console.print(
+                    writer.print_rich(
                         "[orx.thinking]  thinking ...[/orx.thinking]",
                     )
-                console.print(
+                writer.print_rich(
                     f"[orx.thinking]{event.thinking}[/orx.thinking]",
                     end="",
                 )
                 continue
 
             if event.partial and event.type == EventType.AGENT_MESSAGE and event.text:
-                s.stop_status()
+                s.stop_spinner(writer)
                 if s.thinking_active:
-                    console.print()  # newline after thinking
+                    writer.print_rich()  # newline after thinking
                     s.thinking_active = False
                 s.buffer += event.text
-                if Live is not None:
-                    if not s.in_stream:
-                        s.in_stream = True
-                        console.print(
-                            f"[orx.muted]{RESPONSE_CONNECTOR}[/orx.muted] ",
-                            end="",
-                        )
-                        s.live = Live(
-                            markdown_cls(s.buffer),
-                            console=console,
-                            refresh_per_second=8,
-                            transient=False,
-                        )
-                        s.live.start()
-                    else:
-                        s.live.update(markdown_cls(s.buffer))
+                if not s.in_stream:
+                    s.in_stream = True
+                    s.live_handle = writer.start_live()
+                    s.live_handle.update(markdown_cls(s.buffer))
                 else:
-                    if not s.in_stream:
-                        s.in_stream = True
-                    import sys
-
-                    sys.stdout.write(event.text)
-                    sys.stdout.flush()
+                    s.live_handle.update(markdown_cls(s.buffer))
                 continue
 
             if event.has_tool_calls:
-                s.stop_status()
-                s.end_stream(console, markdown_cls)
+                s.stop_spinner(writer)
+                s.end_stream(writer, markdown_cls)
 
                 has_interactive: bool = False
                 has_confirmation: bool = False
@@ -326,35 +271,29 @@ async def stream_response(
                         s.confirmation_tool_ids.add(tc.tool_call_id)
                         has_confirmation = True
 
-                render_tool_call(event, console)
+                render_tool_call(event, writer)
 
                 for tc in event.tool_calls:
                     if tc.tool_name in APPROVE_REQUIRED and not auto_approve:
                         approved: bool = await prompt_approval(
-                            tc.tool_name, tc.args or {}, console, auto_approve
+                            tc.tool_name, tc.args or {}, writer, auto_approve
                         )
                         if not approved:
-                            console.print("  [orx.denied]Denied.[/orx.denied]")
+                            writer.print_rich("  [orx.denied]Denied.[/orx.denied]")
 
                 s.tool_start = time.monotonic()
-                if Status is not None and not has_interactive and not has_confirmation:
+                if not has_interactive and not has_confirmation:
                     n_tools = len(event.tool_calls)
                     if n_tools > 1:
                         tool_label = f"{n_tools} tools"
                     else:
                         tool_label = event.tool_calls[-1].tool_name
-                    s.status = Status(
-                        f"  [orx.accent]Running {tool_label}...[/orx.accent]",
-                        console=console,
-                        spinner="orx_music",
-                        spinner_style=ACCENT,
-                    )
-                    s.status.start()
+                    s.spinner = writer.start_spinner(f"Running {tool_label}...")
                     # No phrase rotation for tool running — fixed text.
                 continue
 
             if event.type == EventType.TOOL_RESPONSE:
-                s.stop_status()
+                s.stop_spinner(writer)
                 tool_call_id: str = ""
                 if event.content.tool_responses:
                     tool_call_id = event.content.tool_responses[0].tool_call_id
@@ -363,31 +302,27 @@ async def stream_response(
                     s.interactive_tool_ids.discard(tool_call_id)
                     s.tool_start = 0.0
                     continue
-                # Confirmation tools render normally (unlike interactive).
                 if tool_call_id in s.confirmation_tool_ids:
                     s.confirmation_tool_ids.discard(tool_call_id)
 
-                # Only render "done" on the LAST response of a batch.
-                # This prevents "done, done, done" for parallel tool calls.
                 is_last = len(s.pending_tool_ids) == 0
                 elapsed: float | None = None
                 if is_last and s.tool_start > 0:
                     elapsed = time.monotonic() - s.tool_start
                 if is_last:
-                    render_tool_response(event, console, elapsed=elapsed)
+                    render_tool_response(event, writer, elapsed=elapsed)
 
                 if event.tool_name == "write_todos" and todo_list is not None:
-                    render_todos(todo_list, console)
+                    render_todos(todo_list, writer)
 
-                # Restart spinner — shows active task name if available.
-                if is_last and Status is not None and s.status is None:
+                if is_last and s.spinner is None:
                     await _start_spinner(s)
                 continue
 
             if event.is_final_response():
-                s.stop_status()
+                s.stop_spinner(writer)
                 was_streaming: bool = s.in_stream
-                s.end_stream(console, markdown_cls)
+                s.end_stream(writer, markdown_cls)
                 if not was_streaming and event.text:
                     agent_label: str = (
                         f"[{event.agent_name}] "
@@ -395,52 +330,40 @@ async def stream_response(
                         else ""
                     )
                     if agent_label:
-                        console.print(f"\n[orx.agent]{agent_label}[/orx.agent]")
-                    console.print(
-                        f"[orx.muted]{RESPONSE_CONNECTOR}[/orx.muted] ",
-                        end="",
-                    )
-                    console.print(markdown_cls(event.text))
+                        writer.print_rich(f"\n[orx.agent]{agent_label}[/orx.agent]")
+                    writer.print_rich(markdown_cls(event.text))
                 continue
 
             if event.metadata.get("compacting"):
-                # Show a spinner while compaction is in progress.
-                if Status is not None:
-                    s.status = Status(
-                        "  [orx.muted]Compacting context...[/orx.muted]",
-                        console=console,
-                        spinner="orx_music",
-                        spinner_style=ACCENT,
-                    )
-                    s.status.start()
+                s.spinner = writer.start_spinner("Compacting context...")
                 continue
 
             if event.metadata.get("compaction"):
-                s.stop_status()
-                console.print(
+                s.stop_spinner(writer)
+                writer.print_rich(
                     "  [orx.muted]context compacted[/orx.muted]"
                 )
                 continue
 
             if event.metadata.get("error") and event.text:
-                s.stop_status()
-                s.end_stream(console, markdown_cls)
-                console.print(f"[orx.error]Error:[/orx.error] {event.text}")
+                s.stop_spinner(writer)
+                s.end_stream(writer, markdown_cls)
+                writer.print_rich(f"[orx.error]Error:[/orx.error] {event.text}")
                 continue
 
     except KeyboardInterrupt:
-        s.stop_status()
-        s.end_stream(console, markdown_cls)
-        console.print("\n[orx.interrupted]Interrupted.[/orx.interrupted]")
+        s.stop_spinner(writer)
+        s.end_stream(writer, markdown_cls)
+        writer.print_rich("\n[orx.interrupted]Interrupted.[/orx.interrupted]")
     finally:
-        s.stop_status()
+        s.stop_spinner(writer)
         if s.in_stream:
-            s.end_stream(console, markdown_cls)
+            s.end_stream(writer, markdown_cls)
 
     turn_elapsed: float = time.monotonic() - s.turn_start
     render_turn_summary(
         turn_elapsed,
-        console,
+        writer,
         prompt_tokens=s.prompt_tokens,
         completion_tokens=s.completion_tokens,
     )

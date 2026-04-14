@@ -23,7 +23,14 @@
       "Bash(sed -i '' 's/Call ``llm\\\\.bind_tools/Call ``model.bind_tools/' orxhestra/agents/llm_agent.py)",
       "Bash(sed -i '' '219s/llm\\\\./model./' tests/test_llm_agent_context_limits.py)",
       "Bash(sed -i '' '298s/llm\\\\./model./' tests/test_llm_agent_context_limits.py)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(.venv/bin/python -c \"from orxhestra.cli.render import render_tool_call, render_tool_response, render_turn_summary, print_banner; print\\('render.py OK'\\)\")",
+      "Bash(.venv/bin/python -c \"from orxhestra.cli.ink_app import run_ink_app; print\\('ink_app OK'\\)\")",
+      "Bash(.venv/bin/python -c \"from orxhestra.cli.writer import InkWriter, ConsoleWriter; print\\('writer OK'\\)\")",
+      "Bash(.venv/bin/python -c \"from orxhestra.cli.app import main; print\\('app OK'\\)\")",
+      "Bash(.venv/bin/python -c \"import pyinklib; print\\(pyinklib.__file__\\); print\\(dir\\(pyinklib\\)\\)\")",
+      "Read(//Users/nicolailassen/anaconda3/lib/python3.10/site-packages/**)",
+      "Bash(.venv/bin/pip show:*)"
     ]
   }
 }
