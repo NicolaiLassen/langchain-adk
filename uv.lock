@@ -3606,7 +3606,7 @@ wheels = [
 
 [[package]]
 name = "orxhestra"
-version = "0.0.82"
+version = "0.0.84"
 source = { editable = "." }
 dependencies = [
     { name = "langchain" },
@@ -3760,8 +3760,8 @@ requires-dist = [
     { name = "langchain-upstage", marker = "extra == 'upstage'", specifier = ">=0.3.0" },
     { name = "langchain-xai", marker = "extra == 'xai'", specifier = ">=0.2.0" },
     { name = "pydantic", specifier = ">=2.12.5" },
-    { name = "pyinklib", marker = "extra == 'all'", specifier = ">=1.1.6" },
-    { name = "pyinklib", marker = "extra == 'cli'", specifier = ">=1.1.6" },
+    { name = "pyinklib", marker = "extra == 'all'", specifier = ">=1.1.11" },
+    { name = "pyinklib", marker = "extra == 'cli'", specifier = ">=1.1.11" },
     { name = "pyjwt", marker = "extra == 'all'", specifier = ">=2.8" },
     { name = "pyjwt", marker = "extra == 'auth'", specifier = ">=2.8" },
     { name = "pyyaml", marker = "extra == 'all'", specifier = ">=6.0" },
@@ -4389,14 +4389,14 @@ wheels = [
 
 [[package]]
 name = "pyinklib"
-version = "1.1.6"
+version = "1.1.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyyoga" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bb/49/29950a23c47329ee4e9440c426a389b3d76d5afa3feba1ec9ecb8c2b84cf/pyinklib-1.1.6.tar.gz", hash = "sha256:eacf14b4802c3f2f1aba4758cf79bbca2d33d330fc71aeff390579111c8eb958", size = 108170 }
+sdist = { url = "https://files.pythonhosted.org/packages/1c/2b/435a13e16d89ded94b46a561f71c43d60c0f7aabf0934d933338a6011d06/pyinklib-1.1.11.tar.gz", hash = "sha256:468069fe1a6df2df1349e70e28f4af5f5bba385fde69ea5ba93c04de529823eb", size = 107958 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/33/ef/e74d70ff7bc6bbb1ebde0c5b7f4d4bcbf6b8eafffe502b69e8b14897ae0a/pyinklib-1.1.6-py3-none-any.whl", hash = "sha256:5d206b26ef6e1655096d88ad0b4ab2474534dad2ff76e33f9cf2ad2328a406f2", size = 90476 },
+    { url = "https://files.pythonhosted.org/packages/6f/fa/af7420f9ca4ec5912eb47f19010b7cc519bb0eb8011f8d86992edfd91b33/pyinklib-1.1.11-py3-none-any.whl", hash = "sha256:abd247d0a9c749efa8faa54e289e33dcd38b9607f471529f32d31f94bb6d2cfe", size = 90266 },
 ]
 
 [[package]]

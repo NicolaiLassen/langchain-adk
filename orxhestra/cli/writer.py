@@ -285,8 +285,9 @@ class _InkLiveHandle:
             If True, render the final content through Rich and push
             it to history as a ``"response"`` item with a bullet.
         """
-        # Clear stream FIRST to prevent one-frame duplication where
-        # both the stream buffer and the new history item are visible.
+        # Clear stream and phase first, then add to history.
+        # All three set_state calls batch into one render cycle
+        # (schedule_update only queues one call_soon_threadsafe).
         self._set_stream("")
         self._set_phase("idle")
         if keep and self._last_renderable is not None:

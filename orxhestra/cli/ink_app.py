@@ -8,14 +8,13 @@ import shutil as _shutil
 import threading
 from typing import TYPE_CHECKING, Any
 
-from pyink import Box, Static, Text, component, render
+from pyink import Box, Text, component, render
 from pyink.hooks import (
     use_animation,
     use_app,
     use_input,
     use_ref,
     use_state,
-    use_window_size,
 )
 
 if TYPE_CHECKING:
@@ -66,11 +65,9 @@ def _history_item(item, _index=0):
             margin_bottom=1,
         )
     if t == "response":
-        return Box(
-            Text("\u25cf ", color=_ACCENT),
-            Text(ansi),
-            flex_direction="row",
-        )
+        # Prepend bullet directly to avoid flex-row spacing issues
+        # where ANSI codes can consume the space between ● and text.
+        return Text(f"\x1b[38;2;108;142;191m\u25cf\x1b[0m {ansi}")
     if t == "rich":
         return Text(ansi)
     if t in ("tool_done", "tool_done_last"):
@@ -139,8 +136,9 @@ def orx_repl(
     orx_path_ref,
     workspace_ref,
     selector_state_ref=None,
+    banner_ansi="",
+    help_text="",
 ):
-    win = use_window_size()
 
     history, set_history = use_state(initial_history)
     buf, set_buf = use_state("")
@@ -400,21 +398,35 @@ def orx_repl(
     use_input(on_key)
 
     # ── Build component tree ──
-    # Ink pattern: Static on top, dynamic Box below with
-    # height = win.rows - static_items so total fits exactly in viewport.
+    # Banner fixed at top, messages scroll in middle, input fixed at bottom.
 
-    # Dynamic content.
-    dynamic = []
+    children = []
+
+    # Banner — fixed at top, outside scrolling area.
+    if banner_ansi:
+        children.append(Text(banner_ansi))
+    if help_text:
+        children.append(Text(help_text, color=_MUTED, dim=True))
+    if banner_ansi or help_text:
+        children.append(Text(_SEPARATOR, color=_MUTED, dim=True))
+
+    # Messages area — flexGrow=1 pushes input to bottom, scrolls when full.
+    # Cap at 200 items to prevent memory bloat.
+    visible_history = history[-200:] if len(history) > 200 else history
+    message_items = [_history_item(item, i) for i, item in enumerate(visible_history)]
+    children.append(
+        Box(*message_items, flex_direction="column", flex_grow=1),
+    )
 
     # Spinner.
     if phase == "spinning" and spinner_text:
-        dynamic.append(
+        children.append(
             Text(f"{frame_char} {spinner_text}", color=_ACCENT),
         )
 
     # Streaming response.
     if phase == "streaming" and stream_buf:
-        dynamic.append(Box(
+        children.append(Box(
             Text("\u25cf ", color=_ACCENT),
             Text(stream_buf),
             flex_direction="row",
@@ -422,7 +434,7 @@ def orx_repl(
 
     # Selector (approval or human_input).
     if sel_active:
-        dynamic.append(_selector_view(
+        children.append(_selector_view(
             prompt_text=sel_prompt,
             options=sel_options,
             selected_idx=sel_idx,
@@ -452,13 +464,9 @@ def orx_repl(
             selected_idx=ac_sel,
         ))
     input_children.append(Text(_SEPARATOR, color=_MUTED, dim=True))
-    dynamic.append(Box(*input_children, flex_direction="column"))
+    children.append(Box(*input_children, flex_direction="column"))
 
-    return Box(
-        Static(items=history, render_item=_history_item),
-        Box(*dynamic, flex_direction="column"),
-        flex_direction="column",
-    )
+    return Box(*children, flex_direction="column")
 
 
 def _make_selector_callback(
@@ -513,13 +521,7 @@ def run_ink_app(
         console, render_banner(orx_path, state.model_name, workspace),
     )
 
-    initial_history = [
-        {"type": "rich", "ansi": banner_ansi},
-        {"type": "plain",
-         "ansi": "  type /help for commands, Ctrl+D to exit",
-         "color": _MUTED, "dim": True},
-        {"type": "separator"},
-    ]
+    initial_history: list = []
 
     # Create the selector callback before render so we can rewire human_input.
     sel_state = {
@@ -557,9 +559,11 @@ def run_ink_app(
         orx_path_ref=Ref(orx_path),
         workspace_ref=Ref(workspace),
         selector_state_ref=Ref(sel_state),
+        banner_ansi=banner_ansi,
+        help_text="  type /help for commands, Ctrl+D to exit",
     )
 
-    render(vnode, max_fps=15)
+    render(vnode, max_fps=30)
 
 
 def _dispatch_slash(text, state, writer, orx_path, workspace,
@@ -613,12 +617,24 @@ def _dispatch_agent(message, state, writer, set_history,
             state.turn_count += 1
         except Exception as exc:
             err_msg = str(exc)
+            # Truncate long error messages (e.g. API quota errors)
+            if len(err_msg) > 200:
+                err_msg = err_msg[:200] + "..."
             set_history(lambda h: [
-                *h, {"type": "plain", "ansi": f"  Error: {err_msg}"},
+                *h, {"type": "plain", "ansi": f"Error: {err_msg}", "color": "red"},
             ])
         finally:
             running_ref.current = False
             set_phase("idle")
+        # Cancel pending tasks before closing to avoid
+        # "Task was destroyed but it is pending" warnings.
+        for task in asyncio.all_tasks(loop):
+            task.cancel()
+        try:
+            pending = asyncio.all_tasks(loop)
+            loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+        except Exception:
+            pass
         loop.close()
 
     threading.Thread(target=run, daemon=True).start()
