@@ -285,12 +285,14 @@ class _InkLiveHandle:
             If True, render the final content through Rich and push
             it to history as a ``"response"`` item with a bullet.
         """
+        # Clear stream FIRST to prevent one-frame duplication where
+        # both the stream buffer and the new history item are visible.
+        self._set_stream("")
+        self._set_phase("idle")
         if keep and self._last_renderable is not None:
             ansi = rich_to_ansi(self._console, self._last_renderable)
             if ansi:
                 self._set_history(lambda h: [*h, {"type": "response", "ansi": ansi}])
-        self._set_phase("idle")
-        self._set_stream("")
 
 
 class InkWriter:
