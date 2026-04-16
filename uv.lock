@@ -3760,8 +3760,8 @@ requires-dist = [
     { name = "langchain-upstage", marker = "extra == 'upstage'", specifier = ">=0.3.0" },
     { name = "langchain-xai", marker = "extra == 'xai'", specifier = ">=0.2.0" },
     { name = "pydantic", specifier = ">=2.12.5" },
-    { name = "pyinklib", marker = "extra == 'all'", specifier = ">=1.1.11" },
-    { name = "pyinklib", marker = "extra == 'cli'", specifier = ">=1.1.11" },
+    { name = "pyinklib", marker = "extra == 'all'", specifier = ">=1.1.12" },
+    { name = "pyinklib", marker = "extra == 'cli'", specifier = ">=1.1.12" },
     { name = "pyjwt", marker = "extra == 'all'", specifier = ">=2.8" },
     { name = "pyjwt", marker = "extra == 'auth'", specifier = ">=2.8" },
     { name = "pyyaml", marker = "extra == 'all'", specifier = ">=6.0" },
@@ -4389,14 +4389,14 @@ wheels = [
 
 [[package]]
 name = "pyinklib"
-version = "1.1.11"
+version = "1.1.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyyoga" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1c/2b/435a13e16d89ded94b46a561f71c43d60c0f7aabf0934d933338a6011d06/pyinklib-1.1.11.tar.gz", hash = "sha256:468069fe1a6df2df1349e70e28f4af5f5bba385fde69ea5ba93c04de529823eb", size = 107958 }
+sdist = { url = "https://files.pythonhosted.org/packages/6d/31/966e01e148cfe902962c59528d4c6e320ac34513fb361188ff0e68d176d6/pyinklib-1.1.12.tar.gz", hash = "sha256:c9c87154030da173d73eab44ea5a9e072dd7a86ad221736dc40531c91d149048", size = 120986 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6f/fa/af7420f9ca4ec5912eb47f19010b7cc519bb0eb8011f8d86992edfd91b33/pyinklib-1.1.11-py3-none-any.whl", hash = "sha256:abd247d0a9c749efa8faa54e289e33dcd38b9607f471529f32d31f94bb6d2cfe", size = 90266 },
+    { url = "https://files.pythonhosted.org/packages/3d/5d/a5a1cbc09a0e37704100fe105cf79ef6fb10aeac4faeebc199d714a6219a/pyinklib-1.1.12-py3-none-any.whl", hash = "sha256:1fadfb0fb0b00abbba6554041b8c1bbe2e4bbe61bc67f020bee34aad945c8b91", size = 91966 },
 ]
 
 [[package]]

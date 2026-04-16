@@ -8,7 +8,7 @@ import shutil as _shutil
 import threading
 from typing import TYPE_CHECKING, Any
 
-from pyink import Box, Text, component, render
+from pyink import Box, Static, Text, component, render
 from pyink.hooks import (
     use_animation,
     use_app,
@@ -136,8 +136,6 @@ def orx_repl(
     orx_path_ref,
     workspace_ref,
     selector_state_ref=None,
-    banner_ansi="",
-    help_text="",
 ):
 
     history, set_history = use_state(initial_history)
@@ -398,35 +396,22 @@ def orx_repl(
     use_input(on_key)
 
     # ── Build component tree ──
-    # Banner fixed at top, messages scroll in middle, input fixed at bottom.
+    # Claude Code pattern: Static for completed history (terminal scrollback),
+    # dynamic Box below for ephemeral content (redrawn each frame).
+    # Terminal's native scrollbar handles scrolling automatically.
 
-    children = []
-
-    # Banner — fixed at top, outside scrolling area.
-    if banner_ansi:
-        children.append(Text(banner_ansi))
-    if help_text:
-        children.append(Text(help_text, color=_MUTED, dim=True))
-    if banner_ansi or help_text:
-        children.append(Text(_SEPARATOR, color=_MUTED, dim=True))
-
-    # Messages area — flexGrow=1 pushes input to bottom, scrolls when full.
-    # Cap at 200 items to prevent memory bloat.
-    visible_history = history[-200:] if len(history) > 200 else history
-    message_items = [_history_item(item, i) for i, item in enumerate(visible_history)]
-    children.append(
-        Box(*message_items, flex_direction="column", flex_grow=1),
-    )
+    # Dynamic content (redrawn each frame)
+    dynamic = []
 
     # Spinner.
     if phase == "spinning" and spinner_text:
-        children.append(
+        dynamic.append(
             Text(f"{frame_char} {spinner_text}", color=_ACCENT),
         )
 
     # Streaming response.
     if phase == "streaming" and stream_buf:
-        children.append(Box(
+        dynamic.append(Box(
             Text("\u25cf ", color=_ACCENT),
             Text(stream_buf),
             flex_direction="row",
@@ -434,7 +419,7 @@ def orx_repl(
 
     # Selector (approval or human_input).
     if sel_active:
-        children.append(_selector_view(
+        dynamic.append(_selector_view(
             prompt_text=sel_prompt,
             options=sel_options,
             selected_idx=sel_idx,
@@ -464,9 +449,13 @@ def orx_repl(
             selected_idx=ac_sel,
         ))
     input_children.append(Text(_SEPARATOR, color=_MUTED, dim=True))
-    children.append(Box(*input_children, flex_direction="column"))
+    dynamic.append(Box(*input_children, flex_direction="column"))
 
-    return Box(*children, flex_direction="column")
+    return Box(
+        Static(items=history, render_item=_history_item),
+        Box(*dynamic, flex_direction="column"),
+        flex_direction="column",
+    )
 
 
 def _make_selector_callback(
@@ -521,7 +510,13 @@ def run_ink_app(
         console, render_banner(orx_path, state.model_name, workspace),
     )
 
-    initial_history: list = []
+    initial_history: list = [
+        {"type": "rich", "ansi": banner_ansi},
+        {"type": "plain",
+         "ansi": "  type /help for commands, Ctrl+D to exit",
+         "color": _MUTED, "dim": True},
+        {"type": "separator"},
+    ]
 
     # Create the selector callback before render so we can rewire human_input.
     sel_state = {
@@ -559,8 +554,6 @@ def run_ink_app(
         orx_path_ref=Ref(orx_path),
         workspace_ref=Ref(workspace),
         selector_state_ref=Ref(sel_state),
-        banner_ansi=banner_ansi,
-        help_text="  type /help for commands, Ctrl+D to exit",
     )
 
     render(vnode, max_fps=30)
