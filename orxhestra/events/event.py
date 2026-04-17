@@ -150,7 +150,15 @@ class Event(BaseModel):
         return bool(self.text or self.data)
 
     def to_langchain_message(self) -> BaseMessage:
-        """Convert this event to the appropriate LangChain message type."""
+        """Convert this event to the appropriate LangChain message type.
+
+        Returns
+        -------
+        BaseMessage
+            ``HumanMessage`` for ``USER_MESSAGE``, ``ToolMessage`` for
+            ``TOOL_RESPONSE``, or ``AIMessage`` otherwise. Tool calls
+            are preserved on ``AIMessage`` via its ``tool_calls`` field.
+        """
         if self.type == EventType.USER_MESSAGE:
             return HumanMessage(content=self.text)
         elif self.type == EventType.TOOL_RESPONSE:
@@ -178,7 +186,23 @@ class Event(BaseModel):
 
     @staticmethod
     def from_langchain_message(msg: BaseMessage, **kwargs: Any) -> Event:
-        """Create an Event from a LangChain message."""
+        """Create an Event from a LangChain message.
+
+        Parameters
+        ----------
+        msg : BaseMessage
+            A ``HumanMessage``, ``ToolMessage``, or ``AIMessage``.
+        **kwargs : Any
+            Extra fields forwarded to the :class:`Event` constructor
+            (e.g. ``session_id``, ``invocation_id``, ``agent_name``).
+
+        Returns
+        -------
+        Event
+            ``USER_MESSAGE`` for ``HumanMessage``, ``TOOL_RESPONSE`` for
+            ``ToolMessage``, ``AGENT_MESSAGE`` otherwise. Tool calls on
+            ``AIMessage`` are preserved as ``ToolCallPart`` entries.
+        """
         if isinstance(msg, HumanMessage):
             return Event(
                 type=EventType.USER_MESSAGE,
@@ -316,5 +340,11 @@ class Event(BaseModel):
 
     @staticmethod
     def new_id() -> str:
-        """Generate a new unique event ID."""
+        """Generate a new unique event ID.
+
+        Returns
+        -------
+        str
+            UUID4 hex string suitable for :attr:`Event.id`.
+        """
         return str(uuid4())
