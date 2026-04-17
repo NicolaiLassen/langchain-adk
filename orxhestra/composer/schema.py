@@ -470,6 +470,121 @@ class RunnerConfig(BaseModel):
     )
 
 
+class IdentityConfig(BaseModel):
+    """Ed25519 signing identity for the Runner's agents.
+
+    Attributes
+    ----------
+    signing_key : str
+        Path to a JSON key file (created by ``orx identity init`` or
+        :func:`orxhestra.auth.crypto.load_or_create_signing_key`).
+        Supports ``${VAR}`` environment-variable expansion.
+    encryption_password : str, optional
+        Password used to decrypt the key file when it is stored
+        encrypted.  Supports ``${VAR}`` expansion.
+    did_method : str
+        DID method to use for the public identity — ``"key"``
+        (default, offline) or ``"web"`` (institutional, requires
+        ``did`` to be set).
+    did : str, optional
+        Explicit DID to publish.  Required when ``did_method="web"``.
+        Ignored for ``did_method="key"`` since the DID is derived
+        from the key.
+    """
+
+    signing_key: str = Field(
+        description="Path to a JSON key file produced by `orx identity init`.",
+    )
+    encryption_password: str | None = Field(
+        default=None,
+        description="Password used to decrypt the key file at rest.",
+    )
+    did_method: Literal["key", "web"] = Field(
+        default="key",
+        description="DID method — 'key' (offline) or 'web' (institutional).",
+    )
+    did: str | None = Field(
+        default=None,
+        description="Explicit DID to publish. Required when did_method='web'.",
+    )
+
+    @model_validator(mode="after")
+    def _require_did_for_web(self) -> IdentityConfig:
+        if self.did_method == "web" and not self.did:
+            raise ValueError("identity.did is required when did_method='web'")
+        return self
+
+
+class TrustConfig(BaseModel):
+    """Declarative configuration for :class:`TrustMiddleware`.
+
+    Attributes
+    ----------
+    mode : str
+        ``"strict"`` drops events that fail verification, ``"permissive"``
+        keeps delivering them with a ``metadata["trust"]`` annotation.
+    trusted_dids : list[str]
+        Allowlist of accepted signer DIDs.  Empty list means any
+        valid signer passes (subject to ``denied_dids``).
+    denied_dids : list[str]
+        DIDs whose events are always rejected.
+    require_chain : bool
+        When ``True``, enforce hash-chain continuity per branch.
+    allow_unsigned : bool
+        When ``False``, every event must carry a valid signature.
+    """
+
+    mode: Literal["strict", "permissive"] = Field(
+        default="permissive",
+        description="Strict drops failing events; permissive annotates them.",
+    )
+    trusted_dids: list[str] = Field(
+        default_factory=list,
+        description="Allowlist of accepted signer DIDs.",
+    )
+    denied_dids: list[str] = Field(
+        default_factory=list,
+        description="DIDs whose events are always rejected.",
+    )
+    require_chain: bool = Field(
+        default=False,
+        description="Enforce hash-chain continuity per branch.",
+    )
+    allow_unsigned: bool = Field(
+        default=True,
+        description="When False, every event must be signed.",
+    )
+
+
+class AttestationConfig(BaseModel):
+    """Declarative configuration for :class:`AttestationMiddleware`.
+
+    Attributes
+    ----------
+    provider : str
+        Provider type: ``"noop"``, ``"local"``, or a dotted import
+        path to a user-supplied :class:`AttestationProvider`.
+    path : str, optional
+        Path passed to the local provider for on-disk audit logs.
+        Required when ``provider="local"``.
+    """
+
+    provider: str = Field(
+        default="noop",
+        description="Provider type: 'noop', 'local', or a dotted import path.",
+    )
+    path: str | None = Field(
+        default=None,
+        description="Path to on-disk audit log (required for provider='local').",
+    )
+
+    @model_validator(mode="after")
+    def _require_path_for_local(self) -> AttestationConfig:
+        if self.provider == "local" and not self.path:
+            raise ValueError("attestation.path is required when provider='local'")
+        return self
+
+
 class ServerConfig(BaseModel):
     """A2A server configuration.
 
@@ -526,6 +641,18 @@ class ComposeSpec(BaseModel):
         Runner configuration for session management.
     server : ServerConfig, optional
         A2A server configuration for remote hosting.
+    identity : IdentityConfig, optional
+        Ed25519 signing identity applied to the Runner.  When set,
+        every event emitted by agents running under the Runner is
+        signed with this key.
+    trust : TrustConfig, optional
+        Declarative :class:`TrustMiddleware` configuration.  Only
+        registered when ``identity`` is also set (verification
+        requires keys).
+    attestation : AttestationConfig, optional
+        Declarative :class:`AttestationMiddleware` configuration.
+        Registered on the Runner when set, regardless of whether an
+        identity is configured.
     """
 
     version: str = Field(
@@ -561,6 +688,18 @@ class ComposeSpec(BaseModel):
     server: ServerConfig | None = Field(
         default=None,
         description="A2A server configuration for remote agent hosting.",
+    )
+    identity: IdentityConfig | None = Field(
+        default=None,
+        description="Ed25519 signing identity applied to the Runner.",
+    )
+    trust: TrustConfig | None = Field(
+        default=None,
+        description="TrustMiddleware configuration (requires identity).",
+    )
+    attestation: AttestationConfig | None = Field(
+        default=None,
+        description="AttestationMiddleware configuration.",
     )
 
     @model_validator(mode="after")

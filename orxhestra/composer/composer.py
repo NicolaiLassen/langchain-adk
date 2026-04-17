@@ -417,14 +417,159 @@ class Composer:
             if cfg.config.metadata:
                 default_config["metadata"] = cfg.config.metadata
 
-        return Runner(
+        signing_key, signer_did = self._resolve_identity()
+        middleware = self._build_middleware(signing_key, signer_did)
+
+        runner = Runner(
             agent=root,
             app_name=cfg.app_name,
             session_service=session_svc,
             artifact_service=artifact_svc,
             compaction_config=compaction_config,
             default_config=default_config or None,
+            middleware=middleware or None,
         )
+
+        if signing_key is not None and signer_did:
+            self._propagate_identity(root, signing_key, signer_did)
+
+        return runner
+
+    def _resolve_identity(self) -> tuple[Any, str]:
+        """Load the configured signing key, returning ``(key, did)``.
+
+        Expands ``${VAR}`` env-var references in ``signing_key`` and
+        ``encryption_password`` so YAML can stay secrets-free.  When
+        ``did_method='key'`` the derived DID overrides any ``did``
+        set in the YAML, since ``did:key`` is a pure function of the
+        key bytes.
+
+        Returns
+        -------
+        tuple[Any, str]
+            The ``Ed25519PrivateKey`` and its DID.  ``(None, "")`` when
+            no ``identity:`` section is configured.
+        """
+        cfg = self._spec.identity
+        if cfg is None:
+            return None, ""
+
+        import os
+
+        def _expand(value: str | None) -> str | None:
+            if value is None:
+                return None
+            return os.path.expandvars(value)
+
+        key_file = _expand(cfg.signing_key)
+        password = _expand(cfg.encryption_password)
+
+        from orxhestra.auth.crypto import load_or_create_signing_key
+
+        assert key_file is not None
+        signing_key, derived_did = load_or_create_signing_key(
+            key_file, encryption_password=password,
+        )
+
+        if cfg.did_method == "web":
+            # Trust the user-supplied did:web — its public key lives in
+            # the hosted DID document, not in the local key file.
+            return signing_key, cfg.did or derived_did
+        return signing_key, derived_did
+
+    def _build_middleware(
+        self, signing_key: Any, signer_did: str,
+    ) -> list[Any]:
+        """Construct the opt-in trust + attestation middleware stack.
+
+        Parameters
+        ----------
+        signing_key : Any
+            Identity key resolved by :meth:`_resolve_identity`.
+        signer_did : str
+            DID corresponding to ``signing_key``.
+
+        Returns
+        -------
+        list[Middleware]
+            Ordered middleware list ready for :class:`Runner`.  Empty
+            when no ``trust:`` or ``attestation:`` block is set.
+        """
+        middleware: list[Any] = []
+
+        trust_cfg = self._spec.trust
+        if trust_cfg is not None and signing_key is not None:
+            from orxhestra.auth.did import CompositeResolver, DidKeyResolver, DidWebResolver
+            from orxhestra.trust import TrustMiddleware, TrustPolicy
+
+            policy = TrustPolicy(
+                mode=trust_cfg.mode,
+                trusted_dids=set(trust_cfg.trusted_dids),
+                denied_dids=set(trust_cfg.denied_dids),
+                require_chain=trust_cfg.require_chain,
+                allow_unsigned=trust_cfg.allow_unsigned,
+            )
+            resolver = CompositeResolver([DidKeyResolver(), DidWebResolver()])
+            middleware.append(TrustMiddleware(policy, resolver))
+
+        att_cfg = self._spec.attestation
+        if att_cfg is not None:
+            from orxhestra.attestation import (
+                AttestationMiddleware,
+                LocalAttestationProvider,
+                NoOpAttestationProvider,
+            )
+
+            provider: Any
+            if att_cfg.provider == "noop":
+                provider = NoOpAttestationProvider()
+            elif att_cfg.provider == "local":
+                assert att_cfg.path is not None
+                import os
+
+                path = os.path.expandvars(att_cfg.path)
+                if signing_key is None or not signer_did:
+                    raise ComposerError(
+                        "attestation.provider='local' requires an identity: block."
+                    )
+                provider = LocalAttestationProvider(path, signing_key, signer_did)
+            else:
+                provider = import_object(att_cfg.provider)
+                if isinstance(provider, type):
+                    provider = provider()
+            middleware.append(AttestationMiddleware(provider))
+
+        return middleware
+
+    def _propagate_identity(
+        self, root: BaseAgent, signing_key: Any, signer_did: str,
+    ) -> None:
+        """Stamp ``signing_key``/``signer_did`` onto every agent in the tree.
+
+        Walks ``root`` and its descendants via ``sub_agents`` and
+        sets the identity only when the agent does not already have
+        one — letting per-agent overrides in user code win.
+
+        Parameters
+        ----------
+        root : BaseAgent
+            Entry point into the agent tree.
+        signing_key : Any
+            Key to attach.
+        signer_did : str
+            DID to attach.
+        """
+        stack: list[BaseAgent] = [root]
+        seen: set[int] = set()
+        while stack:
+            agent = stack.pop()
+            if id(agent) in seen:
+                continue
+            seen.add(id(agent))
+            if agent.signing_key is None and not agent.signing_did:
+                agent.signing_key = signing_key
+                agent.signing_did = signer_did
+            stack.extend(agent.sub_agents)
 
     async def _build_server(self, root: BaseAgent) -> Any:
         """Build a FastAPI app from the spec's server config."""

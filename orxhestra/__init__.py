@@ -36,9 +36,17 @@ Tools::
 Composer::
 
     from orxhestra.composer import Composer
+
+Identity / trust / attestation (opt-in, requires ``orxhestra[auth]``)::
+
+    from orxhestra.trust import TrustMiddleware, TrustPolicy
+    from orxhestra.attestation import (
+        AttestationMiddleware, AttestationProvider,
+        LocalAttestationProvider, NoOpAttestationProvider,
+    )
 """
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 
 from orxhestra.agents import (
     AgentConfig,
@@ -53,6 +61,13 @@ from orxhestra.agents import (
     SequentialAgent,
 )
 from orxhestra.agents.a2a_agent import A2AAgent
+from orxhestra.attestation import (
+    AttestationMiddleware,
+    AttestationProvider,
+    Claim,
+    LocalAttestationProvider,
+    NoOpAttestationProvider,
+)
 from orxhestra.composer import Composer
 from orxhestra.decorators.deprecation import (
     OrxhestraDeprecationWarning,
@@ -89,6 +104,7 @@ from orxhestra.sessions.base_session_service import BaseSessionService
 from orxhestra.sessions.database_session_service import DatabaseSessionService
 from orxhestra.sessions.in_memory_session_service import InMemorySessionService
 from orxhestra.sessions.session import Session
+from orxhestra.trust import PolicyDecision, TrustMiddleware, TrustPolicy
 
 __all__ = [
     # Agents
@@ -140,6 +156,16 @@ __all__ = [
     "GrepMatch",
     "LocalFilesystemBackend",
     "InMemoryFilesystemBackend",
+    # Trust (opt-in, requires orxhestra[auth])
+    "TrustPolicy",
+    "TrustMiddleware",
+    "PolicyDecision",
+    # Attestation (opt-in, requires orxhestra[auth])
+    "AttestationProvider",
+    "AttestationMiddleware",
+    "Claim",
+    "LocalAttestationProvider",
+    "NoOpAttestationProvider",
     # Decorators
     "deprecated",
     "deprecated_param",

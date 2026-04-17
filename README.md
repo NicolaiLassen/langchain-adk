@@ -268,5 +268,6 @@ This project is built on the shoulders of several outstanding open-source projec
 - [LangGraph](https://github.com/langchain-ai/langgraph)
 - [Model Context Protocol (MCP)](https://modelcontextprotocol.io)
 - [Agent-to-Agent Protocol (A2A)](https://github.com/google/A2A)
+- [attestix](https://github.com/VibeTensor/attestix) — inspired the shape of orxhestra's identity / trust / attestation layer (hash-chained audit logs, Ed25519-signed claims, DID-based agent identity). orxhestra ships the provider-agnostic `AttestationProvider` protocol; attestix plugs in as an external implementation.
 
 Special thanks to the open-source AI community for pushing the boundaries of what's possible with agent frameworks.
