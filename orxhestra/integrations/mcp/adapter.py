@@ -1,8 +1,14 @@
 """MCPToolAdapter - convert MCP tools into LangChain BaseTool instances.
 
 At runtime, fetch the tool list from an MCP server and wrap each tool
-as a LangChain BaseTool. The Pydantic input schema is built from the
-MCP tool's JSON Schema definition.
+as a LangChain :class:`BaseTool`. The Pydantic input schema is built
+from the MCP tool's JSON Schema definition.
+
+See Also
+--------
+MCPClient : FastMCP client used under the hood.
+function_tool : Pure-Python alternative when a remote server is
+    not needed.
 """
 
 from __future__ import annotations

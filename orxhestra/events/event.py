@@ -61,9 +61,18 @@ class EventType(str, Enum):
 class Event(BaseModel):
     """Single event type for everything emitted during agent execution.
 
-    Carries a ``content: Content`` field with typed parts (TextPart,
-    DataPart, FilePart, ToolCallPart, ToolResponsePart). Use
-    ``metadata`` for extra context (react steps, error info, etc.).
+    Carries a :class:`Content` payload with typed parts
+    (:class:`TextPart`, :class:`DataPart`, :class:`FilePart`,
+    :class:`ToolCallPart`, :class:`ToolResponsePart`). Use ``metadata``
+    for extra context (react steps, error info, etc.).
+
+    See Also
+    --------
+    EventType : Enum of event categories.
+    EventActions : Side-effects attached to the event.
+    Content : Container holding the event's typed parts.
+    Runner.astream : Primary producer of events.
+    Middleware.on_event : Hook for transforming or dropping events.
 
     Attributes
     ----------

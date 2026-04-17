@@ -160,7 +160,7 @@ Part = TextPart | DataPart | FilePart | ThinkingPart | ToolCallPart | ToolRespon
 class Content(BaseModel):
     """Container for multimodal content — a list of typed parts.
 
-    Mirrors the A2A protocol's ``Message.parts``.
+    Mirrors the A2A protocol's :attr:`Message.parts`.
 
     Attributes
     ----------
@@ -168,6 +168,16 @@ class Content(BaseModel):
         Who produced this content: "user", "model", or "agent".
     parts : list[Part]
         Ordered list of content parts.
+
+    See Also
+    --------
+    TextPart : Plain text.
+    DataPart : Structured JSON-serializable data.
+    FilePart : File reference (URL or inline bytes).
+    ThinkingPart : Reasoning/chain-of-thought payload.
+    ToolCallPart : Tool-call request from the model.
+    ToolResponsePart : Tool-call result payload.
+    Event.content : Field that carries a ``Content`` on every event.
     """
 
     role: str | None = None
