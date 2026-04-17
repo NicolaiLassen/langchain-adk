@@ -38,7 +38,7 @@ Composer::
     from orxhestra.composer import Composer
 """
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 from orxhestra.agents import (
     AgentConfig,
