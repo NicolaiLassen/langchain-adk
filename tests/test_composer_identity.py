@@ -10,13 +10,13 @@ crypto = pytest.importorskip("cryptography")
 base58_mod = pytest.importorskip("base58")
 yaml_mod = pytest.importorskip("yaml")
 
-from orxhestra.auth.crypto import load_or_create_signing_key  # noqa: E402
 from orxhestra.composer.schema import (  # noqa: E402
     AttestationConfig,
     ComposeSpec,
     IdentityConfig,
     TrustConfig,
 )
+from orxhestra.security.crypto import load_or_create_signing_key  # noqa: E402
 
 
 class TestSchemaValidation:
@@ -122,8 +122,7 @@ class TestComposerIdentityResolution:
         signing_key, signer_did = composer._resolve_identity()
         middleware = composer._build_middleware(signing_key, signer_did)
 
-        from orxhestra.attestation import AttestationMiddleware
-        from orxhestra.trust import TrustMiddleware
+        from orxhestra.middleware import AttestationMiddleware, TrustMiddleware
 
         assert len(middleware) == 2
         assert isinstance(middleware[0], TrustMiddleware)

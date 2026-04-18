@@ -1,4 +1,4 @@
-"""Attestation providers and middleware.
+"""Attestation providers — the claim-issuing sub-domain of trust.
 
 Orxhestra ships a protocol plus two reference implementations:
 
@@ -11,31 +11,28 @@ Orxhestra ships a protocol plus two reference implementations:
 - :class:`LocalAttestationProvider` — append-only JSON-on-disk audit
   log with SHA-256 hash chaining and detached Ed25519 signatures on
   each entry.  Zero external dependencies beyond
-  :mod:`orxhestra.auth.crypto`.
-- :class:`AttestationMiddleware` — records events as audit entries
-  and issues structured claims on interesting actions (tool
-  invocations, agent transfers).
+  :mod:`orxhestra.security.crypto`.
 
-Like the trust layer, attestation is **opt-in**: no middleware is
-auto-registered.  You construct an :class:`AttestationMiddleware` with
-your provider and pass it to :class:`Runner(middleware=...)`.
+The companion :class:`~orxhestra.middleware.AttestationMiddleware`
+drives a provider from the agent loop; it lives under
+:mod:`orxhestra.middleware` alongside every other middleware.
 
 See Also
 --------
-orxhestra.trust : Signature verification layer that pairs naturally
-    with attestation for full end-to-end coverage.
+orxhestra.middleware.attestation.AttestationMiddleware : Runtime
+    consumer of these providers.
+orxhestra.trust.policy.TrustPolicy : Sibling trust primitive for
+    signature verification.
 """
 
-from orxhestra.attestation.local import LocalAttestationProvider
-from orxhestra.attestation.middleware import AttestationMiddleware
-from orxhestra.attestation.noop import NoOpAttestationProvider
-from orxhestra.attestation.protocol import (
+from orxhestra.trust.attestation.local import LocalAttestationProvider
+from orxhestra.trust.attestation.noop import NoOpAttestationProvider
+from orxhestra.trust.attestation.protocol import (
     AttestationProvider,
     Claim,
 )
 
 __all__ = [
-    "AttestationMiddleware",
     "AttestationProvider",
     "Claim",
     "LocalAttestationProvider",

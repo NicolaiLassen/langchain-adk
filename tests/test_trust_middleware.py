@@ -9,18 +9,15 @@ base58_mod = pytest.importorskip("base58")
 
 from orxhestra.agents.base_agent import BaseAgent  # noqa: E402
 from orxhestra.agents.invocation_context import InvocationContext  # noqa: E402
-from orxhestra.auth.crypto import (  # noqa: E402
+from orxhestra.events.event import Event, EventType  # noqa: E402
+from orxhestra.middleware import TrustMiddleware  # noqa: E402
+from orxhestra.models.part import Content  # noqa: E402
+from orxhestra.security.crypto import (  # noqa: E402
     generate_ed25519_keypair,
     public_key_to_did_key,
 )
-from orxhestra.auth.did import DidKeyResolver  # noqa: E402
-from orxhestra.events.event import Event, EventType  # noqa: E402
-from orxhestra.models.part import Content  # noqa: E402
-from orxhestra.trust import (  # noqa: E402
-    PolicyDecision,
-    TrustMiddleware,
-    TrustPolicy,
-)
+from orxhestra.security.did import DidKeyResolver  # noqa: E402
+from orxhestra.trust import PolicyDecision, TrustPolicy  # noqa: E402
 
 
 class _A(BaseAgent):
@@ -140,7 +137,7 @@ class TestTrustMiddleware:
         assert await mw.on_event(ctx, first) is first
         # Forge prev_signature and re-sign so the signature still validates
         # but chain continuity is broken.
-        from orxhestra.auth.crypto import sign_json_payload
+        from orxhestra.security.crypto import sign_json_payload
 
         second.prev_signature = "deadbeef"
         second.signature = sign_json_payload(priv, second.signable_payload())

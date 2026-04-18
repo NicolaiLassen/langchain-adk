@@ -1,4 +1,4 @@
-"""Tests for ``orxhestra.auth.did`` resolver implementations."""
+"""Tests for ``orxhestra.security.did`` resolver implementations."""
 
 from __future__ import annotations
 
@@ -9,13 +9,13 @@ base58_mod = pytest.importorskip("base58")
 
 import base58  # noqa: E402
 
-from orxhestra.auth.crypto import (  # noqa: E402
+from orxhestra.security.crypto import (  # noqa: E402
     ED25519_MULTICODEC_PREFIX,
     generate_ed25519_keypair,
     public_key_to_did_key,
     serialize_public_key,
 )
-from orxhestra.auth.did import (  # noqa: E402
+from orxhestra.security.did import (  # noqa: E402
     CompositeResolver,
     DidKeyResolver,
     DidWebResolver,

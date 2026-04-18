@@ -237,7 +237,7 @@ def _apply_identity_to_state(
     """Stamp an Ed25519 identity onto every agent in the built REPL state.
 
     Loads or creates the key file via
-    :func:`orxhestra.auth.crypto.load_or_create_signing_key`, walks
+    :func:`orxhestra.security.crypto.load_or_create_signing_key`, walks
     the agent tree, and assigns the identity to every agent that
     does not already have one.  Prints a confirmation line so the
     user can see signing is active.  No middleware is registered —
@@ -255,7 +255,7 @@ def _apply_identity_to_state(
     password : str, optional
         Password for decrypting an encrypted key file.
     """
-    from orxhestra.auth.crypto import load_or_create_signing_key
+    from orxhestra.security.crypto import load_or_create_signing_key
 
     signing_key, did = load_or_create_signing_key(
         key_file, encryption_password=password,

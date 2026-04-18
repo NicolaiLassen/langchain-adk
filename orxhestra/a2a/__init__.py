@@ -22,7 +22,7 @@ See Also
 orxhestra.a2a.server.A2AServer : Server-side adapter.
 orxhestra.agents.a2a_agent.A2AAgent : Client-side adapter.
 orxhestra.a2a.signing : Message signing / verification helpers.
-orxhestra.auth.did : DID resolvers used to verify remote peers.
+orxhestra.security.did : DID resolvers used to verify remote peers.
 """
 
 from orxhestra.a2a.signing import (

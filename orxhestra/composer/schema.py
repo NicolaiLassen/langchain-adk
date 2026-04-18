@@ -477,7 +477,7 @@ class IdentityConfig(BaseModel):
     ----------
     signing_key : str
         Path to a JSON key file (created by ``orx identity init`` or
-        :func:`orxhestra.auth.crypto.load_or_create_signing_key`).
+        :func:`orxhestra.security.crypto.load_or_create_signing_key`).
         Supports ``${VAR}`` environment-variable expansion.
     encryption_password : str, optional
         Password used to decrypt the key file when it is stored

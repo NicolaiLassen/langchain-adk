@@ -156,7 +156,7 @@ class BaseAgent(ABC):
         did = self.signing_did or ctx.signing_did
         if key is not None and did:
             try:
-                from orxhestra.auth.crypto import sign_json_payload
+                from orxhestra.security.crypto import sign_json_payload
 
                 chain_heads = ctx.state.setdefault("_orx_chain_heads", {})
                 event.prev_signature = chain_heads.get(ctx.branch)

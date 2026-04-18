@@ -112,7 +112,7 @@ class Event(BaseModel):
     signer_did : str
         The ``did:key`` identifier of the signing agent.  Verifiers
         use this to resolve the public key via
-        ``orxhestra.auth.did_key_to_public_key()``.
+        ``orxhestra.security.did_key_to_public_key()``.
     prev_signature : str, optional
         Signature of the previous non-partial event emitted on the
         same ``branch``, establishing a hash chain across the session
@@ -363,7 +363,7 @@ class Event(BaseModel):
         """Verify this event's signature using the signer's DID.
 
         Resolves the public key from ``signer_did`` via
-        ``orxhestra.auth.did_key_to_public_key()`` and verifies the
+        ``orxhestra.security.did_key_to_public_key()`` and verifies the
         signature over :meth:`signable_payload`.
 
         Returns
@@ -381,7 +381,7 @@ class Event(BaseModel):
         if not self.is_signed:
             return False
 
-        from orxhestra.auth.crypto import (
+        from orxhestra.security.crypto import (
             did_key_to_public_key,
             verify_json_signature,
         )
@@ -432,7 +432,7 @@ def _hash_json(value: Any) -> str:
     if not value:
         return ""
     try:
-        from orxhestra.auth.crypto import canonicalize_json
+        from orxhestra.security.crypto import canonicalize_json
 
         payload = canonicalize_json(value)  # type: ignore[arg-type]
     except ImportError:

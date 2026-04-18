@@ -39,9 +39,10 @@ Composer::
 
 Identity / trust / attestation (opt-in, requires ``orxhestra[auth]``)::
 
-    from orxhestra.trust import TrustMiddleware, TrustPolicy
-    from orxhestra.attestation import (
-        AttestationMiddleware, AttestationProvider,
+    from orxhestra.middleware import TrustMiddleware, AttestationMiddleware
+    from orxhestra.trust import (
+        TrustPolicy, PolicyDecision,
+        AttestationProvider, Claim,
         LocalAttestationProvider, NoOpAttestationProvider,
     )
 """
@@ -61,13 +62,6 @@ from orxhestra.agents import (
     SequentialAgent,
 )
 from orxhestra.agents.a2a_agent import A2AAgent
-from orxhestra.attestation import (
-    AttestationMiddleware,
-    AttestationProvider,
-    Claim,
-    LocalAttestationProvider,
-    NoOpAttestationProvider,
-)
 from orxhestra.composer import Composer
 from orxhestra.decorators.deprecation import (
     OrxhestraDeprecationWarning,
@@ -83,11 +77,13 @@ from orxhestra.filesystem import (
     LocalFilesystemBackend,
 )
 from orxhestra.middleware import (
+    AttestationMiddleware,
     CallbackMiddleware,
     LoggingMiddleware,
     Middleware,
     MiddlewareStack,
     ToolCall,
+    TrustMiddleware,
 )
 from orxhestra.models.part import (
     Content,
@@ -104,7 +100,14 @@ from orxhestra.sessions.base_session_service import BaseSessionService
 from orxhestra.sessions.database_session_service import DatabaseSessionService
 from orxhestra.sessions.in_memory_session_service import InMemorySessionService
 from orxhestra.sessions.session import Session
-from orxhestra.trust import PolicyDecision, TrustMiddleware, TrustPolicy
+from orxhestra.trust import (
+    AttestationProvider,
+    Claim,
+    LocalAttestationProvider,
+    NoOpAttestationProvider,
+    PolicyDecision,
+    TrustPolicy,
+)
 
 __all__ = [
     # Agents

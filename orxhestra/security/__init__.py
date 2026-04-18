@@ -6,7 +6,7 @@ JWT parsing require optional dependencies::
     pip install orxhestra[auth]
 """
 
-from orxhestra.auth.ssrf import (
+from orxhestra.security.ssrf import (
     validate_and_pin_url,
     validate_redirect_target,
     validate_url_host,
@@ -14,26 +14,26 @@ from orxhestra.auth.ssrf import (
 
 # Symbols that require optional deps are lazy-loaded below.
 _CRYPTO_SYMBOLS: dict[str, tuple[str, str]] = {
-    "generate_ed25519_keypair": ("orxhestra.auth.crypto", "generate_ed25519_keypair"),
-    "serialize_private_key": ("orxhestra.auth.crypto", "serialize_private_key"),
-    "deserialize_private_key": ("orxhestra.auth.crypto", "deserialize_private_key"),
-    "serialize_public_key": ("orxhestra.auth.crypto", "serialize_public_key"),
-    "deserialize_public_key": ("orxhestra.auth.crypto", "deserialize_public_key"),
-    "sign_message": ("orxhestra.auth.crypto", "sign_message"),
-    "verify_signature": ("orxhestra.auth.crypto", "verify_signature"),
-    "public_key_to_did_key": ("orxhestra.auth.crypto", "public_key_to_did_key"),
-    "did_key_to_public_key": ("orxhestra.auth.crypto", "did_key_to_public_key"),
-    "did_key_fragment": ("orxhestra.auth.crypto", "did_key_fragment"),
-    "load_or_create_signing_key": ("orxhestra.auth.crypto", "load_or_create_signing_key"),
-    "canonicalize_json": ("orxhestra.auth.crypto", "canonicalize_json"),
-    "sign_json_payload": ("orxhestra.auth.crypto", "sign_json_payload"),
-    "verify_json_signature": ("orxhestra.auth.crypto", "verify_json_signature"),
-    "ED25519_MULTICODEC_PREFIX": ("orxhestra.auth.crypto", "ED25519_MULTICODEC_PREFIX"),
-    "TokenType": ("orxhestra.auth.token_parser", "TokenType"),
-    "detect_token_type": ("orxhestra.auth.token_parser", "detect_token_type"),
-    "parse_jwt_claims": ("orxhestra.auth.token_parser", "parse_jwt_claims"),
+    "generate_ed25519_keypair": ("orxhestra.security.crypto", "generate_ed25519_keypair"),
+    "serialize_private_key": ("orxhestra.security.crypto", "serialize_private_key"),
+    "deserialize_private_key": ("orxhestra.security.crypto", "deserialize_private_key"),
+    "serialize_public_key": ("orxhestra.security.crypto", "serialize_public_key"),
+    "deserialize_public_key": ("orxhestra.security.crypto", "deserialize_public_key"),
+    "sign_message": ("orxhestra.security.crypto", "sign_message"),
+    "verify_signature": ("orxhestra.security.crypto", "verify_signature"),
+    "public_key_to_did_key": ("orxhestra.security.crypto", "public_key_to_did_key"),
+    "did_key_to_public_key": ("orxhestra.security.crypto", "did_key_to_public_key"),
+    "did_key_fragment": ("orxhestra.security.crypto", "did_key_fragment"),
+    "load_or_create_signing_key": ("orxhestra.security.crypto", "load_or_create_signing_key"),
+    "canonicalize_json": ("orxhestra.security.crypto", "canonicalize_json"),
+    "sign_json_payload": ("orxhestra.security.crypto", "sign_json_payload"),
+    "verify_json_signature": ("orxhestra.security.crypto", "verify_json_signature"),
+    "ED25519_MULTICODEC_PREFIX": ("orxhestra.security.crypto", "ED25519_MULTICODEC_PREFIX"),
+    "TokenType": ("orxhestra.security.token_parser", "TokenType"),
+    "detect_token_type": ("orxhestra.security.token_parser", "detect_token_type"),
+    "parse_jwt_claims": ("orxhestra.security.token_parser", "parse_jwt_claims"),
     "extract_identity_from_token": (
-        "orxhestra.auth.token_parser",
+        "orxhestra.security.token_parser",
         "extract_identity_from_token",
     ),
 }

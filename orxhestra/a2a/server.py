@@ -202,7 +202,7 @@ class A2AServer:
         if self.signing_key is not None and self.signer_did:
             import base58
 
-            from orxhestra.auth.crypto import (
+            from orxhestra.security.crypto import (
                 did_key_fragment,
                 public_key_to_did_key,
                 serialize_public_key,
@@ -264,7 +264,7 @@ class A2AServer:
         """
         if self._resolver is not None:
             return self._resolver
-        from orxhestra.auth.did import DidKeyResolver
+        from orxhestra.security.did import DidKeyResolver
 
         self._resolver = DidKeyResolver()
         return self._resolver

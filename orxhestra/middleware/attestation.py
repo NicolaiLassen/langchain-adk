@@ -18,8 +18,8 @@ from orxhestra.middleware.base import BaseMiddleware
 
 if TYPE_CHECKING:
     from orxhestra.agents.invocation_context import InvocationContext
-    from orxhestra.attestation.protocol import AttestationProvider
     from orxhestra.events.event import Event
+    from orxhestra.trust.attestation.protocol import AttestationProvider
 
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -37,19 +37,18 @@ class AttestationMiddleware(BaseMiddleware):
 
     See Also
     --------
-    orxhestra.attestation.protocol.AttestationProvider : Contract.
-    orxhestra.attestation.local.LocalAttestationProvider : Reference
+    orxhestra.trust.attestation.protocol.AttestationProvider : Contract.
+    orxhestra.trust.attestation.local.LocalAttestationProvider : Reference
         hash-chained store.
-    orxhestra.attestation.noop.NoOpAttestationProvider : Default.
-    orxhestra.trust.middleware.TrustMiddleware : Sibling middleware —
+    orxhestra.trust.attestation.noop.NoOpAttestationProvider : Default.
+    orxhestra.middleware.trust.TrustMiddleware : Sibling middleware —
         pair with this one for verify + audit.
 
     Examples
     --------
     >>> from orxhestra import Runner
-    >>> from orxhestra.attestation import (
-    ...     AttestationMiddleware, LocalAttestationProvider,
-    ... )
+    >>> from orxhestra.middleware import AttestationMiddleware
+    >>> from orxhestra.trust import LocalAttestationProvider
     >>> provider = LocalAttestationProvider("./audit", signing_key, did)
     >>> runner = Runner(
     ...     agent=my_agent,

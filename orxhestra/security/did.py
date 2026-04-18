@@ -23,7 +23,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from orxhestra.auth.ssrf import validate_url_host
+from orxhestra.security.ssrf import validate_url_host
 
 if TYPE_CHECKING:
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -46,7 +46,7 @@ class DidResolver(Protocol):
     DidKeyResolver : Offline resolver for ``did:key``.
     DidWebResolver : HTTPS resolver for ``did:web``.
     CompositeResolver : Dispatch by DID prefix.
-    orxhestra.trust.middleware.TrustMiddleware : Primary consumer.
+    orxhestra.middleware.trust.TrustMiddleware : Primary consumer.
     """
 
     async def resolve(self, did: str) -> Ed25519PublicKey:
@@ -74,13 +74,13 @@ class DidResolver(Protocol):
 class DidKeyResolver:
     """Resolver for ``did:key:z...`` identifiers.
 
-    Thin adapter around :func:`orxhestra.auth.crypto.did_key_to_public_key`.
+    Thin adapter around :func:`orxhestra.security.crypto.did_key_to_public_key`.
     Stateless and offline — the key is encoded directly in the DID.
 
     See Also
     --------
     DidResolver : Protocol implemented here.
-    orxhestra.auth.crypto.did_key_to_public_key : Underlying codec.
+    orxhestra.security.crypto.did_key_to_public_key : Underlying codec.
     """
 
     async def resolve(self, did: str) -> Ed25519PublicKey:
@@ -101,7 +101,7 @@ class DidKeyResolver:
             If ``did`` is not a ``did:key`` or uses a non-Ed25519
             multicodec prefix.
         """
-        from orxhestra.auth.crypto import did_key_to_public_key
+        from orxhestra.security.crypto import did_key_to_public_key
 
         return did_key_to_public_key(did)
 
@@ -111,7 +111,7 @@ class DidWebResolver:
 
     Fetches ``https://<host>/<path...>/did.json`` (per W3C DID
     Method: Web), validates SSRF constraints via
-    :func:`orxhestra.auth.ssrf.validate_url_host`, and extracts the
+    :func:`orxhestra.security.ssrf.validate_url_host`, and extracts the
     first Ed25519 verification method.
 
     Parameters
@@ -125,7 +125,7 @@ class DidWebResolver:
     See Also
     --------
     DidResolver : Protocol implemented here.
-    orxhestra.auth.ssrf : SSRF guard used before fetching.
+    orxhestra.security.ssrf : SSRF guard used before fetching.
     """
 
     def __init__(
@@ -303,7 +303,7 @@ def _extract_ed25519_key(document: dict, did: str) -> Ed25519PublicKey:
     """
     import base58
 
-    from orxhestra.auth.crypto import (
+    from orxhestra.security.crypto import (
         ED25519_MULTICODEC_PREFIX,
         deserialize_public_key,
     )

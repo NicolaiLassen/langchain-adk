@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from orxhestra.attestation.protocol import Claim
+from orxhestra.trust.attestation.protocol import Claim
 
 if TYPE_CHECKING:
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -50,7 +50,7 @@ class LocalAttestationProvider:
 
     See Also
     --------
-    orxhestra.attestation.protocol.AttestationProvider : Protocol.
+    orxhestra.trust.attestation.protocol.AttestationProvider : Protocol.
     NoOpAttestationProvider : No-persistence alternative.
     AttestationMiddleware : Runtime consumer.
     """
@@ -90,7 +90,7 @@ class LocalAttestationProvider:
             The issued claim with :attr:`Claim.signature` and
             :attr:`Claim.issuer_did` populated.
         """
-        from orxhestra.auth.crypto import sign_json_payload
+        from orxhestra.security.crypto import sign_json_payload
 
         claim_id = str(uuid4())
         issued_at = time.time()
@@ -136,7 +136,7 @@ class LocalAttestationProvider:
         if not claim.signature or not claim.issuer_did:
             return False
 
-        from orxhestra.auth.crypto import (
+        from orxhestra.security.crypto import (
             did_key_to_public_key,
             verify_json_signature,
         )
@@ -175,7 +175,7 @@ class LocalAttestationProvider:
             Event to audit.  Its :meth:`Event.signable_payload` is
             used as the canonical fingerprint.
         """
-        from orxhestra.auth.crypto import canonicalize_json, sign_json_payload
+        from orxhestra.security.crypto import canonicalize_json, sign_json_payload
 
         async with self._lock:
             prev_hash = self._read_last_hash()
@@ -250,7 +250,7 @@ class LocalAttestationProvider:
         if not self._audit_log.exists():
             return True
 
-        from orxhestra.auth.crypto import (
+        from orxhestra.security.crypto import (
             canonicalize_json,
             did_key_to_public_key,
             verify_json_signature,

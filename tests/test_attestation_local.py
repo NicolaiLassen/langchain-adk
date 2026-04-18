@@ -10,17 +10,17 @@ import pytest
 crypto = pytest.importorskip("cryptography")
 base58_mod = pytest.importorskip("base58")
 
-from orxhestra.attestation import (  # noqa: E402
+from orxhestra.events.event import Event, EventType  # noqa: E402
+from orxhestra.models.part import Content  # noqa: E402
+from orxhestra.security.crypto import (  # noqa: E402
+    generate_ed25519_keypair,
+    public_key_to_did_key,
+)
+from orxhestra.trust import (  # noqa: E402
     Claim,
     LocalAttestationProvider,
     NoOpAttestationProvider,
 )
-from orxhestra.auth.crypto import (  # noqa: E402
-    generate_ed25519_keypair,
-    public_key_to_did_key,
-)
-from orxhestra.events.event import Event, EventType  # noqa: E402
-from orxhestra.models.part import Content  # noqa: E402
 
 
 def _fresh_event() -> Event:

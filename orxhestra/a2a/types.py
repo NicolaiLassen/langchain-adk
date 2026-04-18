@@ -509,7 +509,7 @@ class VerificationMethod(A2AModel):
 
     Allows A2A peers to cryptographically identify the server that
     published the card.  Consumers resolve this via
-    :class:`orxhestra.auth.did.DidResolver`.
+    :class:`orxhestra.security.did.DidResolver`.
 
     Attributes
     ----------

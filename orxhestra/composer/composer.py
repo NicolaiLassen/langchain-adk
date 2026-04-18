@@ -464,7 +464,7 @@ class Composer:
         key_file = _expand(cfg.signing_key)
         password = _expand(cfg.encryption_password)
 
-        from orxhestra.auth.crypto import load_or_create_signing_key
+        from orxhestra.security.crypto import load_or_create_signing_key
 
         assert key_file is not None
         signing_key, derived_did = load_or_create_signing_key(
@@ -499,8 +499,13 @@ class Composer:
 
         trust_cfg = self._spec.trust
         if trust_cfg is not None and signing_key is not None:
-            from orxhestra.auth.did import CompositeResolver, DidKeyResolver, DidWebResolver
-            from orxhestra.trust import TrustMiddleware, TrustPolicy
+            from orxhestra.middleware import TrustMiddleware
+            from orxhestra.security.did import (
+                CompositeResolver,
+                DidKeyResolver,
+                DidWebResolver,
+            )
+            from orxhestra.trust import TrustPolicy
 
             policy = TrustPolicy(
                 mode=trust_cfg.mode,
@@ -514,8 +519,8 @@ class Composer:
 
         att_cfg = self._spec.attestation
         if att_cfg is not None:
-            from orxhestra.attestation import (
-                AttestationMiddleware,
+            from orxhestra.middleware import AttestationMiddleware
+            from orxhestra.trust import (
                 LocalAttestationProvider,
                 NoOpAttestationProvider,
             )

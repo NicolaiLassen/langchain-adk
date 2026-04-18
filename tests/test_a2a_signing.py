@@ -17,11 +17,11 @@ from orxhestra.a2a.signing import (  # noqa: E402
     verify_message,
 )
 from orxhestra.a2a.types import Message, Part, Role, VerificationMethod  # noqa: E402
-from orxhestra.auth.crypto import (  # noqa: E402
+from orxhestra.security.crypto import (  # noqa: E402
     generate_ed25519_keypair,
     public_key_to_did_key,
 )
-from orxhestra.auth.did import DidKeyResolver  # noqa: E402
+from orxhestra.security.did import DidKeyResolver  # noqa: E402
 
 
 def _message(text: str = "hello") -> Message:

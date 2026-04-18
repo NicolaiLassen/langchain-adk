@@ -9,13 +9,13 @@ base58_mod = pytest.importorskip("base58")
 
 from orxhestra.agents.base_agent import BaseAgent  # noqa: E402
 from orxhestra.agents.invocation_context import InvocationContext  # noqa: E402
-from orxhestra.auth.crypto import (  # noqa: E402
-    generate_ed25519_keypair,
-    public_key_to_did_key,
-)
 from orxhestra.events.event import EventType  # noqa: E402
 from orxhestra.events.event_actions import EventActions  # noqa: E402
 from orxhestra.models.part import Content, ToolCallPart  # noqa: E402
+from orxhestra.security.crypto import (  # noqa: E402
+    generate_ed25519_keypair,
+    public_key_to_did_key,
+)
 
 
 def _signed_ctx() -> InvocationContext:

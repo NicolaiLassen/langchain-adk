@@ -22,8 +22,8 @@ from orxhestra.middleware.base import BaseMiddleware
 
 if TYPE_CHECKING:
     from orxhestra.agents.invocation_context import InvocationContext
-    from orxhestra.auth.did import DidResolver
     from orxhestra.events.event import Event
+    from orxhestra.security.did import DidResolver
     from orxhestra.trust.policy import PolicyDecision, TrustPolicy
 
 
@@ -48,14 +48,15 @@ class TrustMiddleware(BaseMiddleware):
     See Also
     --------
     TrustPolicy : Declarative rule set consulted per event.
-    orxhestra.auth.did.DidResolver : Public-key lookup contract.
+    orxhestra.security.did.DidResolver : Public-key lookup contract.
     orxhestra.middleware.base.Middleware : Parent protocol.
 
     Examples
     --------
     >>> from orxhestra import Runner
-    >>> from orxhestra.auth.did import DidKeyResolver
-    >>> from orxhestra.trust import TrustMiddleware, TrustPolicy
+    >>> from orxhestra.middleware import TrustMiddleware
+    >>> from orxhestra.security.did import DidKeyResolver
+    >>> from orxhestra.trust import TrustPolicy
     >>> policy = TrustPolicy(mode="strict", allow_unsigned=False)
     >>> runner = Runner(
     ...     agent=my_agent,
@@ -155,7 +156,7 @@ class TrustMiddleware(BaseMiddleware):
             )
 
         # 4. Verify signature.
-        from orxhestra.auth.crypto import verify_json_signature
+        from orxhestra.security.crypto import verify_json_signature
 
         if not verify_json_signature(
             public_key, event.signable_payload(), event.signature or "",

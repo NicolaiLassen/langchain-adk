@@ -18,7 +18,7 @@ See Also
 --------
 orxhestra.cli.app : Registers the parent ``identity`` subcommand and
     routes into :func:`run_parsed`.
-orxhestra.auth.crypto.load_or_create_signing_key : Underlying key
+orxhestra.security.crypto.load_or_create_signing_key : Underlying key
     persistence primitive.
 """
 
@@ -91,7 +91,7 @@ def _cmd_init(args: argparse.Namespace) -> int:
     int
         Process exit code.
     """
-    from orxhestra.auth.crypto import load_or_create_signing_key
+    from orxhestra.security.crypto import load_or_create_signing_key
 
     path = Path(args.path).expanduser()
     password: str | None = None
@@ -140,7 +140,7 @@ def _cmd_show(args: argparse.Namespace) -> int:
     if "private_key_b64" in data:
         import base58 as _base58
 
-        from orxhestra.auth.crypto import (
+        from orxhestra.security.crypto import (
             deserialize_private_key,
             public_key_to_did_key,
             serialize_public_key,
@@ -192,7 +192,7 @@ def _cmd_did_web(args: argparse.Namespace) -> int:
 
     import base58 as _base58
 
-    from orxhestra.auth.crypto import (
+    from orxhestra.security.crypto import (
         deserialize_private_key,
         serialize_public_key,
     )

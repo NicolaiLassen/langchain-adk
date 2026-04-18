@@ -234,7 +234,7 @@ class A2AAgent(BaseAgent):
 
         resolver = self._resolver
         if resolver is None:
-            from orxhestra.auth.did import DidKeyResolver
+            from orxhestra.security.did import DidKeyResolver
 
             resolver = DidKeyResolver()
             self._resolver = resolver

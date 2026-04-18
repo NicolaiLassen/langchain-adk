@@ -30,7 +30,7 @@ if TYPE_CHECKING:
         Ed25519PrivateKey,
     )
 
-    from orxhestra.auth.did import DidResolver
+    from orxhestra.security.did import DidResolver
 
 
 SIGNATURE_KEY = "orxSignature"
@@ -65,9 +65,9 @@ def message_signable_payload(
     -------
     dict[str, Any]
         Deterministic signable dictionary suitable for
-        :func:`orxhestra.auth.crypto.sign_json_payload`.
+        :func:`orxhestra.security.crypto.sign_json_payload`.
     """
-    from orxhestra.auth.crypto import canonicalize_json
+    from orxhestra.security.crypto import canonicalize_json
 
     parts_payload = [
         p.model_dump(by_alias=True, exclude_none=True) for p in message.parts
@@ -119,7 +119,7 @@ def sign_message(
     ImportError
         If ``orxhestra[auth]`` is not installed.
     """
-    from orxhestra.auth.crypto import sign_json_payload
+    from orxhestra.security.crypto import sign_json_payload
 
     ts = timestamp if timestamp is not None else time.time()
     payload = message_signable_payload(message, signer_did=signer_did, timestamp=ts)
@@ -186,7 +186,7 @@ async def verify_message(
     except (ValueError, LookupError, ImportError):
         return False
 
-    from orxhestra.auth.crypto import verify_json_signature
+    from orxhestra.security.crypto import verify_json_signature
 
     payload = message_signable_payload(message, signer_did=signer_did, timestamp=ts)
     return verify_json_signature(public_key, payload, signature)

@@ -10,13 +10,11 @@ crypto = pytest.importorskip("cryptography")
 base58_mod = pytest.importorskip("base58")
 
 from orxhestra.agents.invocation_context import InvocationContext  # noqa: E402
-from orxhestra.attestation import (  # noqa: E402
-    AttestationMiddleware,
-    Claim,
-)
 from orxhestra.events.event import Event, EventType  # noqa: E402
 from orxhestra.events.event_actions import EventActions  # noqa: E402
+from orxhestra.middleware import AttestationMiddleware  # noqa: E402
 from orxhestra.models.part import Content, ToolCallPart  # noqa: E402
+from orxhestra.trust import Claim  # noqa: E402
 
 
 class _RecorderProvider:

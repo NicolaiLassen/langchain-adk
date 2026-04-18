@@ -12,7 +12,7 @@ import time
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from orxhestra.attestation.protocol import Claim
+from orxhestra.trust.attestation.protocol import Claim
 
 if TYPE_CHECKING:
     from orxhestra.events.event import Event
@@ -27,7 +27,7 @@ class NoOpAttestationProvider:
 
     See Also
     --------
-    orxhestra.attestation.protocol.AttestationProvider : Protocol implemented here.
+    orxhestra.trust.attestation.protocol.AttestationProvider : Protocol implemented here.
     LocalAttestationProvider : Reference implementation with persistence.
     """
 
