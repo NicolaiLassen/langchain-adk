@@ -1,7 +1,14 @@
-"""MCP client - thin wrapper around FastMCP.
+"""MCP client — thin async wrapper around FastMCP.
 
-Supports both HTTP URLs and in-memory FastMCP server objects.
-Uses a fresh session per call. Suitable for request-scoped usage.
+Supports both HTTP URLs (``StreamableHttpTransport``) and in-memory
+FastMCP server objects (handy for tests and same-process setups).
+Opens a fresh session per call, so the wrapper is stateless and safe
+to share across concurrent requests.
+
+See Also
+--------
+MCPToolAdapter : Converts the client's tool catalogue into LangChain
+    :class:`~langchain_core.tools.BaseTool` instances.
 """
 
 from __future__ import annotations

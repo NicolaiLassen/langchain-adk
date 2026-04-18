@@ -1,14 +1,19 @@
-"""MCPToolAdapter - convert MCP tools into LangChain BaseTool instances.
+"""MCPToolAdapter — convert MCP tools into LangChain BaseTool instances.
 
-At runtime, fetch the tool list from an MCP server and wrap each tool
-as a LangChain :class:`BaseTool`. The Pydantic input schema is built
-from the MCP tool's JSON Schema definition.
+At runtime, fetches the tool list from an MCP server via
+:class:`~orxhestra.integrations.mcp.client.MCPClient` and wraps each
+tool as a LangChain
+:class:`~langchain_core.tools.BaseTool`.  The Pydantic input schema
+is generated dynamically from the MCP tool's JSON Schema so standard
+LangChain tool-call plumbing (validation, OpenAPI-style typing) just
+works on top.
 
 See Also
 --------
-MCPClient : FastMCP client used under the hood.
-function_tool : Pure-Python alternative when a remote server is
-    not needed.
+orxhestra.integrations.mcp.client.MCPClient : FastMCP client used
+    under the hood.
+orxhestra.tools.function_tool : Pure-Python alternative when a
+    remote server is not needed.
 """
 
 from __future__ import annotations
