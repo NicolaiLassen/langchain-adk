@@ -26,6 +26,15 @@
             "pages": ["index", "getting-started/installation", "getting-started/quickstart"]
           },
           {
+            "group": "Composer",
+            "icon": "wand-magic-sparkles",
+            "pages": [
+              "composer/overview",
+              "composer/schema-reference",
+              "composer/extending"
+            ]
+          },
+          {
             "group": "Core Concepts",
             "icon": "book",
             "pages": ["concepts/agents", "concepts/events", "concepts/runner-sessions", "concepts/invocation-context"]
@@ -49,11 +58,6 @@
             "group": "CLI",
             "icon": "terminal",
             "pages": ["cli/overview", "cli/commands", "cli/memory", "cli/themes"]
-          },
-          {
-            "group": "Composer",
-            "icon": "wand-magic-sparkles",
-            "pages": ["composer/overview"]
           },
           {
             "group": "Integrations",
