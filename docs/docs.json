@@ -103,11 +103,31 @@
       "x": "https://x.com/orxhestra"
     }
   },
+  "banner": {
+    "content": "",
+    "dismissible": true
+  },
+  "contextual": {
+    "options": ["copy", "view", "chatgpt", "claude"]
+  },
+  "feedback": {
+    "thumbsRating": true,
+    "suggestEdit": true,
+    "raiseIssue": true
+  },
+  "integrations": {
+    "_analytics_note": "Remove this key and populate one of the provider blocks below to enable analytics.",
+    "_plausible_example": { "domain": "orxhestra.com" },
+    "_ga4_example": { "measurementId": "G-XXXXXXXXXX" },
+    "_posthog_example": { "apiKey": "phc_xxx", "apiHost": "https://us.i.posthog.com" }
+  },
   "seo": {
     "metatags": {
       "og:site_name": "orxhestra",
       "og:description": "Open-source Python framework for orchestrating multi-agent AI systems. Async streaming, composable agent hierarchies, and first-class MCP & A2A integration.",
-      "twitter:card": "summary_large_image"
+      "og:image": "/images/logo_text_side.svg",
+      "twitter:card": "summary_large_image",
+      "twitter:image": "/images/logo_text_side.svg"
     },
     "indexing": "all"
   },

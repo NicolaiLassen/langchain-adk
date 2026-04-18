@@ -8,34 +8,38 @@ Pick the path that matches how you want to work. The YAML tab is the shortest ro
 
 <Tabs>
   <Tab title="YAML (Composer)">
-    ```bash
-    pip install 'orxhestra[cli,anthropic]'
-    export ANTHROPIC_API_KEY=sk-ant-...
-    ```
+    <Steps>
+      <Step title="Install">
+        ```bash
+        pip install 'orxhestra[cli,anthropic]'
+        export ANTHROPIC_API_KEY=sk-ant-...
+        ```
+      </Step>
 
-    Save this as `orx.yaml`:
+      <Step title="Save orx.yaml">
+        ```yaml title="orx.yaml"
+        defaults:
+          model:
+            provider: anthropic
+            name: claude-opus-4-7
 
-    ```yaml title="orx.yaml"
-    defaults:
-      model:
-        provider: anthropic
-        name: claude-opus-4-7
+        agents:
+          assistant:
+            type: llm
+            instructions: "You are a helpful weather assistant."
 
-    agents:
-      assistant:
-        type: llm
-        instructions: "You are a helpful weather assistant."
+        main_agent: assistant
+        ```
+      </Step>
 
-    main_agent: assistant
-    ```
+      <Step title="Run it">
+        ```bash
+        orx orx.yaml
+        ```
 
-    Run it:
-
-    ```bash
-    orx orx.yaml
-    ```
-
-    The REPL drops you into an interactive session with your agent. Type a question, watch the stream. `/help` lists the slash commands; `/exit` when done.
+        Drops you into an interactive REPL with your agent as the root. Type a question, watch the stream. `/help` lists the slash commands; `/exit` when done.
+      </Step>
+    </Steps>
 
     <Tip>
       Want to expose the same agent as an HTTP server?
