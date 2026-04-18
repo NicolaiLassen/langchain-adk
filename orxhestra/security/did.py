@@ -1,12 +1,14 @@
 """DID resolvers — pluggable backends for ``did:key`` and ``did:web``.
 
 A :class:`DidResolver` turns a DID string into an Ed25519 public key so
-downstream components — :class:`TrustMiddleware`,
-:class:`A2AClient` — can verify signatures without hardcoding a DID
-method.
+downstream components — :class:`~orxhestra.middleware.trust.TrustMiddleware`,
+:class:`~orxhestra.a2a.server.A2AServer` — can verify signatures without
+hardcoding a DID method.
 
-Resolvers are registered on the :class:`Runner` (or passed explicitly
-to :class:`TrustMiddleware`) and selected by DID prefix:
+Resolvers are registered on the :class:`~orxhestra.runner.Runner` (or
+passed explicitly to
+:class:`~orxhestra.middleware.trust.TrustMiddleware`) and selected by
+DID prefix:
 
 - ``did:key:z...``  →  :class:`DidKeyResolver` (stateless, offline).
 - ``did:web:host:path``  →  :class:`DidWebResolver` (HTTPS fetch of

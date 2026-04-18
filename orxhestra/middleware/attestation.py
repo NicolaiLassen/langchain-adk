@@ -1,12 +1,23 @@
-"""Middleware that drives an :class:`AttestationProvider` from the agent loop.
+"""Middleware that drives an attestation provider from the agent loop.
 
-Records every event in the provider's audit log.  On notable actions
+Wraps an
+:class:`~orxhestra.trust.attestation.protocol.AttestationProvider`
+and funnels every agent event through it.  On notable actions
 — tool invocations, agent transfers — issues typed claims so
 downstream verifiers have a receipt for each side-effect.
 
 The middleware is best-effort: provider failures are logged but do
 not abort the event stream.  Agents that must halt on audit failure
 should wrap their provider in an adapter that raises instead.
+
+See Also
+--------
+orxhestra.trust.attestation : Provider protocol and reference
+    implementations
+    (:class:`~orxhestra.trust.attestation.noop.NoOpAttestationProvider`,
+    :class:`~orxhestra.trust.attestation.local.LocalAttestationProvider`).
+orxhestra.middleware.trust.TrustMiddleware : Sibling — pair for
+    verify + audit in the same stack.
 """
 
 from __future__ import annotations
@@ -26,14 +37,21 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 
 class AttestationMiddleware(BaseMiddleware):
-    """Route agent events through an :class:`AttestationProvider`.
+    """Route agent events through an attestation provider.
+
+    Wraps an
+    :class:`~orxhestra.trust.attestation.protocol.AttestationProvider`
+    and feeds every event through ``append_audit``; interesting
+    actions additionally produce typed claims via ``issue_claim``.
 
     Parameters
     ----------
     provider : AttestationProvider
         Backend to append events and issue claims to.  Use
-        :class:`NoOpAttestationProvider` for a zero-overhead default
-        or :class:`LocalAttestationProvider` for on-disk persistence.
+        :class:`~orxhestra.trust.attestation.noop.NoOpAttestationProvider`
+        for a zero-overhead default or
+        :class:`~orxhestra.trust.attestation.local.LocalAttestationProvider`
+        for on-disk persistence.
 
     See Also
     --------

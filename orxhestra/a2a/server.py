@@ -10,9 +10,10 @@ Exposes any :class:`BaseAgent` as an A2A endpoint with:
   when the server has a signing identity.
 
 Optionally signs every outgoing agent message with Ed25519 and
-verifies incoming signed messages against a :class:`DidResolver`.
-Signing is **opt-in** — when ``signing_key`` is unset the server
-behaves exactly as it did before the identity layer existed.
+verifies incoming signed messages against a
+:class:`~orxhestra.security.did.DidResolver`.  Signing is **opt-in**
+— when ``signing_key`` is unset the server behaves exactly as it did
+before the identity layer existed.
 
 Run with::
 
@@ -252,10 +253,10 @@ class A2AServer:
         )
 
     def _default_resolver(self):
-        """Return the lazily-constructed default :class:`DidResolver`.
+        """Return the lazily-constructed default :class:`~orxhestra.security.did.DidResolver`.
 
         When no resolver was supplied at construction, a
-        :class:`DidKeyResolver` is created on first use and cached
+        :class:`~orxhestra.security.did.DidKeyResolver` is created on first use and cached
         for subsequent calls.
 
         Returns

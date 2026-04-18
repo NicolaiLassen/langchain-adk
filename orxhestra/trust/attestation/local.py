@@ -52,7 +52,8 @@ class LocalAttestationProvider:
     --------
     orxhestra.trust.attestation.protocol.AttestationProvider : Protocol.
     NoOpAttestationProvider : No-persistence alternative.
-    AttestationMiddleware : Runtime consumer.
+    orxhestra.middleware.attestation.AttestationMiddleware : Runtime
+        consumer.
     """
 
     def __init__(

@@ -237,13 +237,19 @@ def _apply_identity_to_state(
     """Stamp an Ed25519 identity onto every agent in the built REPL state.
 
     Loads or creates the key file via
-    :func:`orxhestra.security.crypto.load_or_create_signing_key`, walks
-    the agent tree, and assigns the identity to every agent that
-    does not already have one.  Prints a confirmation line so the
-    user can see signing is active.  No middleware is registered —
-    signing activates via :meth:`BaseAgent._emit_event`, and callers
-    who want verification or audit should enable them in their
-    composer YAML (``trust:`` / ``attestation:`` blocks).
+    :func:`~orxhestra.security.crypto.load_or_create_signing_key`,
+    walks the agent tree, and assigns the identity to every agent
+    that doesn't already have one.  Also records ``signer_did`` and
+    ``identity_key_path`` on ``state`` so the startup banner and the
+    ``/session`` slash command can surface the active identity.
+
+    No middleware is registered here — signing activates at event
+    emission via :meth:`BaseAgent._emit_event`.  Callers who want
+    verification or audit on top of signing should declare ``trust:``
+    / ``attestation:`` blocks in their orx YAML, which installs
+    :class:`~orxhestra.middleware.trust.TrustMiddleware` and
+    :class:`~orxhestra.middleware.attestation.AttestationMiddleware`
+    on the Runner.
 
     Parameters
     ----------
@@ -280,7 +286,13 @@ def _apply_identity_to_state(
 
 
 async def _serve(orx_path: Path, port: int) -> None:
-    """Start as an A2A server.
+    """Expose an orx YAML agent tree as an A2A server.
+
+    Loads the YAML via :class:`~orxhestra.composer.composer.Composer`,
+    wraps the root agent in an A2A server via
+    :meth:`~orxhestra.composer.composer.Composer._build_server`, and
+    serves it under uvicorn on the given port.  Adds a default
+    ``server:`` block to the spec when the YAML doesn't declare one.
 
     Parameters
     ----------
@@ -415,7 +427,13 @@ async def _async_main(args: argparse.Namespace) -> None:
 
 
 def _graceful_shutdown() -> None:
-    """Clean up resources and suppress noisy errors on exit."""
+    """Flush OpenTelemetry and suppress interpreter-shutdown noise.
+
+    Called from :func:`main`'s ``finally`` block so spans aren't lost
+    when the REPL exits.  Silences the noisy
+    ``opentelemetry.context`` / ``opentelemetry.trace`` loggers that
+    otherwise print "Failed to detach context" at interpreter shutdown.
+    """
     # Flush and shut down OpenTelemetry (Langfuse, etc.)
     try:
         from opentelemetry import trace

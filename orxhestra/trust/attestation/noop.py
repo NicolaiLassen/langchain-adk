@@ -1,6 +1,7 @@
 """No-op attestation provider — records nothing, returns empty claims.
 
-Useful as the default when :class:`AttestationMiddleware` is
+Useful as the default when
+:class:`~orxhestra.middleware.attestation.AttestationMiddleware` is
 registered but the user hasn't wired up a real backend yet.  Also a
 convenient stand-in for tests that exercise the middleware path
 without asserting on audit behavior.

@@ -10,7 +10,8 @@ See Also
 --------
 NoOpAttestationProvider : Default implementation that records nothing.
 LocalAttestationProvider : JSON-on-disk hash-chained audit log.
-AttestationMiddleware : Runtime consumer that drives providers.
+orxhestra.middleware.attestation.AttestationMiddleware : Runtime
+    consumer that drives providers.
 """
 
 from __future__ import annotations

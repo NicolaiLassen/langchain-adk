@@ -1,16 +1,27 @@
 """Signature-verification middleware.
 
-:class:`TrustMiddleware` hooks into :meth:`Middleware.on_event` to:
+:class:`TrustMiddleware` hooks into
+:meth:`~orxhestra.middleware.base.Middleware.on_event` to:
 
-1. Check the event type against :attr:`TrustPolicy.require_signed_event_types`.
-2. Resolve the signer's public key via a :class:`DidResolver`.
+1. Check the event type against
+   :attr:`~orxhestra.trust.policy.TrustPolicy.require_signed_event_types`.
+2. Resolve the signer's public key via a
+   :class:`~orxhestra.security.did.DidResolver`.
 3. Verify the event's Ed25519 signature over its canonical payload.
 4. Verify hash-chain continuity when
-   :attr:`TrustPolicy.require_chain` is set.
+   :attr:`~orxhestra.trust.policy.TrustPolicy.require_chain` is set.
 5. Consult the policy's allow/deny lists.
 
 Failures drop the event in strict mode or annotate it under
 ``event.metadata["trust"]`` in permissive mode.
+
+See Also
+--------
+orxhestra.trust.policy.TrustPolicy : Declarative rules this middleware
+    enforces.
+orxhestra.security.did : DID resolvers used to look up signer keys.
+orxhestra.middleware.attestation.AttestationMiddleware : Sibling —
+    pair for verify + audit in the same stack.
 """
 
 from __future__ import annotations
@@ -33,17 +44,20 @@ _CHAIN_HEADS_KEY = "_orx_trust_chain_heads"
 
 
 class TrustMiddleware(BaseMiddleware):
-    """Verify event signatures and enforce a :class:`TrustPolicy`.
+    """Verify event signatures and enforce a :class:`~orxhestra.trust.policy.TrustPolicy`.
 
     Parameters
     ----------
     policy : TrustPolicy
-        Rules to apply.  See :class:`TrustPolicy` for mode semantics.
+        Rules to apply.  See
+        :class:`~orxhestra.trust.policy.TrustPolicy` for mode semantics.
     resolver : DidResolver
         Resolver used to turn ``signer_did`` into an Ed25519 public
-        key.  For offline usage, :class:`DidKeyResolver` is sufficient;
-        for institutional identity, wrap a :class:`CompositeResolver`
-        around both ``did:key`` and ``did:web`` resolvers.
+        key.  For offline usage,
+        :class:`~orxhestra.security.did.DidKeyResolver` is sufficient;
+        for institutional identity, wrap a
+        :class:`~orxhestra.security.did.CompositeResolver` around both
+        ``did:key`` and ``did:web`` resolvers.
 
     See Also
     --------
@@ -115,7 +129,7 @@ class TrustMiddleware(BaseMiddleware):
     async def _evaluate(
         self, ctx: InvocationContext, event: Event,
     ) -> PolicyDecision:
-        """Return a :class:`PolicyDecision` for ``event``.
+        """Return a :class:`~orxhestra.trust.policy.PolicyDecision` for ``event``.
 
         Parameters
         ----------

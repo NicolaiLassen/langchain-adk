@@ -10,12 +10,14 @@ based on:
   annotated (permissive mode).
 
 Policies are pure values — they carry no crypto state.  The actual
-verification work happens in :class:`TrustMiddleware`, which consults
+verification work happens in
+:class:`~orxhestra.middleware.trust.TrustMiddleware`, which consults
 this policy after resolving the signer's public key.
 
 See Also
 --------
-TrustMiddleware : Consumer that enforces these rules on_event.
+orxhestra.middleware.trust.TrustMiddleware : Consumer that enforces
+    these rules on_event.
 orxhestra.events.event.Event : Target of policy evaluation.
 """
 
@@ -33,7 +35,11 @@ PolicyMode = Literal["strict", "permissive"]
 
 @dataclass(frozen=True)
 class PolicyDecision:
-    """The outcome of evaluating an :class:`Event` against a :class:`TrustPolicy`.
+    """Verdict from evaluating an event against a :class:`TrustPolicy`.
+
+    Produced by :meth:`TrustPolicy.check_signer` and by
+    :class:`~orxhestra.middleware.trust.TrustMiddleware` during
+    :meth:`~orxhestra.middleware.base.Middleware.on_event`.
 
     Attributes
     ----------
@@ -56,7 +62,10 @@ class PolicyDecision:
 
 @dataclass
 class TrustPolicy:
-    """Declarative policy evaluated on every event by :class:`TrustMiddleware`.
+    """Declarative policy evaluated on every event by the trust middleware.
+
+    See :class:`~orxhestra.middleware.trust.TrustMiddleware` for the
+    enforcement pipeline that consults this policy.
 
     Parameters
     ----------

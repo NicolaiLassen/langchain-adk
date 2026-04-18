@@ -516,7 +516,10 @@ class IdentityConfig(BaseModel):
 
 
 class TrustConfig(BaseModel):
-    """Declarative configuration for :class:`TrustMiddleware`.
+    """Declarative config for the trust middleware.
+
+    See :class:`~orxhestra.middleware.trust.TrustMiddleware` for how
+    the runner consumes these fields.
 
     Attributes
     ----------
@@ -557,13 +560,17 @@ class TrustConfig(BaseModel):
 
 
 class AttestationConfig(BaseModel):
-    """Declarative configuration for :class:`AttestationMiddleware`.
+    """Declarative config for the attestation middleware.
+
+    See :class:`~orxhestra.middleware.attestation.AttestationMiddleware`
+    for how the runner consumes these fields.
 
     Attributes
     ----------
     provider : str
         Provider type: ``"noop"``, ``"local"``, or a dotted import
-        path to a user-supplied :class:`AttestationProvider`.
+        path to a user-supplied
+        :class:`~orxhestra.trust.attestation.protocol.AttestationProvider`.
     path : str, optional
         Path passed to the local provider for on-disk audit logs.
         Required when ``provider="local"``.
@@ -646,13 +653,14 @@ class ComposeSpec(BaseModel):
         every event emitted by agents running under the Runner is
         signed with this key.
     trust : TrustConfig, optional
-        Declarative :class:`TrustMiddleware` configuration.  Only
-        registered when ``identity`` is also set (verification
-        requires keys).
+        Declarative :class:`~orxhestra.middleware.trust.TrustMiddleware`
+        configuration.  Only registered when ``identity`` is also set
+        (verification requires keys).
     attestation : AttestationConfig, optional
-        Declarative :class:`AttestationMiddleware` configuration.
-        Registered on the Runner when set, regardless of whether an
-        identity is configured.
+        Declarative
+        :class:`~orxhestra.middleware.attestation.AttestationMiddleware`
+        configuration.  Registered on the Runner when set, regardless
+        of whether an identity is configured.
     """
 
     version: str = Field(

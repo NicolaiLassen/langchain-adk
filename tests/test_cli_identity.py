@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import io
+import json
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
@@ -19,16 +20,21 @@ from orxhestra.cli.identity import (  # noqa: E402
 
 
 def _init_args(path: Path, encrypt: bool = False) -> argparse.Namespace:
+    """Build an argparse namespace for ``orx identity init``."""
     return argparse.Namespace(
         action="init", path=str(path), encrypt=encrypt,
     )
 
 
 def _show_args(path: Path) -> argparse.Namespace:
+    """Build an argparse namespace for ``orx identity show``."""
     return argparse.Namespace(action="show", path=str(path))
 
 
-def _did_web_args(path: Path, domain: str, sub: list[str] | None = None) -> argparse.Namespace:
+def _did_web_args(
+    path: Path, domain: str, sub: list[str] | None = None,
+) -> argparse.Namespace:
+    """Build an argparse namespace for ``orx identity did-web``."""
     return argparse.Namespace(
         action="did-web", path=str(path), domain=domain, sub_path=sub or [],
     )
@@ -89,8 +95,6 @@ class TestIdentityCLI:
         with redirect_stdout(buf):
             rc = run_parsed(_did_web_args(key_path, "example.com", ["agents"]))
         assert rc == 0
-        import json
-
         doc = json.loads(buf.getvalue())
         assert doc["id"] == "did:web:example.com:agents"
         vm = doc["verificationMethod"][0]

@@ -1,9 +1,31 @@
-"""Authentication, cryptography, and security utilities.
+"""Security primitives — cryptography, DID resolvers, SSRF guard, JWT parser.
 
-SSRF protection is always available (stdlib only).  Ed25519 crypto and
-JWT parsing require optional dependencies::
+Low-level building blocks that higher-level layers
+(:mod:`orxhestra.trust`, :mod:`orxhestra.middleware`,
+:mod:`orxhestra.a2a.signing`) compose on top of.  Split cleanly from
+the trust *domain* because these primitives are useful on their own
+(signing an arbitrary payload, resolving a DID, validating an outbound
+URL) without pulling in the full policy/attestation stack.
+
+Availability:
+
+- :mod:`~orxhestra.security.ssrf` is always available (stdlib only).
+- :mod:`~orxhestra.security.crypto`, :mod:`~orxhestra.security.did`,
+  and :mod:`~orxhestra.security.token_parser` require the optional
+  ``orxhestra[auth]`` extra (``cryptography``, ``base58``, ``PyJWT``).
+  Symbols from those modules are lazy-loaded through this package so
+  importing :mod:`orxhestra.security` alone is cheap.
+
+Install::
 
     pip install orxhestra[auth]
+
+See Also
+--------
+orxhestra.trust : Higher-level trust domain (policy + attestation
+    providers) that consumes these primitives.
+orxhestra.middleware : Middleware implementations (``TrustMiddleware``,
+    ``AttestationMiddleware``) that drive the primitives at runtime.
 """
 
 from orxhestra.security.ssrf import (

@@ -1,4 +1,14 @@
-"""Build a Runner and REPL state from an orx YAML specification."""
+"""Build a Runner and :class:`~orxhestra.cli.state.ReplState` from orx YAML.
+
+The entry point :func:`build_from_orx` takes a YAML path (or the
+built-in coding-agent spec), composes the agent tree via
+:class:`~orxhestra.composer.composer.Composer`, configures the model
+selected by ``--model``, wires up auto-memory + CLI built-in tools,
+and returns a ready-to-run :class:`~orxhestra.cli.state.ReplState`.
+
+Called from both the interactive REPL path and the ``-c`` single-shot
+path in :mod:`orxhestra.cli.app`.
+"""
 
 from __future__ import annotations
 
