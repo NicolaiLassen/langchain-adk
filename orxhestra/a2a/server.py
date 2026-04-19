@@ -1,13 +1,37 @@
 """Spec-compliant A2A v1.0 server over JSON-RPC 2.0.
 
-Exposes any :class:`BaseAgent` as an A2A endpoint with:
+Exposes any :class:`BaseAgent` as an A2A endpoint with the **complete
+v1.0 method set**:
 
-- ``POST /``                          — JSON-RPC 2.0 dispatch
-  (``SendMessage``, ``SendStreamingMessage``, ``GetTask``,
-  ``CancelTask``).
-- ``GET  /.well-known/agent-card.json`` — :class:`AgentCard`
-  discovery, including an optional :class:`VerificationMethod` list
-  when the server has a signing identity.
+================================================  =========================================
+PascalCase                                        JSON-RPC slug
+================================================  =========================================
+``SendMessage``                                   ``message/send``
+``SendStreamingMessage``                          ``message/stream``
+``GetTask``                                       ``tasks/get``
+``CancelTask``                                    ``tasks/cancel``
+``ListTasks``                                     ``tasks/list``
+``SubscribeToTask``                               ``tasks/resubscribe``
+``GetExtendedAgentCard``                          ``agent/getAuthenticatedExtendedCard``
+``CreateTaskPushNotificationConfig``              ``tasks/pushNotificationConfig/set``
+``GetTaskPushNotificationConfig``                 ``tasks/pushNotificationConfig/get``
+``ListTaskPushNotificationConfigs``               ``tasks/pushNotificationConfig/list``
+``DeleteTaskPushNotificationConfig``              ``tasks/pushNotificationConfig/delete``
+================================================  =========================================
+
+Plus the discovery endpoint at ``GET /.well-known/agent-card.json``.
+
+Three pluggable backends:
+
+* :class:`~orxhestra.a2a.store.TaskStore` — task persistence.
+  Default :class:`~orxhestra.a2a.store.InMemoryTaskStore` (LRU-bounded
+  10 000 tasks).  Plug your own (sqlite, redis, postgres) for
+  production scale.
+* :class:`~orxhestra.a2a.notifications.PushNotificationStore` —
+  registry of webhook configs per task.
+* :class:`~orxhestra.a2a.notifications.PushNotificationDispatcher`
+  — fires HTTP POSTs to registered webhooks on every task lifecycle
+  event.  SSRF-guarded by default.
 
 Optionally signs every outgoing agent message with Ed25519 and
 verifies incoming signed messages against a
@@ -23,6 +47,8 @@ See Also
 --------
 orxhestra.agents.a2a_agent.A2AAgent : Client-side counterpart.
 orxhestra.a2a.signing : Message signing / verification helpers.
+orxhestra.a2a.store.TaskStore : Task persistence protocol.
+orxhestra.a2a.notifications.PushNotificationDispatcher : Webhook delivery.
 orxhestra.a2a.types.VerificationMethod : Published on agent cards.
 """
 
@@ -43,29 +69,44 @@ except ImportError as _exc:
     ) from _exc
 
 from orxhestra.a2a.converters import events_to_a2a_stream
+from orxhestra.a2a.notifications import (
+    InMemoryPushNotificationStore,
+    PushNotificationDispatcher,
+    PushNotificationStore,
+)
 from orxhestra.a2a.signing import (
     sign_message as sign_a2a_message,
 )
 from orxhestra.a2a.signing import (
     verify_message as verify_a2a_message,
 )
+from orxhestra.a2a.store import InMemoryTaskStore, TaskStore
 from orxhestra.a2a.types import (
     TERMINAL_STATES,
     A2AErrorCode,
     AgentCapabilities,
     AgentCard,
     AgentInterface,
+    AgentProvider,
     AgentSkill,
     Artifact,
+    DeleteTaskPushNotificationConfigParams,
+    GetTaskPushNotificationConfigParams,
     JSONRPCError,
     JSONRPCRequest,
     JSONRPCResponse,
+    ListTaskPushNotificationConfigsParams,
+    ListTasksParams,
+    ListTasksResult,
     Message,
     MessageSendParams,
     Part,
     Role,
+    SecurityScheme,
     Task,
+    TaskArtifactUpdateEvent,
     TaskIdParams,
+    TaskPushNotificationConfig,
     TaskQueryParams,
     TaskState,
     TaskStatus,
@@ -131,6 +172,21 @@ class A2AServer:
         version: str = "1.0.0",
         url: str = "http://localhost:8000",
         skills: list[AgentSkill] | None = None,
+        # Agent-card metadata (optional but recommended for public agents)
+        provider: AgentProvider | None = None,
+        documentation_url: str | None = None,
+        icon_url: str | None = None,
+        default_input_modes: list[str] | None = None,
+        default_output_modes: list[str] | None = None,
+        security_schemes: dict[str, SecurityScheme] | None = None,
+        security_requirements: list[dict[str, list[str]]] | None = None,
+        extended_card_extras: dict[str, Any] | None = None,
+        # Pluggable backends
+        task_store: TaskStore | None = None,
+        push_notification_store: PushNotificationStore | None = None,
+        push_notification_dispatcher: PushNotificationDispatcher | None = None,
+        allow_insecure_webhooks: bool = False,
+        # Identity / signing
         signing_key: _Ed25519PrivateKey | None = None,
         signer_did: str = "",
         require_signed: bool = False,
@@ -140,32 +196,62 @@ class A2AServer:
 
         Parameters
         ----------
-        agent : BaseAgent
+        agent
             The agent to expose via A2A.
-        session_service : BaseSessionService | None
+        session_service
             Session backend for conversation state.
-        app_name : str
+        app_name
             Application name used in session creation.
-        version : str
+        version
             Version string for the Agent Card.
-        url : str
+        url
             Base URL where the server is reachable.
-        skills : list[AgentSkill] | None
+        skills
             Skills advertised in the Agent Card.
-        signing_key : Ed25519PrivateKey, optional
+        provider
+            Organization metadata published on the agent card.
+        documentation_url, icon_url
+            Optional links rendered by clients.
+        default_input_modes, default_output_modes
+            MIME types used when a skill does not override
+            (default ``["text/plain"]``).
+        security_schemes
+            OpenAPI-style security scheme dict.  This release
+            advertises the schemes on the card but does **not**
+            enforce them — credential extraction lives in middleware.
+        security_requirements
+            OpenAPI-style requirement list.
+        extended_card_extras
+            Extra fields merged into the response of
+            ``GetExtendedAgentCard``.  Use to publish authenticated-
+            only metadata such as private skill descriptions.
+        task_store
+            Task persistence backend.  Defaults to
+            :class:`InMemoryTaskStore` (10 000-task LRU).
+        push_notification_store
+            Backing store for push-notification configs.  Defaults to
+            :class:`InMemoryPushNotificationStore`.
+        push_notification_dispatcher
+            Dispatcher that POSTs events to webhooks.  Defaults to a
+            new :class:`PushNotificationDispatcher` using the store
+            above.
+        allow_insecure_webhooks
+            Pass-through to the default dispatcher's SSRF guard.  Set
+            ``True`` only for local development.
+        signing_key
             When set, the server signs every outgoing A2A message and
             publishes its :class:`VerificationMethod` in the agent
             card.  Requires ``orxhestra[auth]``.
-        signer_did : str
+        signer_did
             DID matching ``signing_key``.  Required when
             ``signing_key`` is set.
-        require_signed : bool
+        require_signed
             When ``True``, incoming messages without a valid signature
-            are rejected with ``INVALID_REQUEST``.  Defaults to ``False``
-            for back-compat with unsigned peers.
-        resolver : DidResolver, optional
+            are rejected with ``INVALID_REQUEST``.  Defaults to
+            ``False`` for back-compat with unsigned peers.
+        resolver
             Resolver used to verify incoming signatures.  Defaults to
-            a :class:`CompositeResolver` covering ``did:key`` only.
+            a ``did:key`` resolver.
         """
         self.agent = agent
         self.session_service = session_service
@@ -173,14 +259,31 @@ class A2AServer:
         self.version = version
         self.url = url
         self.skills = skills or []
+        self.provider = provider
+        self.documentation_url = documentation_url
+        self.icon_url = icon_url
+        self.default_input_modes = default_input_modes or ["text/plain"]
+        self.default_output_modes = default_output_modes or ["text/plain"]
+        self.security_schemes = security_schemes
+        self.security_requirements = security_requirements
+        self.extended_card_extras = extended_card_extras or {}
         self.signing_key = signing_key
         self.signer_did = signer_did
         self.require_signed = require_signed
         self._resolver = resolver
 
-        # In-memory task store: task_id -> Task (bounded to prevent leaks).
-        self._tasks: dict[str, Task] = {}
-        self._max_tasks: int = 10_000
+        # Pluggable backends.
+        self._task_store: TaskStore = task_store or InMemoryTaskStore()
+        self._push_store: PushNotificationStore = (
+            push_notification_store or InMemoryPushNotificationStore()
+        )
+        self._push_dispatcher: PushNotificationDispatcher = (
+            push_notification_dispatcher
+            or PushNotificationDispatcher(
+                self._push_store,
+                allow_insecure_webhooks=allow_insecure_webhooks,
+            )
+        )
 
 
     def _build_agent_card(self) -> AgentCard:
@@ -243,11 +346,20 @@ class A2AServer:
                 ),
             ],
             version=self.version,
+            protocol_version="1.0",
             capabilities=AgentCapabilities(
                 streaming=True,
-                push_notifications=False,
+                push_notifications=True,
+                extended_agent_card=bool(self.extended_card_extras),
             ),
             skills=self.skills,
+            default_input_modes=self.default_input_modes,
+            default_output_modes=self.default_output_modes,
+            security_schemes=self.security_schemes,
+            security_requirements=self.security_requirements,
+            provider=self.provider,
+            documentation_url=self.documentation_url,
+            icon_url=self.icon_url,
             controller=controller,
             verification_method=verification_methods,
         )
@@ -290,23 +402,25 @@ class A2AServer:
         return sign_a2a_message(message, self.signing_key, self.signer_did)
 
 
-    def _create_task(self, message: Message, context_id: str | None = None) -> Task:
+    async def _create_task(
+        self, message: Message, context_id: str | None = None,
+    ) -> Task:
         """Create, store, and return a new :class:`Task` for ``message``.
 
         Parameters
         ----------
-        message : Message
+        message
             Initial user message kicking off the task.
-        context_id : str, optional
+        context_id
             Conversation identifier carried on the task.  A fresh
             UUID is generated when omitted.
 
         Returns
         -------
         Task
-            Newly-registered task in ``SUBMITTED`` state.  The oldest
-            tasks are evicted once ``_max_tasks`` is exceeded so the
-            in-memory store cannot grow unbounded.
+            Newly-registered task in ``SUBMITTED`` state.  Persisted
+            via :attr:`_task_store` (eviction policy lives in the
+            store implementation).
         """
         task = Task(
             id=str(uuid.uuid4()),
@@ -314,36 +428,32 @@ class A2AServer:
             status=TaskStatus(state=TaskState.SUBMITTED, timestamp=_now_iso()),
             history=[message],
         )
-        self._tasks[task.id] = task
-        # Evict oldest tasks when limit is reached.
-        while len(self._tasks) > self._max_tasks:
-            oldest_key = next(iter(self._tasks))
-            del self._tasks[oldest_key]
+        await self._task_store.put(task)
         return task
 
-    def _update_task_status(
+    async def _update_task_status(
         self,
         task: Task,
         state: TaskState,
         agent_message: Message | None = None,
     ) -> None:
-        """Update ``task.status`` with a new state and optional message.
+        """Update ``task.status`` and persist the change.
 
         Parameters
         ----------
-        task : Task
+        task
             Task whose status is changing.
-        state : TaskState
+        state
             New lifecycle state.
-        agent_message : Message, optional
-            Latest agent message to attach to the status snapshot
-            (e.g. an error or progress update).
+        agent_message
+            Latest agent message to attach to the status snapshot.
         """
         task.status = TaskStatus(
             state=state,
             message=agent_message,
             timestamp=_now_iso(),
         )
+        await self._task_store.put(task)
 
     async def _run_agent_for_task(
         self,
@@ -379,7 +489,7 @@ class A2AServer:
             session=session,
         )
 
-        self._update_task_status(task, TaskState.WORKING)
+        await self._update_task_status(task, TaskState.WORKING)
 
         final_answer = ""
         async for event in self.agent.astream(user_message, ctx=ctx):
@@ -402,7 +512,9 @@ class A2AServer:
         if task.history is not None:
             task.history.append(agent_msg)
 
-        self._update_task_status(task, TaskState.COMPLETED, agent_message=agent_msg)
+        await self._update_task_status(
+            task, TaskState.COMPLETED, agent_message=agent_msg,
+        )
 
 
     async def _handle_send_message(
@@ -413,7 +525,7 @@ class A2AServer:
         if rejection is not None:
             return rejection
         user_text = _extract_text(send_params.message)
-        task = self._create_task(
+        task = await self._create_task(
             send_params.message,
             context_id=send_params.message.context_id,
         )
@@ -430,7 +542,7 @@ class A2AServer:
         if rejection is not None:
             return rejection
         user_text = _extract_text(send_params.message)
-        task = self._create_task(
+        task = await self._create_task(
             send_params.message,
             context_id=send_params.message.context_id,
         )
@@ -505,7 +617,7 @@ class A2AServer:
             session=session,
         )
 
-        self._update_task_status(task, TaskState.WORKING)
+        await self._update_task_status(task, TaskState.WORKING)
 
         # Emit initial "working" status
         working_event = TaskStatusUpdateEvent(
@@ -514,6 +626,7 @@ class A2AServer:
             status=TaskStatus(state=TaskState.WORKING, timestamp=_now_iso()),
             final=False,
         )
+        await self._push_dispatcher.dispatch(task, working_event)
         yield _sse_line(request_id, working_event)
 
         # Stream agent events, converting to A2A events
@@ -522,10 +635,11 @@ class A2AServer:
             task_id=task.id,
             context_id=task.context_id,
         ):
+            await self._push_dispatcher.dispatch(task, a2a_event)
             yield _sse_line(request_id, a2a_event)
 
         # Emit final "completed" status
-        self._update_task_status(task, TaskState.COMPLETED)
+        await self._update_task_status(task, TaskState.COMPLETED)
 
         completed_event = TaskStatusUpdateEvent(
             task_id=task.id,
@@ -533,13 +647,47 @@ class A2AServer:
             status=TaskStatus(state=TaskState.COMPLETED, timestamp=_now_iso()),
             final=True,
         )
+        await self._push_dispatcher.dispatch(task, completed_event)
         yield _sse_line(request_id, completed_event)
+
+    async def _replay_task_stream(
+        self, task: Task, request_id: Any,
+    ) -> AsyncIterator[str]:
+        """Replay a snapshot of an in-progress / completed task as SSE.
+
+        Used by ``SubscribeToTask`` (tasks/resubscribe).  Emits the
+        current status, then any artifacts, then a ``final=True``
+        status for terminal tasks.  Live re-attachment to an
+        in-progress task's *future* events is out of scope for the
+        in-memory store; users running a persistent store can layer
+        their own pub/sub on top of :meth:`TaskStore.put`.
+        """
+        # Current status snapshot
+        yield _sse_line(
+            request_id,
+            TaskStatusUpdateEvent(
+                task_id=task.id,
+                context_id=task.context_id,
+                status=task.status,
+                final=task.status.state in TERMINAL_STATES,
+            ),
+        )
+        for artifact in task.artifacts or []:
+            yield _sse_line(
+                request_id,
+                TaskArtifactUpdateEvent(
+                    task_id=task.id,
+                    context_id=task.context_id,
+                    artifact=artifact,
+                    last_chunk=True,
+                ),
+            )
 
     async def _handle_get_task(
         self, params: dict[str, Any], request_id: Any,
     ) -> JSONResponse:
         query = TaskQueryParams.model_validate(params)
-        task = self._tasks.get(query.id)
+        task = await self._task_store.get(query.id)
         if task is None:
             return _jsonrpc_error(
                 request_id,
@@ -552,7 +700,7 @@ class A2AServer:
         self, params: dict[str, Any], request_id: Any,
     ) -> JSONResponse:
         task_params = TaskIdParams.model_validate(params)
-        task = self._tasks.get(task_params.id)
+        task = await self._task_store.get(task_params.id)
         if task is None:
             return _jsonrpc_error(
                 request_id,
@@ -565,20 +713,131 @@ class A2AServer:
                 A2AErrorCode.TASK_NOT_CANCELABLE,
                 f"Task {task_params.id} is in terminal state {task.status.state.value}",
             )
-        self._update_task_status(task, TaskState.CANCELED)
+        await self._update_task_status(task, TaskState.CANCELED)
         return _jsonrpc_success(request_id, task)
+
+    # ─── New v1.0 methods ───────────────────────────────────────────────────
+
+    async def _handle_list_tasks(
+        self, params: dict[str, Any], request_id: Any,
+    ) -> JSONResponse:
+        query = ListTasksParams.model_validate(params)
+        tasks, next_cursor = await self._task_store.list(
+            context_id=query.context_id,
+            state=query.state,
+            limit=query.limit,
+            cursor=query.cursor,
+        )
+        return _jsonrpc_success(
+            request_id, ListTasksResult(tasks=tasks, next_cursor=next_cursor),
+        )
+
+    async def _handle_subscribe_to_task(
+        self, params: dict[str, Any], request_id: Any,
+    ) -> StreamingResponse | JSONResponse:
+        task_params = TaskIdParams.model_validate(params)
+        task = await self._task_store.get(task_params.id)
+        if task is None:
+            return _jsonrpc_error(
+                request_id,
+                A2AErrorCode.TASK_NOT_FOUND,
+                f"Task {task_params.id} not found",
+            )
+        return StreamingResponse(
+            self._replay_task_stream(task, request_id),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
+    async def _handle_get_extended_agent_card(
+        self, params: dict[str, Any], request_id: Any,
+    ) -> JSONResponse:
+        # Extended card = base card + caller-supplied extras dict.  The
+        # spec leaves the extra-fields shape open; we merge into the
+        # serialised card so anything the user passed in
+        # ``extended_card_extras`` shows up at the top level.
+        card = self._build_agent_card().model_dump(
+            by_alias=True, exclude_none=True,
+        )
+        card.update(self.extended_card_extras)
+        return _jsonrpc_success(request_id, card)
+
+    async def _handle_create_push_notification_config(
+        self, params: dict[str, Any], request_id: Any,
+    ) -> JSONResponse:
+        cfg = TaskPushNotificationConfig.model_validate(params)
+        if await self._task_store.get(cfg.task_id) is None:
+            return _jsonrpc_error(
+                request_id,
+                A2AErrorCode.TASK_NOT_FOUND,
+                f"Task {cfg.task_id} not found",
+            )
+        await self._push_store.set(cfg.task_id, cfg.config)
+        return _jsonrpc_success(request_id, cfg)
+
+    async def _handle_get_push_notification_config(
+        self, params: dict[str, Any], request_id: Any,
+    ) -> JSONResponse:
+        query = GetTaskPushNotificationConfigParams.model_validate(params)
+        config = await self._push_store.get(query.task_id, query.config_id)
+        if config is None:
+            return _jsonrpc_error(
+                request_id,
+                A2AErrorCode.TASK_NOT_FOUND,
+                f"No push-notification config for task {query.task_id}",
+            )
+        return _jsonrpc_success(
+            request_id,
+            TaskPushNotificationConfig(task_id=query.task_id, config=config),
+        )
+
+    async def _handle_list_push_notification_configs(
+        self, params: dict[str, Any], request_id: Any,
+    ) -> JSONResponse:
+        query = ListTaskPushNotificationConfigsParams.model_validate(params)
+        configs = await self._push_store.list(query.task_id)
+        return _jsonrpc_success(
+            request_id,
+            [
+                TaskPushNotificationConfig(task_id=query.task_id, config=c)
+                for c in configs
+            ],
+        )
+
+    async def _handle_delete_push_notification_config(
+        self, params: dict[str, Any], request_id: Any,
+    ) -> JSONResponse:
+        query = DeleteTaskPushNotificationConfigParams.model_validate(params)
+        deleted = await self._push_store.delete(query.task_id, query.config_id)
+        return _jsonrpc_success(request_id, {"deleted": deleted})
 
 
     _METHOD_MAP = {
+        # Core (v1.0)
         "SendMessage": "_handle_send_message",
         "SendStreamingMessage": "_handle_send_streaming_message",
         "GetTask": "_handle_get_task",
         "CancelTask": "_handle_cancel_task",
-        # Backwards compatibility with v0.x method names
+        "ListTasks": "_handle_list_tasks",
+        "SubscribeToTask": "_handle_subscribe_to_task",
+        "GetExtendedAgentCard": "_handle_get_extended_agent_card",
+        # Push-notification config CRUD (v1.0)
+        "CreateTaskPushNotificationConfig": "_handle_create_push_notification_config",
+        "GetTaskPushNotificationConfig": "_handle_get_push_notification_config",
+        "ListTaskPushNotificationConfigs": "_handle_list_push_notification_configs",
+        "DeleteTaskPushNotificationConfig": "_handle_delete_push_notification_config",
+        # JSON-RPC slug aliases (per the v1.0 spec's binding table)
         "message/send": "_handle_send_message",
         "message/stream": "_handle_send_streaming_message",
         "tasks/get": "_handle_get_task",
         "tasks/cancel": "_handle_cancel_task",
+        "tasks/list": "_handle_list_tasks",
+        "tasks/resubscribe": "_handle_subscribe_to_task",
+        "agent/getAuthenticatedExtendedCard": "_handle_get_extended_agent_card",
+        "tasks/pushNotificationConfig/set": "_handle_create_push_notification_config",
+        "tasks/pushNotificationConfig/get": "_handle_get_push_notification_config",
+        "tasks/pushNotificationConfig/list": "_handle_list_push_notification_configs",
+        "tasks/pushNotificationConfig/delete": "_handle_delete_push_notification_config",
     }
 
     async def _dispatch(self, request: Request) -> Any:

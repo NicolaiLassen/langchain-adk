@@ -531,6 +531,47 @@ class VerificationMethod(A2AModel):
     public_key_multibase: str
 
 
+class SecurityScheme(A2AModel):
+    """A2A v1.0 :class:`SecurityScheme` — describes one auth mechanism.
+
+    Modelled on the OpenAPI 3.x security scheme object.  The spec
+    supports ``apiKey``, ``http``, ``oauth2``, ``openIdConnect``, and
+    ``mutualTLS``.  Servers list whichever schemes a client may use;
+    actual enforcement (extracting the credential, verifying it) lives
+    in middleware downstream of the JSON-RPC dispatch.
+
+    Only the fields common to every scheme are modelled here as
+    optional — clients will see the right subset for the declared
+    ``type`` per the OpenAPI convention.
+    """
+
+    type: str
+    description: str | None = None
+    # apiKey
+    name: str | None = None
+    location: str | None = Field(default=None, alias="in")  # "query" | "header" | "cookie"
+    # http
+    scheme: str | None = None
+    bearer_format: str | None = None
+    # oauth2
+    flows: dict[str, Any] | None = None
+    # openIdConnect
+    open_id_connect_url: str | None = None
+
+
+class JWSSignature(A2AModel):
+    """A detached JWS signature attached to an :class:`AgentCard`.
+
+    The A2A spec lets cards be signed by listing one or more JWS
+    signatures here.  This release ships the schema only — actual
+    signing/verification logic will land in a follow-up.
+    """
+
+    protected: str
+    signature: str
+    header: dict[str, Any] | None = None
+
+
 class AgentCard(A2AModel):
     """A2A v1.0 Agent Card — discovery manifest for a remote agent.
 
@@ -545,6 +586,8 @@ class AgentCard(A2AModel):
         can be reached.
     version : str
         Semantic version of the agent.
+    protocol_version : str
+        A2A spec version this card was authored against.  ``"1.0"``.
     capabilities : AgentCapabilities
         Feature flags (streaming, push notifications, etc.).
     skills : list[AgentSkill]
@@ -553,6 +596,12 @@ class AgentCard(A2AModel):
         MIME types accepted by default when a skill does not override.
     default_output_modes : list[str]
         MIME types produced by default when a skill does not override.
+    security_schemes : dict[str, SecurityScheme], optional
+        Auth mechanisms a client may use.  Keys are scheme names
+        referenced from ``security_requirements``.
+    security_requirements : list[dict[str, list[str]]], optional
+        OpenAPI-style requirement list — each entry is a logical OR of
+        scheme combinations.
     provider : AgentProvider, optional
         Organization hosting the agent.
     documentation_url : str, optional
@@ -567,25 +616,32 @@ class AgentCard(A2AModel):
         Ed25519 keys peers can use to verify signed messages from the
         server.  Populated when the server has a signing identity
         configured.
+    signatures : list[JWSSignature], optional
+        JWS signatures over the rest of the card.  Schema-only in this
+        release; signing logic comes in a follow-up.
     """
 
     name: str
     description: str
     supported_interfaces: list[AgentInterface] = Field(default_factory=list)
     version: str = "1.0.0"
+    protocol_version: str = "1.0"
     capabilities: AgentCapabilities = Field(default_factory=AgentCapabilities)
     skills: list[AgentSkill] = Field(default_factory=list)
     default_input_modes: list[str] = Field(
-        default_factory=lambda: ["application/json"],
+        default_factory=lambda: ["text/plain"],
     )
     default_output_modes: list[str] = Field(
-        default_factory=lambda: ["application/json"],
+        default_factory=lambda: ["text/plain"],
     )
+    security_schemes: dict[str, SecurityScheme] | None = None
+    security_requirements: list[dict[str, list[str]]] | None = None
     provider: AgentProvider | None = None
     documentation_url: str | None = None
     icon_url: str | None = None
     controller: str | None = None
     verification_method: list[VerificationMethod] | None = None
+    signatures: list[JWSSignature] | None = None
 
 
 
@@ -710,18 +766,126 @@ class TaskQueryParams(A2AModel):
 
 
 class TaskIdParams(A2AModel):
-    """Parameter object for ``CancelTask``.
+    """Parameter object for ``CancelTask`` and ``SubscribeToTask``.
 
     Attributes
     ----------
     id : str
-        Task identifier to cancel.
+        Task identifier to cancel or re-subscribe to.
     metadata : dict[str, Any], optional
         Arbitrary implementation-specific metadata.
     """
 
     id: str
     metadata: dict[str, Any] | None = None
+
+
+class ListTasksParams(A2AModel):
+    """Parameter object for ``ListTasks`` (new in A2A v1.0).
+
+    Attributes
+    ----------
+    context_id : str, optional
+        Restrict to tasks belonging to this conversation.
+    state : TaskState, optional
+        Restrict to tasks currently in this lifecycle state.
+    limit : int, optional
+        Maximum number of tasks to return per page.  Defaults to 50.
+    cursor : str, optional
+        Opaque pagination token returned by a prior call.
+    """
+
+    context_id: str | None = None
+    state: TaskState | None = None
+    limit: int = 50
+    cursor: str | None = None
+
+
+class ListTasksResult(A2AModel):
+    """Result of a ``ListTasks`` call.
+
+    Attributes
+    ----------
+    tasks : list[Task]
+        The page of tasks matching the filter.
+    next_cursor : str, optional
+        Opaque token to pass back as ``cursor`` to fetch the next
+        page.  ``None`` when the caller has reached the end.
+    """
+
+    tasks: list[Task] = Field(default_factory=list)
+    next_cursor: str | None = None
+
+
+class PushNotificationAuthentication(A2AModel):
+    """Authentication for a push-notification webhook delivery.
+
+    The spec allows JWT, Bearer, API key, Basic, and HMAC schemes.
+    This release ships Bearer only — anything else is accepted on the
+    type union but ignored when dispatching.
+    """
+
+    type: str = "bearer"
+    credential: str | None = None
+    metadata: dict[str, Any] | None = None
+
+
+class PushNotificationConfig(A2AModel):
+    """Webhook config for receiving task lifecycle updates.
+
+    Attributes
+    ----------
+    id : str
+        Stable identifier the client uses to update or delete this
+        config later.
+    url : str
+        HTTPS URL to POST event payloads to.
+    token : str, optional
+        Optional bearer token included in ``Authorization`` header.
+    authentication : PushNotificationAuthentication, optional
+        Richer authentication descriptor.  Takes precedence over
+        ``token`` when both are set.
+    metadata : dict[str, Any], optional
+        Arbitrary implementation-specific data.
+    """
+
+    id: str
+    url: str
+    token: str | None = None
+    authentication: PushNotificationAuthentication | None = None
+    metadata: dict[str, Any] | None = None
+
+
+class TaskPushNotificationConfig(A2AModel):
+    """Bundle of a task id + its push-notification config.
+
+    The spec uses this same shape for both
+    ``CreateTaskPushNotificationConfig`` (POST a config) and
+    ``GetTaskPushNotificationConfig`` (return one).
+    """
+
+    task_id: str
+    config: PushNotificationConfig
+
+
+class GetTaskPushNotificationConfigParams(A2AModel):
+    """Parameter object for ``GetTaskPushNotificationConfig``."""
+
+    task_id: str
+    config_id: str | None = None
+
+
+class ListTaskPushNotificationConfigsParams(A2AModel):
+    """Parameter object for ``ListTaskPushNotificationConfigs``."""
+
+    task_id: str
+
+
+class DeleteTaskPushNotificationConfigParams(A2AModel):
+    """Parameter object for ``DeleteTaskPushNotificationConfig``."""
+
+    task_id: str
+    config_id: str
 
 
 
