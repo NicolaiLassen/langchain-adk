@@ -3,15 +3,15 @@
   "name": "orxhestra",
   "theme": "mint",
   "colors": {
-    "primary": "#3B82F6",
-    "light": "#93C5FD",
-    "dark": "#1D4ED8"
+    "primary": "#3FE0A8",
+    "light": "#3FE0A8",
+    "dark": "#3FE0A8"
   },
   "logo": {
-    "light": "/images/logo_text_side.svg",
-    "dark": "/images/logo_text_side.svg"
+    "light": "/images/lockup.svg",
+    "dark": "/images/lockup.svg"
   },
-  "favicon": "/assets/icon.svg",
+  "favicon": "/images/favicon.svg",
   "appearance": {
     "default": "dark"
   },
@@ -125,9 +125,9 @@
     "metatags": {
       "og:site_name": "orxhestra",
       "og:description": "Open-source Python framework for orchestrating multi-agent AI systems. Async streaming, composable agent hierarchies, and first-class MCP & A2A integration.",
-      "og:image": "/images/logo_text_side.svg",
+      "og:image": "/images/lockup.svg",
       "twitter:card": "summary_large_image",
-      "twitter:image": "/images/logo_text_side.svg"
+      "twitter:image": "/images/lockup.svg"
     },
     "indexing": "all"
   },

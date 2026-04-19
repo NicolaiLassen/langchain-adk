@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/NicolaiLassen/orxhestra/main/assets/logo_text_bottom.svg" width="400" alt="orxhestra logo">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/NicolaiLassen/orxhestra/main/assets/lockup.svg">
+    <img src="https://raw.githubusercontent.com/NicolaiLassen/orxhestra/main/assets/lockup_light.svg" width="420" alt="orxhestra logo">
+  </picture>
 </p>
 
 <p align="center">
